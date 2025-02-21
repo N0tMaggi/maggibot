@@ -30,15 +30,62 @@ def is_admin(ctx):
 
 
 
+def is_connected_to_internet():
+    try:
+        requests.get("https://google.com")
+        return (True, "Connected to the internet")
+    except:
+        return (False, "Not connected to the internet") 
+
+
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f"-------------------------------------------")
+    print(f'Connected to {len(bot.guilds)} servers:')
+    for guild in bot.guilds:
+        print(f'- {guild.name} (ID: {guild.id})')
+    print(f"-------------------------------------------")
+    print(f'Connected to the internet: {is_connected_to_internet()[0]}')
+    print(f'Current time: {currenttime}')
+    print(f"-------------------------------------------")
+    await bot.change_presence(activity=discord.Game(name="with your mom"))
     
+
+
+import json
+import os
+
+def check_json_files(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith('.json'):
+            file_path = os.path.join(directory, filename)
+            try:
+                with open(file_path, 'r') as file:
+                    json.load(file)
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in file {filename}: {e}")
+                return False
+    return True
+
 
 
 #------------------ START OF BOT
 if __name__ == "__main__":
+    if is_connected_to_internet:
+        pass
+    else: 
+        print('Not connected to the Internet')
+        exit()
+        os._exit(1)
+
+    if not check_json_files('data'):
+        print("Not all JSON files are valid")
+        os._exit(1)
+    else:
+        print("All JSON files are valid!")
+
     clear_screen()
     print('------------STARTING THE BOT------------')
     asciiheader = """
@@ -53,10 +100,15 @@ if __name__ == "__main__":
 """
     print(asciiheader)
     print(f'------------------------------------')
+    cog_count = 0
     for filename in os.listdir("cogs"):
         if filename.endswith('.py'):
+            cog_count += 1
             print(f'Loaded COG: {filename}')
-            print(f'------------------------------------')
+    print(f'Loaded {cog_count} Cogs')
+    print(f'------------------------------------')
+    for filename in os.listdir("cogs"):
+        if filename.endswith('.py'):
             bot.load_extension(f"cogs.{filename[:-3]}")
 
 bot.run(TOKEN)
