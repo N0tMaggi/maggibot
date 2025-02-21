@@ -13,8 +13,7 @@ class ErrorHandling(commands.Cog):
         if isinstance(error, commands.CommandNotFound):
             error_embed = discord.Embed(
                 title="Command Not Found",
-                description=f"The command `{ctx.command.name}` was not found. Please check the command name and
-                try again.",
+                description=f"The command {ctx.command.name}` was not found. Please check the command name and try again.",
                 color=discord.Color.red(),
                 timestamp=datetime.utcnow()
             )
@@ -44,8 +43,7 @@ class ErrorHandling(commands.Cog):
         elif isinstance(error, commands.MissingRequiredArgument):
             error_embed = discord.Embed(
                 title="Missing Required Argument",
-                description=f"You are missing the required argument `{error.param.name}`. Please check the command
-                usage and try again.",
+                description=f"You are missing the required argument `{error.param.name}`. Please check the command usage and try again.",
                 color=discord.Color.red(),
                 timestamp=datetime.utcnow()
             )
@@ -135,8 +133,7 @@ class ErrorHandling(commands.Cog):
         elif isinstance(error, commands.CommandOnCooldown):
             error_embed = discord.Embed(
                 title="Command on Cooldown",
-                description=f"The command `{ctx.command.name}` is on cooldown. Please wait `{error.retry_after:.2f}`
-                seconds before trying again.",
+                description=f"The command `{ctx.command.name}` is on cooldown. Please wait `{error.retry_after:.2f}` seconds before trying again.",
                 color=discord.Color.red(),
                 timestamp=datetime.utcnow()
             )
