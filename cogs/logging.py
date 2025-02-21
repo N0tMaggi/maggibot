@@ -18,7 +18,6 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx):
-          # Setze hier die ID des Kanals ein, in den die Logs gesendet werden sollen
         log_channel = self.bot.get_channel(log_channel_id)
 
         embed = discord.Embed(
