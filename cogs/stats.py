@@ -32,21 +32,17 @@ class UserStats(commands.Cog):
         # Ignore bot messages
         if message.author.bot:
             return
-
         stats = load_stats()
         user_id = str(message.author.id)
         guild_id = str(message.guild.id)
-
         # Create entry for user if not existing
         if user_id not in stats:
             stats[user_id] = {"xp": 0.0, "servers": {}}
         if guild_id not in stats[user_id]["servers"]:
             stats[user_id]["servers"][guild_id] = {"messages": 0, "media": 0}
-
         # Every message gives 0.2 XP
         xp_gain = 0.2
         stats[user_id]["servers"][guild_id]["messages"] += 1
-
         # Count attachments that are images/videos (e.g. content_type starts with "image/" or "video/")
         media_count = 0
         for attachment in message.attachments:
@@ -55,11 +51,10 @@ class UserStats(commands.Cog):
         if media_count > 0:
             xp_gain += 0.5 * media_count
             stats[user_id]["servers"][guild_id]["media"] += media_count
-
         stats[user_id]["xp"] += xp_gain
         save_stats(stats)
 
-    @discord.slash_command(name="stats", description="Display your stats or a specified user's stats.")
+    @commands.slash_command(name="stats", description="Display your stats or a specified user's stats.")
     async def stats(self, ctx: discord.ApplicationContext, user: discord.User = None):
         # If no user specified, default to command author
         if user is None:
@@ -72,29 +67,32 @@ class UserStats(commands.Cog):
                 description=f"ℹ️ No stats available for {user.mention}.",
                 color=discord.Color.orange()
             )
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
             await ctx.respond(embed=embed)
             return
-
         user_stats = stats[user_id]
         xp = user_stats.get("xp", 0.0)
         embed = discord.Embed(
             title=f"Stats for {user.name}",
             color=discord.Color.blue()
         )
-        embed.add_field(name="Total XP", value=f"{xp:.2f}", inline=False)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        embed.add_field(name="Total XP", value=f"🌟 {xp:.2f} XP", inline=False)
         server_stats = user_stats.get("servers", {})
         details = ""
         for guild_id, data in server_stats.items():
             # Try to get the server name from cache
             guild = self.bot.get_guild(int(guild_id))
             guild_name = guild.name if guild else f"Server {guild_id}"
-            details += f"**{guild_name}**: {data['messages']} messages, {data['media']} media\n"
+            details += f"📈 **{guild_name}**: {data['messages']} messages, {data['media']} media\n"
         if details == "":
             details = "No server stats available."
         embed.add_field(name="Server Stats", value=details, inline=False)
+        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="leaderboard", description="Display the global XP leaderboard.")
+    @commands.slash_command(name="leaderboard", description="Display the global XP leaderboard.")
     async def leaderboard(self, ctx: discord.ApplicationContext):
         stats = load_stats()
         if not stats:
@@ -103,9 +101,9 @@ class UserStats(commands.Cog):
                 description="ℹ️ No stats available yet.",
                 color=discord.Color.orange()
             )
+            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
             await ctx.respond(embed=embed)
             return
-
         # Build a list of tuples (user_id, xp) and sort descending by XP
         leaderboard_list = [(user_id, data.get("xp", 0)) for user_id, data in stats.items()]
         leaderboard_list.sort(key=lambda x: x[1], reverse=True)
@@ -116,6 +114,7 @@ class UserStats(commands.Cog):
             # Try to get the member from the current guild; if not found, use the ID
             member = ctx.guild.get_member(int(user_id))
             name = member.name if member else f"User {user_id}"
+            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"  # Replace with a default avatar URL
             description += f"**{rank}. {name}**  {xp:.2f} XP\n"
             rank += 1
         embed = discord.Embed(
@@ -123,9 +122,10 @@ class UserStats(commands.Cog):
             description=description,
             color=discord.Color.gold()
         )
+        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="serverleaderboard", description="Display the XP leaderboard for this server.")
+    @commands.slash_command(name="serverleaderboard", description="Display the XP leaderboard for this server.")
     async def serverleaderboard(self, ctx: discord.ApplicationContext):
         stats = load_stats()
         server_id = str(ctx.guild.id)
@@ -145,9 +145,9 @@ class UserStats(commands.Cog):
                 description="ℹ️ No stats available for this server.",
                 color=discord.Color.orange()
             )
+            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
             await ctx.respond(embed=embed)
             return
-
         leaderboard_list.sort(key=lambda x: x[1], reverse=True)
         top = leaderboard_list[:10]
         description = ""
@@ -155,16 +155,16 @@ class UserStats(commands.Cog):
         for user_id, xp in top:
             member = ctx.guild.get_member(int(user_id))
             name = member.name if member else f"User {user_id}"
+            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"  # Replace with a default avatar URL
             description += f"**{rank}. {name}**  {xp:.2f} XP\n"
             rank += 1
-
         embed = discord.Embed(
             title=f"Server Leaderboard for {ctx.guild.name}",
             description=description,
             color=discord.Color.gold()
         )
+        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
-
 
 def setup(bot: commands.Bot):
     bot.add_cog(UserStats(bot))
