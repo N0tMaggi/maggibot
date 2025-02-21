@@ -9,6 +9,7 @@ import re
 from discord.ext import commands
 import dotenv
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -48,6 +49,9 @@ async def on_ready():
         print(f'- {guild.name} (ID: {guild.id})')
     print(f"-------------------------------------------")
     print(f'Connected to the internet: {is_connected_to_internet()[0]}')
+    print(f"-------------------------------------------")
+    print(f'JSON files are valid: {check_json_files("data")}')
+    print(f"-------------------------------------------")
     print(f'Current time: {currenttime}')
     print(f"-------------------------------------------")
     await bot.change_presence(activity=discord.Game(name="with your mom"))
