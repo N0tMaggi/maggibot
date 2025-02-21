@@ -1,8 +1,8 @@
 @echo off
 cls
-echo This script will keep your bot running even after crashing!
-title BOT WATCHDOG
-:StartServer
+echo This script will keep Maggibot running even after crashing!
+title Maggibot WATCHDOG
+:StartBot
 py main.py
-echo (%time%) BOT closed/crashed... restarting!
-goto StartServer
+echo (%time%) Maggibot closed/crashed... restarting!
+goto StartBot
