@@ -95,6 +95,7 @@ class UserStats(commands.Cog):
     @commands.slash_command(name="leaderboard", description="Display the global XP leaderboard.")
     async def leaderboard(self, ctx: discord.ApplicationContext):
         stats = load_stats()
+    
         if not stats:
             embed = discord.Embed(
                 title="Leaderboard",
@@ -104,26 +105,37 @@ class UserStats(commands.Cog):
             embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
             await ctx.respond(embed=embed)
             return
+
         # Build a list of tuples (user_id, xp) and sort descending by XP
         leaderboard_list = [(user_id, data.get("xp", 0)) for user_id, data in stats.items()]
         leaderboard_list.sort(key=lambda x: x[1], reverse=True)
         top = leaderboard_list[:10]
-        description = ""
+
+        embed = discord.Embed(
+            title="Global XP Leaderboard",
+            description="Here are the top 10 players with the highest XP!",
+            color=discord.Color.gold()
+        )
+    
+        # Add each player as a field
         rank = 1
         for user_id, xp in top:
             # Try to get the member from the current guild; if not found, use the ID
             member = ctx.guild.get_member(int(user_id))
             name = member.name if member else f"User {user_id}"
-            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"  # Replace with a default avatar URL
-            description += f"**{rank}. {name}**  {xp:.2f} XP\n"
+            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"  # Default avatar
+
+            # Use `add_field` to add the user as a field
+            embed.add_field(
+                name=f"**{rank}. {name}**",
+                value=f"{xp:.2f} XP",
+                inline=False
+            )
             rank += 1
-        embed = discord.Embed(
-            title="Global XP Leaderboard",
-            description=description,
-            color=discord.Color.gold()
-        )
+
         embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
+
 
     @commands.slash_command(name="serverleaderboard", description="Display the XP leaderboard for this server.")
     async def serverleaderboard(self, ctx: discord.ApplicationContext):
