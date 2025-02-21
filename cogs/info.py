@@ -4,6 +4,7 @@ from datetime import datetime
 import psutil
 import time
 import platform
+import os
 
 def get_host_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
@@ -15,7 +16,7 @@ def get_bot_uptime():
 class InfoSystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.owner_id = 1227911822875693120
+        self.owner_id = os.getenv("OWNER_ID")
         self.bot.version = "1.0.0"
 
     @commands.slash_command(

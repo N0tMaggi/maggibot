@@ -2,7 +2,11 @@ import discord
 from discord.ext import commands
 from discord.commands import slash_command
 from datetime import datetime
-log_channel_id = 1247288190881235035
+import os
+import dotenv
+
+
+command_log_channel_id = os.getenv("COMMAND_LOG_CHANNEL_ID")
 class Logging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -18,7 +22,7 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx):
-        log_channel = self.bot.get_channel(log_channel_id)
+        log_channel = self.bot.get_channel(command_log_channel_id)
 
         embed = discord.Embed(
             title="Command Executed",

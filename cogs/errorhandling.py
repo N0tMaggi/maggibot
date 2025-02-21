@@ -2,7 +2,10 @@ import discord
 from discord.ext import commands
 from discord.commands import slash_command
 from datetime import datetime
-log_channel_id = 1342455191521464382
+import os
+import dotenv
+
+error_log_channel_id = os.getenv("ERROR_LOG_CHANNEL_ID")
 
 class ErrorHandling(commands.Cog):
     def __init__(self, bot):
@@ -37,7 +40,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
         elif isinstance(error, commands.MissingRequiredArgument):
@@ -67,7 +70,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
         
         elif isinstance(error, commands.MissingPermissions):
@@ -97,7 +100,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
         elif isinstance(error, commands.BotMissingPermissions):
@@ -127,7 +130,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
         elif isinstance(error, commands.CommandOnCooldown):
@@ -157,7 +160,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
         
         elif isinstance(error, commands.CheckFailure):
@@ -187,7 +190,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
         
         elif isinstance(error, commands.ExtensionError):
@@ -217,7 +220,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in extension {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
         elif isinstance(error, commands.CommandInvokeError):
@@ -247,7 +250,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
         
         # Handling general errors in python code
@@ -278,7 +281,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
         
         #handling any other errors
@@ -309,7 +312,7 @@ class ErrorHandling(commands.Cog):
                 text=f"Error in command {ctx.command.name}"
             )
             await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(log_channel_id)
+            log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
 def setup(bot):
