@@ -17,7 +17,7 @@ class InfoSystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.owner_id = os.getenv("OWNER_ID")
-        self.bot.version = "1.0.0"
+        self.bot.version = os.getenv("BOT_VERSION")
 
     @commands.slash_command(
         name="info", 

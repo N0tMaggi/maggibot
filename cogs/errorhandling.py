@@ -315,6 +315,26 @@ class ErrorHandling(commands.Cog):
             log_channel = self.bot.get_channel(error_log_channel_id)
             await log_channel.send(embed=error_embed)
 
+
+    @commands.Cog.listener()
+    async def on_error(self, event, *args, **kwargs):
+        error_embed = discord.Embed(
+            title="Error",
+            description=f"An error occurred in the event `{event}`. Please check the error and try again.",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        error_embed.add_field(
+            name="Error",
+            value=f"{args[0]}"
+        )
+        error_embed.set_footer(
+            text=f"Error in event {event}"
+        )
+        log_channel = self.bot.get_channel(error_log_channel_id)
+        await log_channel.send(embed=error_embed)
+
+
 def setup(bot):
     bot.add_cog(ErrorHandling(bot))
             

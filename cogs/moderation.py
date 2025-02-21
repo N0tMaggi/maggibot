@@ -6,6 +6,12 @@ import requests
 import datetime
 import re
 import asyncio
+import os
+import dotenv
+
+emoji_success = os.getenv("emoji_success") or "✅"
+emoji_error = os.getenv("emoji_error") or "❌"
+emoji_warning = os.getenv("emoji_warning") or "⚠️"
 
 class Moderation(commands.Cog):
     def __init__(self, bot: discord.Bot):
@@ -13,8 +19,7 @@ class Moderation(commands.Cog):
 
     @slash_command(name="checkperms", description="Check if the bot has every required permission")
     async def checkperms(self, ctx):
-        emoji_success = "✅"
-        emoji_warning = "⚠️"
+
 
         # Send an initial scanning animation embed
         scanning_embed = discord.Embed(
