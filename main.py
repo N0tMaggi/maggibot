@@ -6,12 +6,15 @@ import datetime
 import json
 import requests
 import re
-from discord.ext import commands
 import dotenv
 from dotenv import load_dotenv
 import time
 
 load_dotenv()
+
+DEBUG = os.getenv('DEBUG_MODE')
+
+
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -29,8 +32,6 @@ bot = discord.Bot(
 def is_admin(ctx):
     return ctx.author.guild_permissions.administrator
 
-
-
 def is_connected_to_internet():
     try:
         requests.get("https://google.com")
@@ -38,28 +39,6 @@ def is_connected_to_internet():
     except:
         return (False, "Not connected to the internet") 
 
-
-
-@bot.event
-async def on_ready():
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    print(f"-------------------------------------------")
-    print(f'Connected to {len(bot.guilds)} servers:')
-    for guild in bot.guilds:
-        print(f'- {guild.name} (ID: {guild.id})')
-    print(f"-------------------------------------------")
-    print(f'Connected to the internet: {is_connected_to_internet()[0]}')
-    print(f"-------------------------------------------")
-    print(f'JSON files are valid: {check_json_files("data")}')
-    print(f"-------------------------------------------")
-    print(f'Current time: {currenttime}')
-    print(f"-------------------------------------------")
-    await bot.change_presence(activity=discord.Game(name="with your mom"))
-    
-
-
-import json
-import os
 
 def check_json_files(directory):
     for filename in os.listdir(directory):
@@ -75,13 +54,41 @@ def check_json_files(directory):
 
 
 
+def DEBUG_MODE_PRINT_ENV():
+    print(f"DEBUG: {DEBUG}")
+    if DEBUG == 'TRUE':
+        print(f"OWNER_ID: {os.getenv('OWNER_ID')}")
+        print(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
+        print(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
+        time.sleep(5)
+    else:
+        pass    
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f"-------------------------------------------")
+    print(f'Connected to {len(bot.guilds)} servers: ')
+    for guild in bot.guilds:
+        print(f'- {guild.name} (ID: {guild.id})')
+    print(f"-------------------------------------------")
+    print(f'Connected to the internet: {is_connected_to_internet()[0]}')
+    print(f"-------------------------------------------")
+    print(f'JSON files are valid: {check_json_files("data")}')
+    print(f"-------------------------------------------")
+    print(f'Current time: {currenttime}')
+    print(f"-------------------------------------------")
+    await bot.change_presence(activity=discord.Game(name="with your mom"))
+
+
+
 #------------------ START OF BOT
-if __name__ == "__main__":
-    if is_connected_to_internet:
+
+try:
+    if is_connected_to_internet()[0]:
         pass
-    else: 
+    else:
         print('Not connected to the Internet')
-        exit()
         os._exit(1)
 
     if not check_json_files('data'):
@@ -90,29 +97,45 @@ if __name__ == "__main__":
     else:
         print("All JSON files are valid!")
 
+       
+
     clear_screen()
+    DEBUG_MODE_PRINT_ENV() 
+
     print('------------STARTING THE BOT------------')
+    
     asciiheader = """
-
-
-╔╦╗┌─┐┌─┐┌─┐┬╔═╗┬ ┬┌─┐┌┬┐┌─┐┌┬┐
-║║║├─┤│ ┬│ ┬│╚═╗└┬┘└─┐ │ ├┤ │││
-╩ ╩┴ ┴└─┘└─┘┴╚═╝ ┴ └─┘ ┴ └─┘┴ ┴
-
-
-
-"""
+    ╔╦╗┌─┐┌─┐┌─┐┬╔═╗┬ ┬┌─┐┌┬┐┌─┐┌┬┐
+    ║║║├─┤│ ┬│ ┬│╚═╗└┬┘└─┐ │ ├┤ │││
+    ╩ ╩┴ ┴└─┘└─┘┴╚═╝ ┴ └─┘ ┴ └─┘┴ ┴
+    """
     print(asciiheader)
     print(f'------------------------------------')
+
     cog_count = 0
     for filename in os.listdir("cogs"):
         if filename.endswith('.py'):
             cog_count += 1
             print(f'Loaded COG: {filename}')
+
     print(f'Loaded {cog_count} Cogs')
     print(f'------------------------------------')
+
+    # Loading extensions (cogs)
     for filename in os.listdir("cogs"):
         if filename.endswith('.py'):
             bot.load_extension(f"cogs.{filename[:-3]}")
 
-bot.run(TOKEN)
+    # Start the bot
+    bot.run(TOKEN)  
+
+except Exception as e:
+    error_log_channel_id = os.getenv('ERROR_LOG_CHANNEL_ID')
+    error_log_channel = bot.get_channel(int(error_log_channel_id))
+    error_embed = discord.Embed(
+        title="Error",
+        description=f"```{e}```",
+        color=0xff0000
+    )
+    error_log_channel.send(embed=error_embed)
+    print(f"Error: {e}")
