@@ -4,10 +4,11 @@ import json
 import datetime
 import os
 import asyncio
+import traceback
 
 AUTHORIZED_ID = 1227911822875693120
 JSON_FILE = "data/mac.json"
-NOTIFY_CHANNEL_ID = 1341152168077557870  # Channel-ID, in den der Bot benachrichtigt, wenn ein global gebannter User beitritt
+NOTIFY_CHANNEL_ID = 1341152168077557870  
 
 def load_bans():
     if not os.path.exists(JSON_FILE):
@@ -32,19 +33,6 @@ class MacBan(commands.Cog):
 
     def is_authorized(self, ctx: discord.ApplicationContext) -> bool:
         return ctx.author.id == AUTHORIZED_ID
-
-    @commands.Cog.listener()
-    async def on_application_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            embed = discord.Embed(
-                title="Command on Cooldown",
-                description=f"⏳ This command is on cooldown. Try again in {error.retry_after:.2f} seconds.",
-                color=discord.Color.orange()
-            )
-            # Hiermit wird die Antwort als ephemeral gesendet:
-            await ctx.respond(embed=embed, ephemeral=True)
-        else:
-            raise error
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -88,7 +76,7 @@ class MacBan(commands.Cog):
                 notify_embed.set_footer(text="User is on the global ban list.")
                 await channel.send(embed=notify_embed)
     
-    @discord.slash_command(name="macban", description="Globally ban a user and add them to the global ban list.")
+    @commands.slash_command(name="macban", description="Globally ban a user and add them to the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macban(self, ctx: discord.ApplicationContext, user: discord.User, reason: str = "No reason provided"):
         if not self.is_authorized(ctx):
@@ -126,7 +114,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="Ban Date", value=ban_record["bandate"], inline=True)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="macunban", description="Remove a global ban for a user.")
+    @commands.slash_command(name="macunban", description="Remove a global ban for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macunban(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -152,7 +140,7 @@ class MacBan(commands.Cog):
         )
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="macinfo", description="Display overall info about the global ban list.")
+    @commands.slash_command(name="macinfo", description="Display overall info about the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macinfo(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -171,7 +159,7 @@ class MacBan(commands.Cog):
             embed.add_field(name="No Bans", value="The global ban list is empty.", inline=False)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="maclookup", description="Lookup detailed ban info for a user.")
+    @commands.slash_command(name="maclookup", description="Lookup detailed ban info for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maclookup(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -197,7 +185,7 @@ class MacBan(commands.Cog):
         )
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="maccheck", description="Check if a user is globally banned.")
+    @commands.slash_command(name="maccheck", description="Check if a user is globally banned.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maccheck(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -223,7 +211,7 @@ class MacBan(commands.Cog):
         )
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="macbanall", description="Ban all users from the global ban list in this server.")
+    @commands.slash_command(name="macbanall", description="Ban all users from the global ban list in this server.")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def macbanall(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -265,7 +253,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="Failed to Ban", value="\n".join(failed_members) if failed_members else "None", inline=False)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="macgetserverbannedusersandban", description="Import all banned users from this server into the global ban list.")
+    @commands.slash_command(name="macgetserverbannedusersandban", description="Import all banned users from this server into the global ban list.")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macgetserverbannedusersandban(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -336,7 +324,7 @@ class MacBan(commands.Cog):
         await ctx.respond(embed=summary_embed, file=discord.File(fp=file_obj, filename="imported_users.txt"))
 
 
-    @discord.slash_command(name="macunbanallserver", description="Unban all users from this server that were imported via the global ban list.")
+    @commands.slash_command(name="macunbanallserver", description="Unban all users from this server that were imported via the global ban list.")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macunbanallserver(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -380,7 +368,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="Failed to Unban", value="\n".join(failed_users) if failed_users else "None", inline=False)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="maclookupserver", description="Lookup global ban records for a specific server by ID.")
+    @commands.slash_command(name="maclookupserver", description="Lookup global ban records for a specific server by ID.")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def maclookupserver(self, ctx: discord.ApplicationContext, serverid: str):
         if not self.is_authorized(ctx):

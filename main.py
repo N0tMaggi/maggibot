@@ -9,7 +9,9 @@ import re
 import dotenv
 from dotenv import load_dotenv
 import time
+import cogs.activity as MaggiActivity
 
+# Load the .env file
 load_dotenv()
 
 DEBUG = os.getenv('DEBUG_MODE')

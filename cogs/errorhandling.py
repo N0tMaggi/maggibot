@@ -1,9 +1,8 @@
 import discord
 from discord.ext import commands
-from discord.commands import slash_command
 from datetime import datetime
 import os
-import dotenv
+import traceback
 
 error_log_channel_id = os.getenv("ERROR_LOG_CHANNEL_ID")
 
@@ -13,328 +12,56 @@ class ErrorHandling(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandNotFound):
-            error_embed = discord.Embed(
-                title="Command Not Found",
-                description=f"The command {ctx.command.name}` was not found. Please check the command name and try again.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-
-        elif isinstance(error, commands.MissingRequiredArgument):
-            error_embed = discord.Embed(
-                title="Missing Required Argument",
-                description=f"You are missing the required argument `{error.param.name}`. Please check the command usage and try again.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-        
-        elif isinstance(error, commands.MissingPermissions):
-            error_embed = discord.Embed(
-                title="Missing Permissions",
-                description=f"You are missing the required permissions to run the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-
-        elif isinstance(error, commands.BotMissingPermissions):
-            error_embed = discord.Embed(
-                title="Missing Permissions",
-                description=f"The bot is missing the required permissions to run the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-
-        elif isinstance(error, commands.CommandOnCooldown):
-            error_embed = discord.Embed(
-                title="Command on Cooldown",
-                description=f"The command `{ctx.command.name}` is on cooldown. Please wait `{error.retry_after:.2f}` seconds before trying again.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-        
-        elif isinstance(error, commands.CheckFailure):
-            error_embed = discord.Embed(
-                title="Check Failure",
-                description=f"A check failed on the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-        
-        elif isinstance(error, commands.ExtensionError):
-            error_embed = discord.Embed(
-                title="Extension Error",
-                description=f"An error occurred in the extension `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in extension {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-
-        elif isinstance(error, commands.CommandInvokeError):
-            error_embed = discord.Embed(
-                title="Command Invoke Error",
-                description=f"An error occurred while invoking the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-        
-        # Handling general errors in python code
-        elif isinstance(error, Exception):
-            error_embed = discord.Embed(
-                title="Error",
-                description=f"An error occurred while running the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-        
-        #handling any other errors
-        else:
-            error_embed = discord.Embed(
-                title="Error",
-                description=f"An error occurred while running the command `{ctx.command.name}`.",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
-            )
-            error_embed.add_field(
-                name="Error",
-                value=f"{error}"
-            )
-            error_embed.add_field(
-                name="User",
-                value=f"{ctx.author} ({ctx.author.id})"
-            )
-            error_embed.add_field(
-                name="Channel",
-                value=f"{ctx.channel} ({ctx.channel.id})"
-            )
-            error_embed.add_field(
-                name="Guild",
-                value=f"{ctx.guild} ({ctx.guild.id})"
-            )
-            error_embed.set_footer(
-                text=f"Error in command {ctx.command.name}"
-            )
-            await ctx.send(embed=error_embed)
-            log_channel = self.bot.get_channel(error_log_channel_id)
-            await log_channel.send(embed=error_embed)
-
+        try:
+            await self.handle_error(ctx, error, "❌ Command Error")
+        except Exception as e:
+            print(f"Error handling another error: {e}")
+            traceback.print_exc()
 
     @commands.Cog.listener()
-    async def on_error(self, event, *args, **kwargs):
-        error_embed = discord.Embed(
-            title="Error",
-            description=f"An error occurred in the event `{event}`. Please check the error and try again.",
+    async def on_application_command_error(self, ctx, error):
+        if isinstance(error, discord.ApplicationCommandInvokeError):
+            await self.handle_error(ctx, error, "⚠️ Application Command Invoke Error")
+        else:
+            await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error")
+
+    async def handle_error(self, ctx, error, error_type):
+        embed = discord.Embed(
+            title=error_type,
+            description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
-        error_embed.add_field(
-            name="Error",
-            value=f"{args[0]}"
+        embed.add_field(name="📝 Error Details", value=f"```py\n{error}\n```", inline=False)
+        embed.add_field(name="👤 User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
+        embed.add_field(name="💬 Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
+        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
+        embed.add_field(name="🏰 Server", value=guild_info, inline=True)
+        embed.set_footer(
+            text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
-        error_embed.set_footer(
-            text=f"Error in event {event}"
-        )
-        log_channel = self.bot.get_channel(error_log_channel_id)
-        await log_channel.send(embed=error_embed)
 
+        try:
+            # Prüfen, ob es sich um einen Slash-Command handelt
+            if isinstance(ctx, discord.ApplicationContext):
+                if ctx.response.is_done():
+                    await ctx.edit_original_response(embed=embed)
+                else:
+                    await ctx.response.send_message(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+
+        except discord.Forbidden:
+            print("Bot has no permission to send messages in this channel.")
+        except discord.HTTPException:
+            print("Failed to send error message.")
+
+        # Log the error in the error log channel
+        if error_log_channel_id:
+            log_channel = self.bot.get_channel(int(error_log_channel_id))
+            if log_channel:
+                await log_channel.send(embed=embed)
 
 def setup(bot):
     bot.add_cog(ErrorHandling(bot))
-            

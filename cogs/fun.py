@@ -7,7 +7,7 @@ class TrollCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @discord.slash_command(
+    @commands.slash_command(
         name="jumpscare", 
         description="Perform a jumpscare on a user by joining their voice channel and playing a sound."
     )
@@ -83,6 +83,8 @@ class TrollCommands(commands.Cog):
             color=discord.Color.green()
         )
         await ctx.followup.send(embed=embed)
+
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(TrollCommands(bot))
