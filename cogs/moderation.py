@@ -111,5 +111,8 @@ class Moderation(commands.Cog):
             )
             await ctx.followup.send(embed=error_embed)
 
+
+    
+
 def setup(bot: discord.Bot):
     bot.add_cog(Moderation(bot))

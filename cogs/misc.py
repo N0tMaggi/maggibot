@@ -16,11 +16,11 @@ class Miscellaneous(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
         
-        @bot.slash_command(description='TEST COMMAND')
+        @commands.slash_command(description='TEST COMMAND')
         async def test(ctx):
             await ctx.respond('Test')
 
-        @bot.slash_command(description='Check the bot\'s latency')
+        @commands.slash_command(description='Check the bot\'s latency')
         async def ping(ctx):
             loading_embed = discord.Embed(
                 title="🏓 Pong!",
@@ -40,7 +40,7 @@ class Miscellaneous(commands.Cog):
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
             await loading_message.edit(embed=embed)
         
-        @bot.slash_command(description='Get Info from a user')
+        @commands.slash_command(description='Get Info from a user')
         async def userinfo(ctx, target: discord.Member = None):
             target = target or ctx.author
             embed = discord.Embed(title="👤 User Information",
@@ -102,7 +102,7 @@ class Miscellaneous(commands.Cog):
                 await ctx.respond(embed=embed)
 
 
-        @bot.slash_command(description="Is my PC on fire? 🔥")
+        @commands.slash_command(description="Is my PC on fire? 🔥")
         async def ismypconfire(ctx):
             responses = [
                 "🔥 Your PC is now classified as a nuclear reactor. RUN! 🏃💨",
@@ -121,76 +121,6 @@ class Miscellaneous(commands.Cog):
 
 
 
-    @commands.slash_command(description="Creates a quote image with your profile picture")
-    async def quote(self, ctx: discord.ApplicationContext, text: str):
-        await ctx.defer()  # Defer the response to allow time for image processing
-
-        # Fetch profile picture
-        avatar_url = ctx.author.display_avatar.url
-        response = requests.get(avatar_url)
-        avatar = Image.open(io.BytesIO(response.content)).convert("RGBA")
-
-        # Image dimensions and padding
-        avatar_size = 128
-        padding = 20  # Larger padding between profile picture and text
-        text_area_width = 400
-        total_width = avatar_size + text_area_width + padding
-        total_height = 150  # Adjustable image height based on text length
-
-        # Gradient background creation
-        gradient = Image.new('RGBA', (text_area_width, total_height), color=0)
-        draw = ImageDraw.Draw(gradient)
-        for x in range(text_area_width):
-            opacity = int(255 * (x / text_area_width))
-            draw.line([(x, 0), (x, total_height)], fill=(0, 0, 0, opacity))
-
-        # Load fonts
-        try:
-            font_path_regular = "arial.ttf"  # Replace with your font file
-            font_path_bold = "arialbd.ttf"   # Replace with your font file
-            font_regular = ImageFont.truetype(font_path_regular, 24)
-            font_bold = ImageFont.truetype(font_path_bold, 24)
-        except IOError:
-            font_regular = ImageFont.load_default()
-            font_bold = ImageFont.load_default()
-
-        # Text wrapping
-        max_chars_per_line = 40  # Maximum characters per line (can be adjusted)
-        wrapped_text = textwrap.fill(text, max_chars_per_line)  # Automatic line break
-
-        # Text positioning
-        text_x = avatar_size + padding + 10  # Start further to the left
-        text_y = 20  # Text slightly higher
-        username_y = text_y + 40  # Space between text and username
-
-        # Draw text
-        draw.text((text_x, text_y), wrapped_text, font=font_regular, fill=(255, 255, 255, 255))
-        draw.text((text_x, username_y), f"~ {ctx.author.display_name}", font=font_bold, fill=(255, 255, 255, 255))
-
-        # Combine images
-        combined = Image.new('RGBA', (total_width, total_height))
-        combined.paste(avatar.resize((avatar_size, avatar_size)), (10, 10))  # Avatar slightly lower
-        combined.paste(gradient, (avatar_size + padding, 0), mask=gradient)
-
-        # Add subtle rounded corners
-        border_radius = 20
-        mask = Image.new('L', combined.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.rounded_rectangle((0, 0, combined.width, combined.height), radius=border_radius, fill=255)
-        combined.putalpha(mask)
-
-        # Add subtle shadow
-        shadow = combined.filter(ImageFilter.GaussianBlur(radius=5))
-        shadow_offset = (5, 5)
-        final_image = Image.new('RGBA', (combined.width + shadow_offset[0], combined.height + shadow_offset[1]), (0, 0, 0, 0))
-        final_image.paste(shadow, shadow_offset)
-        final_image.paste(combined, (0, 0), combined)
-
-        # Save and send image
-        with io.BytesIO() as image_binary:
-            final_image.save(image_binary, 'PNG')
-            image_binary.seek(0)
-            await ctx.followup.send(file=discord.File(fp=image_binary, filename='quote.png'))
 
 
 

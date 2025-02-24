@@ -28,7 +28,8 @@ TOKEN = os.getenv('TOKEN')
 # Correct class to instantiate the bot
 bot = discord.Bot(
     intents=intents,
-    #debug_guilds=[1227993713813356654]
+    #debug_guilds=[int(os.getenv('DEBUG_GUILD_ID'))],
+
 )
 
 def is_admin(ctx):
@@ -99,7 +100,6 @@ try:
     else:
         print("All JSON files are valid!")
 
-       
 
     clear_screen()
     DEBUG_MODE_PRINT_ENV() 

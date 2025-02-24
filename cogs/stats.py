@@ -56,7 +56,6 @@ class UserStats(commands.Cog):
 
     @commands.slash_command(name="stats", description="Display your stats or a specified user's stats.")
     async def stats(self, ctx: discord.ApplicationContext, user: discord.User = None):
-        # If no user specified, default to command author
         if user is None:
             user = ctx.author
         stats = load_stats()

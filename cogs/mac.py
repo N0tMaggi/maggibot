@@ -45,7 +45,7 @@ class MacBan(commands.Cog):
             try:
                 dm_embed = discord.Embed(
                     title="🚫 Global Ban Notification",
-                    description="You are globally banned and cannot join this server.",
+                    description="You are globally banned by MAC™ and cannot join this server.",
                     color=discord.Color.red()
                 )
                 dm_embed.add_field(name="🛡️ Server", value=attempted_server, inline=True)
