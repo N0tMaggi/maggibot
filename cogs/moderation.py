@@ -17,7 +17,8 @@ class Moderation(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
 
-    @slash_command(name="checkperms", description="Check if the bot has every required permission")
+    @commands.slash_command(name="checkperms", description="Check if the bot has every required permission")
+    @commands.has_permissions(administrator=True)
     async def checkperms(self, ctx):
 
 

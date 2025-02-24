@@ -6,7 +6,7 @@ import os
 import asyncio
 import traceback
 
-AUTHORIZED_ID = 1227911822875693120
+AUTHORIZED_ID = int(os.getenv("OWNER_ID"))
 JSON_FILE = "data/mac.json"
 NOTIFY_CHANNEL_ID = 1341152168077557870  
 
@@ -41,39 +41,39 @@ class MacBan(commands.Cog):
             ban_record = next(ban for ban in bans if ban["id"] == member.id)
             attempted_server = member.guild.name
 
-            # Versuche, dem User eine DM zu schicken
+            # Try to send the user a DM
             try:
                 dm_embed = discord.Embed(
-                    title="Global Ban Notification",
+                    title="🚫 Global Ban Notification",
                     description="You are globally banned and cannot join this server.",
                     color=discord.Color.red()
                 )
-                dm_embed.add_field(name="Server", value=attempted_server, inline=True)
-                dm_embed.add_field(name="Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
-                dm_embed.add_field(name="Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
+                dm_embed.add_field(name="🛡️ Server", value=attempted_server, inline=True)
+                dm_embed.add_field(name="📅 Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
+                dm_embed.add_field(name="📝 Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
                 await member.send(embed=dm_embed)
             except discord.Forbidden:
                 pass
 
-            # Kicke den User
+            # Kick the user
             try:
                 await member.kick(reason="Globally banned user attempted to join.")
             except Exception as e:
                 pass
 
-            # Sende eine Benachrichtigung in den definierten Channel
+            # Send a notification in the defined channel
             channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
             if channel:
                 notify_embed = discord.Embed(
-                    title="Global Ban Detected",
+                    title="🚫 Global Ban Detected",
                     description=(
-                        f"🚫 {member.mention} attempted to join **{attempted_server}** but is globally banned and has been kicked."
+                        f"⚠️ {member.mention} attempted to join **{attempted_server}** but is globally banned and has been kicked."
                     ),
                     color=discord.Color.red()
                 )
-                notify_embed.add_field(name="Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
-                notify_embed.add_field(name="Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
-                notify_embed.set_footer(text="User is on the global ban list.")
+                notify_embed.add_field(name="📅 Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
+                notify_embed.add_field(name="📝 Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
+                notify_embed.set_footer(text="🔒 User is on the global ban list.")
                 await channel.send(embed=notify_embed)
     
     @commands.slash_command(name="macban", description="Globally ban a user and add them to the global ban list.")
@@ -146,17 +146,20 @@ class MacBan(commands.Cog):
         if not self.is_authorized(ctx):
             await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
             return
-
+    
         bans = load_bans()
-        embed = discord.Embed(title="Global Ban List Info", color=discord.Color.blue())
-        embed.add_field(name="Total Global Bans", value=str(len(bans)), inline=False)
+        embed = discord.Embed(title="🌍 Global Ban List Info", color=discord.Color.blue())
+        embed.add_field(name="📊 Total Global Bans", value=str(len(bans)), inline=False)
+    
         if bans:
             ban_list = ""
             for ban in bans[:5]:
-                ban_list += f"• {ban['name']} (ID: {ban['id']}) - Banned on {ban['bandate']}\n"
-            embed.add_field(name="Recent Bans", value=trim_field(ban_list), inline=False)
+                ban_list += f"• **{ban['name']}** (ID: `{ban['id']}`) - Banned on **{ban['bandate']}**\n"
+            embed.add_field(name="📰 Recent Bans", value=trim_field(ban_list), inline=False)
         else:
-            embed.add_field(name="No Bans", value="The global ban list is empty.", inline=False)
+            embed.add_field(name="🚫 No Bans", value="The global ban list is empty.", inline=False)
+    
+        embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
         await ctx.respond(embed=embed)
 
     @commands.slash_command(name="maclookup", description="Lookup detailed ban info for a user.")
@@ -368,6 +371,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="Failed to Unban", value="\n".join(failed_users) if failed_users else "None", inline=False)
         await ctx.respond(embed=embed)
 
+
     @commands.slash_command(name="maclookupserver", description="Lookup global ban records for a specific server by ID.")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def maclookupserver(self, ctx: discord.ApplicationContext, serverid: str):
@@ -379,21 +383,23 @@ class MacBan(commands.Cog):
         server_bans = [ban for ban in global_bans if str(ban.get("serverid")) == serverid]
         if not server_bans:
             embed = discord.Embed(
-                title="No Ban Records for Server",
-                description=f"ℹ️ There are no global ban records for server ID {serverid}.",
+                title="🚫 No Ban Records for Server",
+                description=f"ℹ️ There are no global ban records for server ID **{serverid}**.",
                 color=discord.Color.green()
             )
             await ctx.respond(embed=embed, ephemeral=True)
             return
 
-        embed = discord.Embed(title="Global Ban Records for Server", color=discord.Color.red())
-        embed.add_field(name="Server ID", value=serverid, inline=True)
+        embed = discord.Embed(title="📜 Global Ban Records for Server", color=discord.Color.red())
+        embed.add_field(name="🔍 Server ID", value=serverid, inline=True)
         server_name = server_bans[0].get("servername", "Unknown")
-        embed.add_field(name="Server Name", value=server_name, inline=True)
+        embed.add_field(name="🏷️ Server Name", value=server_name, inline=True)
+
         ban_list = ""
         for ban in server_bans:
-            ban_list += f"• {ban['name']} (ID: {ban['id']}) - Banned on {ban['bandate']}\n"
-        embed.add_field(name="Banned Users", value=trim_field(ban_list), inline=False)
+            ban_list += f"• **{ban['name']}** (ID: `{ban['id']}`) - Banned on **{ban['bandate']}**\n"
+
+        embed.add_field(name="👥 Banned Users", value=trim_field(ban_list) or "No banned users found.", inline=False)
         await ctx.respond(embed=embed)
 
 def setup(bot: commands.Bot):

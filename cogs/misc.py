@@ -9,6 +9,7 @@ import requests
 from io import BytesIO
 import io
 import textwrap
+import asyncio
 
 
 class Miscellaneous(commands.Cog):
@@ -21,56 +22,84 @@ class Miscellaneous(commands.Cog):
 
         @bot.slash_command(description='Check the bot\'s latency')
         async def ping(ctx):
-            latency = bot.latency * 1000  # Convert latency to milliseconds
-            embed = discord.Embed(
+            loading_embed = discord.Embed(
                 title="🏓 Pong!",
-                description=f"Latency: `{latency:.2f}ms`",
+                description="Calculating latency... ⏳",
                 color=discord.Color.blue()
             )
+            loading_message = await ctx.respond(embed=loading_embed)
+
+            latency = bot.latency * 1000
+            await asyncio.sleep(1)
+
+            embed = discord.Embed(
+                title="🏓 Pong!",
+                description=f"Latency: `{latency:.2f} ms`",
+                color=discord.Color.green()
+            )
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-            await ctx.respond(embed=embed)
+            await loading_message.edit(embed=embed)
         
         @bot.slash_command(description='Get Info from a user')
         async def userinfo(ctx, target: discord.Member = None):
             target = target or ctx.author
-            embed = discord.Embed(title="User Information",
+            embed = discord.Embed(title="👤 User Information",
                                   colour=target.colour,
                                   timestamp=datetime.utcnow())
             embed.set_thumbnail(url=target.avatar.url)
-            fields = [("Name", str(target), True),
-                      ("ID", target.id, True),
-                      ("Bot?", target.bot, True),
-                      ("Top role", target.top_role.mention, True),
-                      ("Status", str(target.status).title(), True),
-                      ("Activity", f"{str(target.activity.type).split('.')[-1].title() if target.activity else 'N/A'} {target.activity.name if target.activity else ''}", True),
-                      ("Created at", target.created_at.strftime("%d/%m/%Y %H:%M:%S"), True),
-                      ("Joined at", target.joined_at.strftime("%d/%m/%Y %H:%M:%S"), True),
-                      ("Boosted", bool(target.premium_since), True)]
+
+            user_guilds_count = sum(1 for guild in bot.guilds if target in guild.members)
+
+            fields = [
+                ("📝 Name", str(target), True),
+                ("🆔 ID", target.id, True),
+                ("🤖 Bot?", "Yes" if target.bot else "No", True),
+                ("🏅 Top Role", target.top_role.mention, True),
+                ("💬 Status", str(target.status).title(), True),
+                ("🎮 Activity", f"{str(target.activity.type).split('.')[-1].title() if target.activity else 'N/A'} {target.activity.name if target.activity else ''}", True),
+                ("📅 Created At", target.created_at.strftime("%d/%m/%Y %H:%M:%S"), True),
+                ("📅 Joined At", target.joined_at.strftime("%d/%m/%Y %H:%M:%S"), True),
+                ("🚀 Boosted", "Yes" if target.premium_since else "No", True),
+                ("🔖 Roles", ", ".join([role.mention for role in target.roles[1:]]) if len(target.roles) > 1 else "None", False),
+                ("🖼️ Avatar URL", target.avatar.url, False),
+                ("🔢 Discriminator", target.discriminator, True),
+                ("🌐 Is Online?", "Yes" if target.status == discord.Status.online else "No", True),
+                ("📺 Is Streaming?", "Yes" if target.activity and target.activity.type == discord.ActivityType.streaming else "No", True),
+                ("🌍 Servers with Bot", user_guilds_count, True)
+            ]
+
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
+
+            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
             await ctx.respond(embed=embed)
         
         @commands.has_permissions(administrator=True)
         @bot.slash_command(description='Stops the bot')
         async def stop(ctx):
             authorised = int(os.getenv('OWNER_ID'))
-            if ctx.author.id == authorised:  # Check if the author ID matches yours
+            if ctx.author.id == authorised:
                 embed = discord.Embed(
                     title="🛑 Bot Shutdown",
-                    description="Bot is shutting down...",
+                    description="The bot is shutting down... Please wait a moment.",
                     color=discord.Color.red()
                 )
+                embed.add_field(name="Shutdown Reason", value="Manual shutdown initiated by the owner.", inline=False)
+                embed.add_field(name="Time of Shutdown", value=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"), inline=False)
                 embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
                 await ctx.respond(embed=embed)
-                await self.bot.close()  # Close the bot
+                await self.bot.close()
             else:
                 embed = discord.Embed(
                     title="🚫 Permission Denied",
-                    description="You do not have permission to stop the bot. Ask: " + os.getenv('OWNER_ID'),
-                    color=discord.Color.red()
+                    description="You do not have permission to stop the bot. Please contact the owner for assistance.",
+                    color=discord.Color.orange()
                 )
-                embed.set_footer(text=f"Requested by {ctx.author} | {ctx.author.id}", icon_url=ctx.author.avatar.url)
-                await ctx.respond(embed=embed)   
+                embed.add_field(name="Owner ID", value=os.getenv('OWNER_ID'), inline=True)
+                embed.add_field(name="Your ID", value=ctx.author.id, inline=True)
+                embed.add_field(name="Contact Method", value="Please send a direct message to the owner.", inline=False)
+                embed.set_footer(text=f"Requested by {ctx.author} | ID: {ctx.author.id}", icon_url=ctx.author.avatar.url)
+                await ctx.respond(embed=embed)
 
 
         @bot.slash_command(description="Is my PC on fire? 🔥")

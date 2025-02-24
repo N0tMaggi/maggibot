@@ -141,3 +141,6 @@ except Exception as e:
     )
     error_log_channel.send(embed=error_embed)
     print(f"Error: {e}")
+except KeyboardInterrupt:
+    print("\n Keyboard Interrupt detected..... Stopping the bot...")
+    bot.close()
