@@ -10,6 +10,7 @@ import dotenv
 from dotenv import load_dotenv
 import time
 import cogs.activity as MaggiActivity
+import handlers.debug as DebugHandler
 
 # Load the .env file
 load_dotenv()
@@ -58,14 +59,14 @@ def check_json_files(directory):
 
 
 def DEBUG_MODE_PRINT_ENV():
-    print(f"DEBUG: {DEBUG}")
+    DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
+    DebugHandler.LogDebug(f"OWNER_ID: {os.getenv('OWNER_ID')}")
+    DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
+    DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
     if DEBUG == 'TRUE':
-        print(f"OWNER_ID: {os.getenv('OWNER_ID')}")
-        print(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
-        print(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
         time.sleep(5)
     else:
-        pass    
+        pass
 
 @bot.event
 async def on_ready():

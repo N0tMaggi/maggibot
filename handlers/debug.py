@@ -5,8 +5,8 @@ import os
 DEBUG = os.getenv('DEBUG_MODE')
 
 
-def debuglog(debuglog):
+def LogDebug(value):
     if DEBUG == 'TRUE':
-        logging.debug(debuglog)
+        logging.debug(value)
     else:
         pass

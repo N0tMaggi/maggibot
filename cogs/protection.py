@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import datetime
-import handlers.debug as debug
+import handlers.debug as DebugHandler
 
 SERVERCONFIGFILE = "data/serverconfig.json"
 
@@ -86,14 +86,14 @@ class Protection(commands.Cog):
         serverconfig[str(member.guild.id)] = serverconfig.get(str(member.guild.id), {})
 
         if not serverconfig[str(member.guild.id)].get("protection"):
-            debug.debuglog(f"Protection is not enabled for {member.guild.name}")  # Debugging-Print
+            DebugHandler.LogDebug(f"Protection is not enabled for {member.guild.name}")  # Debugging-Print
             return
 
         # checks if member is a bot
         if member.bot:
-            debug.debuglog(f"Bot detected: {member.name}")  # Debugging-Print
+            DebugHandler.LogDebug(f"Bot detected: {member.name}")  # Debugging-Print
             if member.public_flags.verified_bot:
-                debug.debuglog(f"Verified bot detected: {member.name}")  # Debugging-Print
+                DebugHandler.LogDebug(f"Verified bot detected: {member.name}")  # Debugging-Print
                 if serverconfig[str(member.guild.id)].get("protectionlogchannel"):
                     try:
                         protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
@@ -111,19 +111,19 @@ class Protection(commands.Cog):
                         reaction_embed.timestamp = datetime.datetime.utcnow()
                         reaction_embed.set_thumbnail(url=member.guild.icon.url)
                         await protection_log_channel.send(embed=reaction_embed)
-                        debug.debuglog("Message sent to protection log channel for verified bot.")  # Debugging-Print
+                        DebugHandler.LogDebug("Message sent to protection log channel for verified bot.")  # Debugging-Print
                     except Exception as e:
-                        debug.debuglog(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
+                        DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
             else:
-                debug.debuglog(f"Unverified bot detected: {member.name}")  # Debugging-Print
+                DebugHandler.LogDebug(f"Unverified bot detected: {member.name}")  # Debugging-Print
                 if serverconfig[str(member.guild.id)].get("protectionlogchannel"):
                     if serverconfig[str(member.guild.id)].get("protection"):
                         print(f"Protection is enabled, kicking unverified bot: {member.name}")  # Debugging-Print
                         try:
                             await member.kick(reason="Unverified bot")
-                            debug.debuglog(f"Kicked bot: {member.name}")  # Debugging-Print
+                            DebugHandler.LogDebug(f"Kicked bot: {member.name}")  # Debugging-Print
                         except Exception as e:
-                            debug.debuglog(f"Error while kicking bot: {e}")  # Fehlerausgabe
+                            DebugHandler.LogDebug(f"Error while kicking bot: {e}")  # Fehlerausgabe
 
                         try:
                             protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
@@ -140,9 +140,9 @@ class Protection(commands.Cog):
                             reaction_embed.timestamp = datetime.datetime.utcnow()
                             reaction_embed.set_thumbnail(url=member.guild.icon.url)
                             await protection_log_channel.send(embed=reaction_embed)
-                            debug.debuglog("Message sent to protection log channel for unverified bot.")  # Debugging-Print
+                            DebugHandler.LogDebug("Message sent to protection log channel for unverified bot.")  # Debugging-Print
                         except Exception as e:
-                            debug.debuglog(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
+                            DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
                     else:
                         try:
                             protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
@@ -159,13 +159,13 @@ class Protection(commands.Cog):
                             reaction_embed.timestamp = datetime.datetime.utcnow()
                             reaction_embed.set_thumbnail(url=member.guild.icon.url)
                             await protection_log_channel.send(embed=reaction_embed)
-                            debug.debuglog("Message sent to protection log channel for unverified bot allowed to stay.")  # Debugging-Print
+                            DebugHandler.LogDebug("Message sent to protection log channel for unverified bot allowed to stay.")  # Debugging-Print
                         except Exception as e:
-                            debug.debuglog(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
+                            DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")  # Fehlerausgabe
                 else:
-                    debug.debuglog(f"Protection log channel not set for guild {member.guild.name}")  # Debugging-Print
+                    DebugHandler.LogDebug(f"Protection log channel not set for guild {member.guild.name}")  # Debugging-Print
         else:
-            debug.debuglog(f"Member is not a bot: {member.name}")  # Debugging-Print
+            DebugHandler.LogDebug(f"Member is not a bot: {member.name}")  # Debugging-Print
             
 
 def setup(bot):
