@@ -4,10 +4,12 @@ from discord.commands import slash_command
 from datetime import datetime
 import os
 import random
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import requests
 from io import BytesIO
+import io
 import textwrap
+
 
 class Miscellaneous(commands.Cog):
     def __init__(self, bot: discord.Bot):
@@ -51,7 +53,8 @@ class Miscellaneous(commands.Cog):
         @commands.has_permissions(administrator=True)
         @bot.slash_command(description='Stops the bot')
         async def stop(ctx):
-            if ctx.author.id == 1227911822875693120:  # Check if the author ID matches yours
+            authorised = int(os.getenv('OWNER_ID'))
+            if ctx.author.id == authorised:  # Check if the author ID matches yours
                 embed = discord.Embed(
                     title="🛑 Bot Shutdown",
                     description="Bot is shutting down...",
@@ -63,10 +66,10 @@ class Miscellaneous(commands.Cog):
             else:
                 embed = discord.Embed(
                     title="🚫 Permission Denied",
-                    description="You do not have permission to stop the bot.",
+                    description="You do not have permission to stop the bot. Ask: " + os.getenv('OWNER_ID'),
                     color=discord.Color.red()
                 )
-                embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
+                embed.set_footer(text=f"Requested by {ctx.author} | {ctx.author.id}", icon_url=ctx.author.avatar.url)
                 await ctx.respond(embed=embed)   
 
 
@@ -89,48 +92,76 @@ class Miscellaneous(commands.Cog):
 
 
 
-        @bot.slash_command(description="Erstellt ein Zitatbild mit deinem Profilbild")
-        async def quote(ctx, text: str):
-           # Profilbild abrufen
-           avatar_url = ctx.author.display_avatar.url
-           response = requests.get(avatar_url)
-           avatar = Image.open(BytesIO(response.content)).convert("RGBA")
-           # Bildgrößen und Abstände
-           avatar_size = 128
-           padding = 5  # Kleinerer Abstand zwischen Profilbild und Text
-           text_area_width = 400
-           total_width = avatar_size + text_area_width + padding
-           total_height = 150  # Höhere Bildhöhe für lange Texte
-           # Farbverlauf-Hintergrund erstellen
-           gradient = Image.new('RGBA', (text_area_width, total_height), color=0)
-           draw = ImageDraw.Draw(gradient)
-           for x in range(text_area_width):
-               opacity = int(255 * (x / text_area_width))
-               draw.line([(x, 0), (x, total_height)], fill=(0, 0, 0, opacity))
-           # Schriftart laden
-           font_path = "times.ttf"
-           try:
-               font = ImageFont.truetype(font_path, 24)
-           except IOError:
-               font = ImageFont.load_default()
-           # **Textumbruch hinzufügen**
-           max_chars_per_line = 30  # Maximale Zeichen pro Zeile (kann angepasst werden)
-           wrapped_text = textwrap.fill(text, max_chars_per_line)  # Automatischer Umbruch
-           # **Textposition anpassen**
-           text_x = avatar_size + padding + 15  # Weiter links starten
-           text_y = 20  # Text etwas höher setzen
-           username_y = text_y + 60  # Abstand zwischen Text und Username
-           draw.text((text_x, text_y), wrapped_text, font=font, fill=(255, 255, 255, 255))
-           draw.text((text_x, username_y), f"~ {ctx.author.display_name}", font=font, fill=(255, 255, 255, 255))
-           # Bilder kombinieren
-           combined = Image.new('RGBA', (total_width, total_height))
-           combined.paste(avatar.resize((avatar_size, avatar_size)), (0, 10))  # Avatar leicht nach unten setzen
-           combined.paste(gradient, (avatar_size + padding, 0), mask=gradient)
-           # Bild speichern und senden
-           with BytesIO() as image_binary:
-               combined.save(image_binary, 'PNG')
-               image_binary.seek(0)
-               await ctx.respond(file=discord.File(fp=image_binary, filename='quote.png'))
+    @commands.slash_command(description="Creates a quote image with your profile picture")
+    async def quote(self, ctx: discord.ApplicationContext, text: str):
+        await ctx.defer()  # Defer the response to allow time for image processing
+
+        # Fetch profile picture
+        avatar_url = ctx.author.display_avatar.url
+        response = requests.get(avatar_url)
+        avatar = Image.open(io.BytesIO(response.content)).convert("RGBA")
+
+        # Image dimensions and padding
+        avatar_size = 128
+        padding = 20  # Larger padding between profile picture and text
+        text_area_width = 400
+        total_width = avatar_size + text_area_width + padding
+        total_height = 150  # Adjustable image height based on text length
+
+        # Gradient background creation
+        gradient = Image.new('RGBA', (text_area_width, total_height), color=0)
+        draw = ImageDraw.Draw(gradient)
+        for x in range(text_area_width):
+            opacity = int(255 * (x / text_area_width))
+            draw.line([(x, 0), (x, total_height)], fill=(0, 0, 0, opacity))
+
+        # Load fonts
+        try:
+            font_path_regular = "arial.ttf"  # Replace with your font file
+            font_path_bold = "arialbd.ttf"   # Replace with your font file
+            font_regular = ImageFont.truetype(font_path_regular, 24)
+            font_bold = ImageFont.truetype(font_path_bold, 24)
+        except IOError:
+            font_regular = ImageFont.load_default()
+            font_bold = ImageFont.load_default()
+
+        # Text wrapping
+        max_chars_per_line = 40  # Maximum characters per line (can be adjusted)
+        wrapped_text = textwrap.fill(text, max_chars_per_line)  # Automatic line break
+
+        # Text positioning
+        text_x = avatar_size + padding + 10  # Start further to the left
+        text_y = 20  # Text slightly higher
+        username_y = text_y + 40  # Space between text and username
+
+        # Draw text
+        draw.text((text_x, text_y), wrapped_text, font=font_regular, fill=(255, 255, 255, 255))
+        draw.text((text_x, username_y), f"~ {ctx.author.display_name}", font=font_bold, fill=(255, 255, 255, 255))
+
+        # Combine images
+        combined = Image.new('RGBA', (total_width, total_height))
+        combined.paste(avatar.resize((avatar_size, avatar_size)), (10, 10))  # Avatar slightly lower
+        combined.paste(gradient, (avatar_size + padding, 0), mask=gradient)
+
+        # Add subtle rounded corners
+        border_radius = 20
+        mask = Image.new('L', combined.size, 0)
+        draw_mask = ImageDraw.Draw(mask)
+        draw_mask.rounded_rectangle((0, 0, combined.width, combined.height), radius=border_radius, fill=255)
+        combined.putalpha(mask)
+
+        # Add subtle shadow
+        shadow = combined.filter(ImageFilter.GaussianBlur(radius=5))
+        shadow_offset = (5, 5)
+        final_image = Image.new('RGBA', (combined.width + shadow_offset[0], combined.height + shadow_offset[1]), (0, 0, 0, 0))
+        final_image.paste(shadow, shadow_offset)
+        final_image.paste(combined, (0, 0), combined)
+
+        # Save and send image
+        with io.BytesIO() as image_binary:
+            final_image.save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await ctx.followup.send(file=discord.File(fp=image_binary, filename='quote.png'))
 
 
 

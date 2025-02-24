@@ -3,6 +3,7 @@ from discord.ext import commands
 import random
 import json
 import os
+import asyncio
 
 RANDOM_MATH_FILE = "data/randommathchannel.json"
 COOKIES_FILE = "data/cookies.json"
@@ -39,9 +40,10 @@ class RandomMath(commands.Cog):
         
         embed = discord.Embed(
             title="Random Math Enabled",
-            description=f"Math challenges will now appear randomly in this channel with a {chance}% chance.",
+            description=f"Math challenges will now appear randomly in this channel with a **{chance}%** chance.",
             color=discord.Color.green()
         )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/271/271220.png")
         await ctx.respond(embed=embed)
 
     @commands.slash_command(description="Disable random math questions in this channel.")
@@ -55,6 +57,7 @@ class RandomMath(commands.Cog):
                 description="Math challenges have been disabled in this channel.",
                 color=discord.Color.red()
             )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/271/271220.png")
             await ctx.respond(embed=embed)
         else:
             await ctx.respond("Math challenges are not enabled in this channel.", ephemeral=True)
@@ -65,20 +68,22 @@ class RandomMath(commands.Cog):
         count = self.cookies.get(str(user.id), 0)
         embed = discord.Embed(
             title="Cookie Count",
-            description=f"{user.mention} has {count} 🍪 cookies!",
+            description=f"{user.mention} has **{count} 🍪 cookies**!",
             color=discord.Color.orange()
         )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/956/956575.png")
         await ctx.respond(embed=embed)
 
     @commands.slash_command(description="Show the cookie leaderboard.")
     async def cookielist(self, ctx: discord.ApplicationContext):
         sorted_users = sorted(self.cookies.items(), key=lambda x: x[1], reverse=True)
-        leaderboard = "\n".join([f"<@{user}>: {count} 🍪" for user, count in sorted_users[:10]])
+        leaderboard = "\n".join([f"<@{user}>: **{count} 🍪**" for user, count in sorted_users[:10]])
         embed = discord.Embed(
             title="Cookie Leaderboard",
             description=leaderboard or "No cookies yet!",
             color=discord.Color.gold()
         )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/956/956575.png")
         await ctx.respond(embed=embed)
 
     @commands.Cog.listener()
@@ -98,13 +103,26 @@ class RandomMath(commands.Cog):
         
         embed = discord.Embed(
             title="Math Challenge!",
-            description=f"Solve: `{question}`\nYou have 30 seconds!",
+            description=f"Solve: **{question}**\nYou have **30 seconds**!",
             color=discord.Color.blue()
         )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/992/992231.png")
         await message.channel.send(embed=embed)
         self.active_challenges[message.channel.id] = (answer, message.author.id)
         
-        await self.wait_for_answer(message.channel, answer, message.author.id)
+        try:
+            await self.wait_for_answer(message.channel, answer, message.author.id)
+        except asyncio.CancelledError:
+            # Handle cancellation gracefully
+            embed = discord.Embed(
+                title="Challenge Cancelled!",
+                description="The challenge was cancelled.",
+                color=discord.Color.red()
+            )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
+            await message.channel.send(embed=embed)
+        finally:
+            del self.active_challenges[message.channel.id]
 
     async def wait_for_answer(self, channel, answer, user_id):
         def check(msg):
@@ -117,25 +135,26 @@ class RandomMath(commands.Cog):
                 save_json(COOKIES_FILE, self.cookies)
                 embed = discord.Embed(
                     title="Correct Answer!",
-                    description=f"{msg.author.mention}, you earned a 🍪 cookie!",
+                    description=f"{msg.author.mention}, you earned a **🍪 cookie**!",
                     color=discord.Color.green()
                 )
+                embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
             else:
                 embed = discord.Embed(
                     title="Wrong Answer!",
-                    description=f"The correct answer was `{answer}`. Better luck next time!",
+                    description=f"The correct answer was **{answer}**. Better luck next time!",
                     color=discord.Color.red()
                 )
+                embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
             await channel.send(embed=embed)
-        except TimeoutError:
+        except asyncio.TimeoutError:
             embed = discord.Embed(
                 title="Time's Up!",
-                description=f"No answer was given. The correct answer was `{answer}`.",
+                description=f"No answer was given. The correct answer was **{answer}**.",
                 color=discord.Color.red()
             )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
             await channel.send(embed=embed)
-
-        del self.active_challenges[channel.id]
 
 def setup(bot: commands.Bot):
     bot.add_cog(RandomMath(bot))
