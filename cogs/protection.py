@@ -6,7 +6,7 @@ import handlers.debug as DebugHandler
 import time
 
 SERVERCONFIGFILE = "data/serverconfig.json"
-webhook_mention_count = {}
+mention_count = {}
 
 
 
@@ -182,84 +182,42 @@ class Protection(commands.Cog):
                     DebugHandler.LogDebug(f"Protection log channel not set for guild {member.guild.name}")  # Debugging-Print
         else:
             DebugHandler.LogDebug(f"Member is not a bot: {member.name}")  # Debugging-Print
-<<<<<<< HEAD
-=======
-
-            
->>>>>>> d574325a240c2bcd665a3d25ae8504676dd00c67
-
-
-    # handler for creating webhooks by checking messages if they are send by a webhook
-
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.id == self.bot.user.id:
-            try:
-                webhook = await message.channel.fetch_webhook(message.webhook_id)
-                if webhook:
-                    print(f"Webhook detected: {webhook.name}")
-
-                    serverconfig = load_serverconfig()
-                    serverconfig[str(message.guild.id)] = serverconfig.get(str(message.guild.id), {})
-
-                    if serverconfig[str(message.guild.id)].get("protection"):
-                        if serverconfig[str(message.guild.id)].get("protectionlogchannel"):
-                            current_time = int(time.time())
-                            webhook_data = webhook_mention_count.get(webhook.id, {'count': 0, 'last_reset': current_time})
-
-                            if current_time - webhook_data['last_reset'] > 3600:
-                                webhook_data['count'] = 0
-                                webhook_data['last_reset'] = current_time
-
-                            #  @everyone/@here Menciones
-                            mentions = message.content.lower()
-                            mention_count = mentions.count('@everyone') + mentions.count('@here')
-
-                            if webhook_data['count'] + mention_count > 5:
-                                try:
-                                    await webhook.delete()
-                                    print(f"Webhook {webhook.name} deleted for exceeding @everyone/@here limit.")
-
-                                    protection_log_channel = await message.guild.fetch_channel(serverconfig[str(message.guild.id)]["protectionlogchannel"])
-                                    reaction_embed = discord.Embed(
-                                        title="⚠️ Webhook Deleted",
-                                        description=f"Webhook {webhook.name} in {message.channel.mention} was deleted for exceeding the allowed @everyone/@here mentions (limit: 5).",
-                                        color=discord.Color.red()
-                                    )
-                                    reaction_embed.set_footer(text=f"Requested by {message.author}", icon_url=message.author.avatar.url)
-                                    reaction_embed.timestamp = datetime.datetime.utcnow()
-                                    reaction_embed.set_thumbnail(url=message.guild.icon.url)
-                                    await protection_log_channel.send(embed=reaction_embed)
-                                    DebugHandler.LogDebug(f"Webhook {webhook.name} deleted and logged due to excessive @everyone/@here usage.")
-                                except Exception as e:
-                                    DebugHandler.LogDebug(f"Error while deleting webhook: {e}")  # Fehlerausgabe
-                            else:
-                                webhook_data['count'] += mention_count
-                                webhook_mention_count[webhook.id] = webhook_data
-
-                            reaction_embed = discord.Embed(
-                                title="Webhook Detected",
-                                description=f"A webhook has been detected in {message.channel.mention} and has been allowed to stay.",
-                                color=discord.Color.green()
-                            )
-                            reaction_embed.set_footer(text=f"Requested by {message.author}", icon_url=message.author.avatar.url)
-                            reaction_embed.add_field(name="Webhook Name", value=webhook.name)
-                            reaction_embed.add_field(name="Webhook ID", value=webhook.id)
-                            reaction_embed.add_field(name="Mentions Count (this hour)", value=webhook_data['count'])
-                            reaction_embed.timestamp = datetime.datetime.utcnow()
-                            reaction_embed.set_thumbnail(url=message.guild.icon.url)
-                            await protection_log_channel.send(embed=reaction_embed)
-
-                            DebugHandler.LogDebug("Message sent to protection log channel for webhook.")  # Debugging-Print
-                        else:
-                            DebugHandler.LogDebug(f"Protection log channel not set for guild {message.guild.name}")  # Debugging-Print
-                    else:
-                        DebugHandler.LogDebug(f"Protection is not enabled for {message.guild.name}")  # Debugging-Print
-            except discord.NotFound:
-                pass
 
 
 
+    # Event for detecting mass mentions
+        @commands.Cog.listener()
+        async def on_message(self, message):
+            if message.author == self.bot.user:
+                return
+            if message.guild is None:
+                return
+            serverconfig = load_serverconfig()
+            serverconfig[str(message.guild.id)] = serverconfig.get(str(message.guild.id), {})
+            if not serverconfig[str(message.guild.id)].get("protection"):
+                return
+            if message.author.guild_permissions.administrator:
+                return
+            if message.author.bot:
+                return
+            if message.mentions:
+                if len(message.mentions) > 10:
+                    try:
+                        protection_log_channel = await message.guild.fetch_channel(serverconfig[str(message.guild.id)]["protectionlogchannel"])
+                        reaction_embed = discord.Embed(
+                            title="🚨 Mass Mention Detected 🚨",
+                            description=f"{message.author.mention} has sent a message with {len(message.mentions)} mentions. 🚷",
+                            color=discord.Color.red()
+                        )
+                        reaction_embed.add_field(name="Message Content", value=message.content, inline=False)
+                        reaction_embed.add_field(name="Message ID", value=message.id, inline=False)
+                        reaction_embed.add_field(name="Channel", value=message.channel.mention, inline=False)
+                        reaction_embed.timestamp = datetime.datetime.utcnow()
+                        await protection_log_channel.send(embed=reaction_embed)
+                    except Exception as e:
+                        DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")
+
+
+    
 def setup(bot):
     bot.add_cog(Protection(bot))
