@@ -22,7 +22,7 @@ class ErrorHandling(commands.Cog):
     async def on_application_command_error(self, ctx, error):
         if isinstance(error, discord.ApplicationCommandInvokeError):
             await self.handle_error(ctx, error, "⚠️ Application Command Invoke Error")
-        elif isinstance(error, discord.CommandOnCooldown):
+        elif isinstance(error, discord.ext.commands.CommandOnCooldown):
             await self.handle_error(ctx, error, "⏰ Command on cooldown")
         else:
             await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error")

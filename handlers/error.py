@@ -4,7 +4,7 @@ import logging
 import sys
 import traceback
 import json
-from debug import LogDebug
+from handlers.debug import LogDebug
 
 
 
@@ -34,4 +34,4 @@ def error_handler(error):
             raise "Error in error handler" + str(e)
     else:
         LogDebug("Error: None")
-        
+

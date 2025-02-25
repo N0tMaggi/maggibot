@@ -1,6 +1,6 @@
 import dotenv
 import os
-from debug import LogDebug
+from handlers.debug import LogDebug
 
 dotenv.load_dotenv()
 

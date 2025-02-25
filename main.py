@@ -59,14 +59,15 @@ def check_json_files(directory):
 
 
 def DEBUG_MODE_PRINT_ENV():
-    DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
-    DebugHandler.LogDebug(f"OWNER_ID: {os.getenv('OWNER_ID')}")
-    DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
-    DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
     if DEBUG == 'TRUE':
+        DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
+        DebugHandler.LogDebug(f"OWNER_ID: {os.getenv('OWNER_ID')}")
+        DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
+        DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
         time.sleep(5)
+        return True
     else:
-        pass
+        return False
 
 @bot.event
 async def on_ready():
@@ -94,6 +95,11 @@ try:
     else:
         print('Not connected to the Internet')
         os._exit(1)
+    
+    if DEBUG_MODE_PRINT_ENV():
+        pass
+    else:
+        pass
 
     if not check_json_files('data'):
         print("Not all JSON files are valid")
@@ -103,7 +109,7 @@ try:
 
 
     clear_screen()
-    DEBUG_MODE_PRINT_ENV() 
+    
 
     print('------------STARTING THE BOT------------')
     
