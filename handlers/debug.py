@@ -7,6 +7,6 @@ DEBUG = os.getenv('DEBUG_MODE')
 
 def LogDebug(value):
     if DEBUG == 'TRUE':
-        logging.debug(value)
+        print(value)
     else:
         pass

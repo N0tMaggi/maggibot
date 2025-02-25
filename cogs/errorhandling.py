@@ -22,6 +22,8 @@ class ErrorHandling(commands.Cog):
     async def on_application_command_error(self, ctx, error):
         if isinstance(error, discord.ApplicationCommandInvokeError):
             await self.handle_error(ctx, error, "⚠️ Application Command Invoke Error")
+        elif isinstance(error, discord.CommandOnCooldown):
+            await self.handle_error(ctx, error, "⏰ Command on cooldown")
         else:
             await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error")
 
@@ -43,7 +45,6 @@ class ErrorHandling(commands.Cog):
         )
 
         try:
-            # Prüfen, ob es sich um einen Slash-Command handelt
             if isinstance(ctx, discord.ApplicationContext):
                 if ctx.response.is_done():
                     await ctx.edit_original_response(embed=embed)
@@ -57,7 +58,6 @@ class ErrorHandling(commands.Cog):
         except discord.HTTPException:
             print("Failed to send error message.")
 
-        # Log the error in the error log channel
         if error_log_channel_id:
             log_channel = self.bot.get_channel(int(error_log_channel_id))
             if log_channel:

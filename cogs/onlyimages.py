@@ -69,16 +69,13 @@ class OnlyImages(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Ignore messages from bots.
         if message.author.bot:
             return
         
         channels = load_onlyimages()
-        # If the current channel is not enabled for "only images" mode, do nothing.
         if str(message.channel.id) not in channels:
             return
 
-        # If message has no attachments, delete it and warn the user.
         if not message.attachments:
             try:
                 await message.delete()

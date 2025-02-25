@@ -3,8 +3,10 @@ from discord.ext import commands
 import json
 import datetime
 import handlers.debug as DebugHandler
+import time
 
 SERVERCONFIGFILE = "data/serverconfig.json"
+webhook_mention_count = {}
 
 
 
@@ -89,9 +91,23 @@ class Protection(commands.Cog):
             DebugHandler.LogDebug(f"Protection is not enabled for {member.guild.name}")  # Debugging-Print
             return
 
-        # checks if member is a bot
         if member.bot:
             DebugHandler.LogDebug(f"Bot detected: {member.name}")  # Debugging-Print
+
+            # Holen der Audit Logs, um zu überprüfen, wer den Bot eingeladen hat
+            try:
+                audit_logs = await member.guild.audit_logs(limit=5, action=discord.AuditLogAction.bot_add).flatten()
+                inviter = None
+                for log in audit_logs:
+                    if log.target.id == member.id:
+                        inviter = log.user
+                        DebugHandler.LogDebug(f"Bot {member.name} was invited by {inviter.name}")  # Debugging-Print
+                        break
+                if inviter is None:
+                    DebugHandler.LogDebug(f"Could not find the inviter for bot {member.name}")  # Debugging-Print
+            except Exception as e:
+                DebugHandler.LogDebug(f"Error while fetching audit logs: {e}")  # Fehlerausgabe
+
             if member.public_flags.verified_bot:
                 DebugHandler.LogDebug(f"Verified bot detected: {member.name}")  # Debugging-Print
                 if serverconfig[str(member.guild.id)].get("protectionlogchannel"):
@@ -99,11 +115,11 @@ class Protection(commands.Cog):
                         protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
                         print(f"Found protection log channel: {protection_log_channel.name}")  # Debugging-Print
                         reaction_embed = discord.Embed(
-                            title="Bot Joined",
-                            description=f"{member.mention} joined the server as a verified bot he has been allowed to stay.",
+                            title="🤖 Bot Joined! 🎉",
+                            description=f"{member.mention} has joined the server as a **verified bot** and has been allowed to stay. ✅",
                             color=discord.Color.green()
                         )
-                        reaction_embed.set_footer(text=f"Requested by {member}", icon_url=member.avatar.url)
+                        reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
                         reaction_embed.add_field(name="Bot Name", value=member.name)
                         reaction_embed.add_field(name="Bot ID", value=member.id)
                         reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
@@ -120,7 +136,7 @@ class Protection(commands.Cog):
                     if serverconfig[str(member.guild.id)].get("protection"):
                         print(f"Protection is enabled, kicking unverified bot: {member.name}")  # Debugging-Print
                         try:
-                            await member.kick(reason="Unverified bot")
+                            await member.kick(reason="Unverified bot 🚫")
                             DebugHandler.LogDebug(f"Kicked bot: {member.name}")  # Debugging-Print
                         except Exception as e:
                             DebugHandler.LogDebug(f"Error while kicking bot: {e}")  # Fehlerausgabe
@@ -128,11 +144,11 @@ class Protection(commands.Cog):
                         try:
                             protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
                             reaction_embed = discord.Embed(
-                                title="Bot Joined",
-                                description=f"{member.mention} joined the server as an unverified bot and has been kicked. for security reasons.",
+                                title="⚠️ Unverified Bot Kicked! ❌",
+                                description=f"{member.mention} joined as an **unverified bot** and has been kicked for security reasons. 🛡️",
                                 color=discord.Color.red()
                             )
-                            reaction_embed.set_footer(text=f"Requested by {member}", icon_url=member.avatar.url)
+                            reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
                             reaction_embed.add_field(name="Bot Name", value=member.name)
                             reaction_embed.add_field(name="Bot ID", value=member.id)
                             reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
@@ -147,11 +163,11 @@ class Protection(commands.Cog):
                         try:
                             protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
                             reaction_embed = discord.Embed(
-                                title="Bot Joined",
-                                description=f"{member.mention} joined the server as an unverified bot and has been allowed to stay.",
+                                title="🔴 Unverified Bot Allowed to Stay 🚷",
+                                description=f"{member.mention} joined as an **unverified bot** but has been allowed to stay. 🟢",
                                 color=discord.Color.green()
                             )
-                            reaction_embed.set_footer(text=f"Requested by {member}", icon_url=member.avatar.url)
+                            reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
                             reaction_embed.add_field(name="Bot Name", value=member.name)
                             reaction_embed.add_field(name="Bot ID", value=member.id)
                             reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
@@ -166,7 +182,6 @@ class Protection(commands.Cog):
                     DebugHandler.LogDebug(f"Protection log channel not set for guild {member.guild.name}")  # Debugging-Print
         else:
             DebugHandler.LogDebug(f"Member is not a bot: {member.name}")  # Debugging-Print
-            
 
 def setup(bot):
     bot.add_cog(Protection(bot))

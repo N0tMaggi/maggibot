@@ -133,8 +133,8 @@ try:
     bot.run(TOKEN)  
 
 except Exception as e:
-    error_log_channel_id = os.getenv('ERROR_LOG_CHANNEL_ID')
-    error_log_channel = bot.get_channel(int(error_log_channel_id))
+    error_log_channel_id = int(os.getenv('ERROR_LOG_CHANNEL_ID'))
+    error_log_channel = bot.get_channel(error_log_channel_id)
     error_embed = discord.Embed(
         title="Error",
         description=f"```{e}```",
