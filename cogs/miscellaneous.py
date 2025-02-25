@@ -28,7 +28,6 @@ class Miscellaneous(commands.Cog):
 
             await ctx.respond(random.choice(responses))
 
-        @commands.has_permissions(administrator=True)
         @commands.slash_command(name= "stop", description="Stops the bot")
         async def stop(self, ctx):
             authorised = int(os.getenv('OWNER_ID'))
@@ -55,6 +54,37 @@ class Miscellaneous(commands.Cog):
                 embed.set_footer(text=f"Requested by {ctx.author} | ID: {ctx.author.id}", icon_url=ctx.author.avatar.url)
                 await ctx.respond(embed=embed)
 
+        @commands.slash_command(name= "serverinfo", description="Get Info from a server")
+        async def serverinfo(self, ctx):
+            server = ctx.guild
+            embed = discord.Embed(title=f"Server Info - {server.name}", color=0x00
+            )
+            embed.set_thumbnail(url=server.icon.url)
+            embed.add_field(name="Server Name", value=server.name, inline=True)
+            embed.add_field(name="Server ID", value=server.id, inline=True)
+            embed.add_field(name="Owner", value=server.owner, inline=True)
+            embed.add_field(name="Member Count", value=server.member_count, inline=True)
+            embed.add_field(name="Created At", value=server.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
+            embed.add_field(name="Boost Level", value=server.premium_tier, inline=True)
+            embed.add_field(name="Verification Level", value=server.verification_level, inline=True)
+            embed.add_field(name="Max Members", value=server.max_members, inline=True)
+            embed.set_author(name=server.owner, icon_url=server.owner.avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
+            await ctx.respond(embed=embed)
+
+        @commands.slash_command(name= "reboot", description="[Owner only] Reboot the bot 🔄")
+        @commands.is_owner()
+        async def reboot(self, ctx):
+            embed = discord.Embed(
+                title="🤖 Bot Reboot",
+                description="The bot is rebooting... Please wait a moment. ⏰",
+                color=discord.Color.blue()
+            )
+            embed.add_field(name="🔧 Reboot Reason", value="Manual reboot initiated by the owner.", inline=False)
+            embed.add_field(name="🔄 Reboot Status", value="In Progress...", inline=False)
+            embed.set_footer(text=f"Requested by {ctx.author} | Rebooting...", icon_url=ctx.author.avatar.url)
+            await ctx.respond(embed=embed)
+            await self.bot.close()
 
         @commands.slash_command(name= "userinfo", description="Get Info from a user")
         async def userinfo(self, ctx, target: discord.Member = None):
