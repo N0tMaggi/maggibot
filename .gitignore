@@ -1,5 +1,6 @@
 cogs/__pycache__/
 handlers/__pycache__/
+.envhandlers/__pycache__/
 <<<<<<< HEAD
 .env
 =======

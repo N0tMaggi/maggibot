@@ -134,14 +134,17 @@ try:
 
 except Exception as e:
     error_log_channel_id = int(os.getenv('ERROR_LOG_CHANNEL_ID'))
-    error_log_channel = bot.get_channel(error_log_channel_id)
-    error_embed = discord.Embed(
-        title="Error",
-        description=f"```{e}```",
-        color=0xff0000
-    )
-    error_log_channel.send(embed=error_embed)
-    print(f"Error: {e}")
+    if error_log_channel_id != None:
+        error_log_channel = bot.get_channel(error_log_channel_id)
+        error_embed = discord.Embed(
+            title="Error",
+            description=f"```{e}```",
+            color=0xff0000
+        )
+        error_log_channel.send(embed=error_embed)
+        print(f"Error: {e}")
+    else:
+        print(f"Error in Errohandling: {e}")
 except KeyboardInterrupt:
     print("\n Keyboard Interrupt detected..... Stopping the bot...")
     bot.close()

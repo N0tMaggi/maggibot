@@ -34,7 +34,6 @@ class Protection(commands.Cog):
         self.bot = bot
     
     def is_authorized(ctx):
-        # checks if user has admin perms
         return ctx.author.guild_permissions.administrator
 
     @commands.slash_command(name="setprotectionlogchannel", description="Set the protection log channel")
