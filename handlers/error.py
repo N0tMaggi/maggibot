@@ -3,34 +3,35 @@
 import logging
 import sys
 import traceback
-import functools
 import json
+from debug import LogDebug
 
 
-def handle_error(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+
+def error_handler(error):
+    if error != None:
         try:
-            return func(*args, **kwargs)
+            LogDebug("Error: " + str(error))
+            LogDebug("Error: " + str(error.__class__.__name__))
+            LogDebug("Error: " + str(error.__cause__))
+            LogDebug("Error: " + str(error.__context__))
+            LogDebug("Error: " + str(error.__dict__))
+            LogDebug("Error: " + str(error.__traceback__))
+            LogDebug("Error: " + str(error.__str__()))
+            LogDebug("Error: " + str(error.__repr__()))
+            LogDebug("Error: " + str(error.__module__))
+            LogDebug("Error: " + str(error.__class__))
+            LogDebug("Error: " + str(error.__doc__))
+            LogDebug("Error: " + str(error.__name__))
+            LogDebug("Error: " + str(error.__qualname__))
+            LogDebug("Error: " + str(error.__annotations__))
+            LogDebug("Error: " + str(error.__defaults__))
+            LogDebug("Error: " + str(error.__code__))
+            LogDebug("Error: " + str(error.__globals__))
+            LogDebug("Error: " + str(error.__closure__))
+            LogDebug("Error: " + str(error.__kwdefaults__))
         except Exception as e:
-            logging.error(traceback.format_exc())
-            return json.dumps({'error': str(e)}), 500
-
-def handle_critical_error(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logging.error(traceback.format_exc())
-            return json.dumps({'error': str(e)}), 500
-    return wrapper
-
-def handle_unhandled_error(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logging.error(traceback.format_exc())
-            sys.exit(1)
+            raise "Error in error handler" + str(e)
+    else:
+        LogDebug("Error: None")
+        

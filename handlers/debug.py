@@ -1,12 +1,19 @@
 import time
 import logging
 import os
+from log import log
 
 DEBUG = os.getenv('DEBUG_MODE')
 
 
 def LogDebug(value):
-    if DEBUG == 'TRUE':
-        print(value)
-    else:
-        pass
+    try:
+        if DEBUG == 'TRUE':
+            print(value)
+            log.log(value)
+        else:
+            log.log(value)
+    except Exception as e:
+        raise "Error in LogDebug: " + str(e)
+    
+
