@@ -19,11 +19,16 @@ class Button(commands.Cog):
         """Sendet den Good Boy Button."""
         await ctx.respond("🌟 Press the button below to prove you're a good boy!", view=GoodBoyButton())
     
-    @commands.slash_command(description="Click here to see if you're a Top, Switch or Bottom.")
+    @commands.slash_command(description="Click here to see if you're a Top, Switch or Bottom. (or sub or dom)")
     @commands.cooldown(1, 120, commands.BucketType.user)
     async def topbottomswitch(self, ctx):
         """Sendet den Button, der die Rolle (Top, Bottom oder Switch) zuweist."""
-        await ctx.respond("🔮 **Click the button below to find out if you're a Top, Switch, or Bottom!** 🔮", view=TopBottomSwitchButton())
+        await ctx.respond("🔮 **Click the button below to find out if you're a Top, Switch, or Bottom or Sub or Dom!** 🔮", view=TopBottomSwitchButton())
+
+    @commands.slash_command(description="Ollie")
+    @commands.cooldown(1, 120, commands.BucketType.user)
+    async def ollie(self, ctx):
+        await ctx.respond("🛹 Click to ollie. <3", view = OllieButton())
 
         
 def setup(bot: discord.Bot):
@@ -82,3 +87,13 @@ class TopBottomSwitchButton(discord.ui.View):
         
         # Antwort senden
         await interaction.response.send_message(f"🎲 {user.mention}, you were assigned as a **{assigned_role}**! 🌟", ephemeral=False)
+
+class OllieButton(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+
+    @discord.ui.button(label="Ollie", style=discord.ButtonStyle.primary)
+    async def button1(self, button: discord.ui.Button, interaction: discord.Interaction):
+        user = interaction.user
+        await interaction.response.send_message(f"🛹 {user.mention} **OLLIE!** 🛹", ephemeral=False)
