@@ -29,7 +29,6 @@ class TrollCommands(commands.Cog):
         
         voice_channel = user.voice.channel
 
-        # Attempt to join the voice channel.
         try:
             vc = await voice_channel.connect()
         except Exception as e:
@@ -41,7 +40,6 @@ class TrollCommands(commands.Cog):
             await ctx.respond(embed=embed, ephemeral=True)
             return
 
-        # Inform that the jumpscare is starting.
         embed = discord.Embed(
             title="Jumpscare Initiated",
             description=f"😱 Preparing jumpscare for {user.mention} in {voice_channel.mention}...",
@@ -49,10 +47,8 @@ class TrollCommands(commands.Cog):
         )
         await ctx.respond(embed=embed)
 
-        # Wait 1 second before playing the sound.
         await asyncio.sleep(1)
 
-        # Build the file path for the sound file.
         file_path = os.path.join("assets", f"{name}.mp3")
         if not os.path.exists(file_path):
             embed = discord.Embed(
@@ -64,7 +60,6 @@ class TrollCommands(commands.Cog):
             await ctx.followup.send(embed=embed, ephemeral=True)
             return
 
-        # Attempt to play the audio file.
         try:
             source = discord.FFmpegPCMAudio(file_path)
             vc.play(source)
@@ -78,7 +73,6 @@ class TrollCommands(commands.Cog):
             await ctx.followup.send(embed=embed, ephemeral=True)
             return
 
-        # Wait 1 second after starting playback, then disconnect.
         await asyncio.sleep(1)
         await vc.disconnect()
 

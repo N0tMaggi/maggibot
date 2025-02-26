@@ -93,7 +93,6 @@ class Protection(commands.Cog):
         if member.bot:
             DebugHandler.LogDebug(f"Bot detected: {member.name}")  # Debugging-Print
 
-            # Holen der Audit Logs, um zu überprüfen, wer den Bot eingeladen hat
             try:
                 audit_logs = await member.guild.audit_logs(limit=5, action=discord.AuditLogAction.bot_add).flatten()
                 inviter = None

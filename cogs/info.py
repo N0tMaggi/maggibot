@@ -96,7 +96,5 @@ class InfoSystem(commands.Cog):
             await ctx.respond(embed=embed)
 
 
-
-
 def setup(bot: commands.Bot):
     bot.add_cog(InfoSystem(bot))
