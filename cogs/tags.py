@@ -20,9 +20,9 @@ class Tags(commands.Cog):
         self.tags = load_tags()
 
     @commands.slash_command()
-    async def tag(self, ctx, tag: str, required_roles: list = None):
+    async def tag(self, ctx, tag: str, required_roles: discord.Role = None):
         if required_roles is not None:
-            if not any(role.id in required_roles for role in ctx.author.roles):
+            if not any(role in [role.id for role in ctx.author.roles] for role in required_roles):
                 embed = discord.Embed(
                     title="❌ **Access Denied**",
                     description="You don't have the required roles to view this tag.",
@@ -48,9 +48,9 @@ class Tags(commands.Cog):
             await ctx.respond(embed=embed)
 
     @commands.slash_command()
-    async def addtag(self, ctx, tag: str, *, content: str, required_roles: list = None):
+    async def addtag(self, ctx, tag: str, *, content: str, required_roles: discord.Role = None):
         if required_roles is not None:
-            if not any(role.id in required_roles for role in ctx.author.roles):
+            if not any(role in [role.id for role in ctx.author.roles] for role in required_roles):
                 embed = discord.Embed(
                     title="🚫 **Access Denied**",
                     description="You don't have the required roles to add a tag.",
@@ -79,9 +79,9 @@ class Tags(commands.Cog):
         await ctx.respond(embed=embed)
 
     @commands.slash_command()
-    async def removetag(self, ctx, tag: str, required_roles: list = None):
+    async def removetag(self, ctx, tag: str, required_roles: discord.Role = None):
         if required_roles is not None:
-            if not any(role.id in required_roles for role in ctx.author.roles):
+            if not any(role in [role.id for role in ctx.author.roles] for role in required_roles):
                 embed = discord.Embed(
                     title="🚫 **Access Denied**",
                     description="You don't have the required roles to remove a tag.",

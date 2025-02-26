@@ -69,10 +69,13 @@ class GoodBoyButton(discord.ui.View):
             await interaction.response.send_message(f"⏳ {user.mention}, you're too late! The button can only be pressed once.", ephemeral=True)
         else:
             self.has_been_pressed = True
-            await interaction.response.edit_message(content=f"🌟 {user.mention} is a good boy! 🌟", view=self)
-
-            await interaction.followup.send(f"🎉 {user.mention}, you redeemed yourself! You're a good boy now!", ephemeral=False)
-
+            outcome = random.choice(["good", "bad"])
+            if outcome == "good":
+                await interaction.response.edit_message(content=f"🌟 {user.mention} is a good boy! 🌟", view=self)
+                await interaction.followup.send(f"🎉 {user.mention}, you redeemed yourself! You're a good boy now!", ephemeral=False)
+            else:
+                await interaction.response.edit_message(content=f"😈 {user.mention} was a bad boy! 😈", view=self)
+                await interaction.followup.send(f"😢 {user.mention}, you were a bad boy!", ephemeral=False)
 class TopBottomSwitchButton(discord.ui.View):
     def __init__(self):
         super().__init__()
@@ -81,11 +84,9 @@ class TopBottomSwitchButton(discord.ui.View):
     async def button1(self, button: discord.ui.Button, interaction: discord.Interaction):
         user = interaction.user
         
-        # Zufällig eine Rolle auswählen
         roles = ["Top", "Bottom", "Switch", "DOM", "SUB"]
         assigned_role = random.choice(roles)
         
-        # Antwort senden
         await interaction.response.send_message(f"🎲 {user.mention}, you were assigned as a **{assigned_role}**! 🌟", ephemeral=False)
 
 class OllieButton(discord.ui.View):
