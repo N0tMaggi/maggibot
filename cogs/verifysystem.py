@@ -23,7 +23,7 @@ class TicketVerify(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(
-        name="setupverifysystem",
+        name="setup-verifysystem",
         description="Set up the verify system for this server."
     )
     @commands.has_permissions(administrator=True)

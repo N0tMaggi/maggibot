@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import time
 import cogs.activity as MaggiActivity
 import handlers.debug as DebugHandler
+import logging
 
 # Load the .env file
 load_dotenv()
@@ -65,6 +66,7 @@ def DEBUG_MODE_PRINT_ENV():
         DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
         DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
         time.sleep(5)
+        logging.basicConfig(level=logging.DEBUG)
         return True
     else:
         return False

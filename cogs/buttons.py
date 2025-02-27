@@ -30,6 +30,11 @@ class Button(commands.Cog):
     async def ollie(self, ctx):
         await ctx.respond("🛹 Click to ollie. <3", view = OllieButton())
 
+    @commands.slash_command(description="Thats Inter")
+    @commands.cooldown(1, 120, commands.BucketType.user)
+    async def inter(self, ctx):
+        await ctx.respond("🔥 Click here to see Inters Secrets 🔥", view=InterButton())
+
         
 def setup(bot: discord.Bot):
     bot.add_cog(Button(bot))
@@ -98,3 +103,24 @@ class OllieButton(discord.ui.View):
     async def button1(self, button: discord.ui.Button, interaction: discord.Interaction):
         user = interaction.user
         await interaction.response.send_message(f"🛹 {user.mention} **OLLIE!** 🛹", ephemeral=False)
+
+class InterButton(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+    @discord.ui.button(label="EXPOSE", style=discord.ButtonStyle.primary)
+    async def button1(self, button: discord.ui.Button, interaction: discord.Interaction):
+        user = interaction.user
+        #50% chance to get exposed
+        exposed = random.choice([True, False])
+        if exposed:
+            await interaction.response.send_message(f"🔥 {user.mention} ... **Inter HAS BEEN EXPOSED!** 🔥", ephemeral=False)
+            await interaction.followup.send(f"[Here](https://ag7-dev.de/fun/nsfw)", ephemeral=False)
+        else:
+            await interaction.response.send_message(f"Just get the f out.", ephemeral=False)
+            try:
+                timeout_until = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+                await user.timeout(until=timeout_until, reason="Exposed")
+                await interaction.followup.send(f"⏳ {user.mention} has been **timed out for 3 hours**!😈", ephemeral=False)
+            
+            except discord.Forbidden:
+                await interaction.followup.send("❌ I couldn't timeout this user! Do they have higher permissions than me?", ephemeral=False)

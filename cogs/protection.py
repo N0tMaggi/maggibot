@@ -5,7 +5,7 @@ import datetime
 import handlers.debug as DebugHandler
 import time
 
-SERVERCONFIGFILE = "data/serverconfig.json"
+SERVERCONFIGFILE = "config/serverconfig.json"
 mention_count = {}
 
 
@@ -36,7 +36,7 @@ class Protection(commands.Cog):
     def is_authorized(ctx):
         return ctx.author.guild_permissions.administrator
 
-    @commands.slash_command(name="setprotectionlogchannel", description="Set the protection log channel")
+    @commands.slash_command(name="setup-protectionlog", description="Set the protection log channel")
     @commands.check(is_authorized)
     async def setprotectionlogchannel(self, ctx, channel: discord.TextChannel):
         serverconfig = load_serverconfig()
