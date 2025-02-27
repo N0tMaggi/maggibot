@@ -19,7 +19,6 @@ load_dotenv()
 DEBUG = os.getenv('DEBUG_MODE')
 
 
-
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 

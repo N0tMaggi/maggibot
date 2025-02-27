@@ -3,31 +3,12 @@ from discord.ext import commands
 import json
 import datetime
 import handlers.debug as DebugHandler
+import handlers.config as config
 import time
 
-SERVERCONFIGFILE = "config/serverconfig.json"
 mention_count = {}
 
 
-
-
-
-# load serverconfig with error handling and corruption checks
-def load_serverconfig():
-    try:
-        with open(SERVERCONFIGFILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        with open(SERVERCONFIGFILE, "w") as f:
-            json.dump({}, f)
-            return {}
-    except json.JSONDecodeError:
-        return {}
-
-# save serverconfig with error handling
-def save_serverconfig(serverconfig):
-    with open(SERVERCONFIGFILE, "w") as f:
-        json.dump(serverconfig, f, indent=4)
 
 class Protection(commands.Cog):
     def __init__(self, bot):
@@ -39,10 +20,10 @@ class Protection(commands.Cog):
     @commands.slash_command(name="setup-protectionlog", description="Set the protection log channel")
     @commands.check(is_authorized)
     async def setprotectionlogchannel(self, ctx, channel: discord.TextChannel):
-        serverconfig = load_serverconfig()
+        serverconfig = config.loadserverconfig()
         serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
         serverconfig[str(ctx.guild.id)]["protectionlogchannel"] = channel.id
-        save_serverconfig(serverconfig)
+        config.saveserverconfig(serverconfig)
 
         reaction_embed = discord.Embed(
             title="Protection Log Channel",
@@ -55,13 +36,13 @@ class Protection(commands.Cog):
 
         await ctx.respond(embed=reaction_embed)
 
-    @commands.slash_command(name="protection", description="Enable or disable the protection system")
+    @commands.slash_command(name="setup-protection", description="Enable or disable the protection system")
     @commands.check(is_authorized)
     async def antiraid(self, ctx, enabled: bool):
-        serverconfig = load_serverconfig()
+        serverconfig = config.loadserverconfig()
         serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
         serverconfig[str(ctx.guild.id)]["protection"] = enabled
-        save_serverconfig(serverconfig)
+        config.saveserverconfig(serverconfig)
 
         reaction_embed = discord.Embed(
             title="🔒 Protection System",
@@ -83,7 +64,7 @@ class Protection(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        serverconfig = load_serverconfig()
+        serverconfig = config.loadserverconfig()
         serverconfig[str(member.guild.id)] = serverconfig.get(str(member.guild.id), {})
 
         if not serverconfig[str(member.guild.id)].get("protection"):
@@ -190,7 +171,7 @@ class Protection(commands.Cog):
                 return
             if message.guild is None:
                 return
-            serverconfig = load_serverconfig()
+            serverconfig = config.loadserverconfig()
             serverconfig[str(message.guild.id)] = serverconfig.get(str(message.guild.id), {})
             if not serverconfig[str(message.guild.id)].get("protection"):
                 return

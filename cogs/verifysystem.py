@@ -2,21 +2,8 @@ import discord
 from discord.ext import commands
 import json
 import os
+import handlers.config as config
 
-CONFIG_FILE = "data/serververify.json"
-
-def load_config():
-    if not os.path.exists(CONFIG_FILE):
-        return {}
-    with open(CONFIG_FILE, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-
-def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
 
 class TicketVerify(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -35,15 +22,20 @@ class TicketVerify(commands.Cog):
         modrole: discord.Role,
         ghostping_channel: discord.TextChannel
     ):
-        config = load_config()
+        config = config.loadserverconfig()
         guild_id = str(ctx.guild.id)
-        config[guild_id] = {
-            "role_to_remove": role_to_remove.id,
-            "role_to_give": role_to_give.id,
-            "modrole": modrole.id,
-            "ghostping_channel": ghostping_channel.id
-        }
-        save_config(config)
+
+        # Check if the guild already has a config. If not, create an empty one.
+        if guild_id not in config:
+            config[guild_id] = {}
+
+        # Add or update the config values for this guild
+        config[guild_id]["role_to_remove"] = role_to_remove.id
+        config[guild_id]["role_to_give"] = role_to_give.id
+        config[guild_id]["modrole"] = modrole.id
+        config[guild_id]["ghostping_channel"] = ghostping_channel.id
+
+        config.saveserverconfig(config)
 
         # Enhanced embed with emojis, footer, and image
         embed = discord.Embed(
@@ -66,12 +58,12 @@ class TicketVerify(commands.Cog):
         description="Verify a user by updating their roles."
     )
     async def verify(self, ctx: discord.ApplicationContext, user: discord.User):
-        config = load_config()
+        config = config.loadserverconfig()
         guild_id = str(ctx.guild.id)
         if guild_id not in config:
             embed = discord.Embed(
                 title="❌ Configuration Missing",
-                description="The verification system is not configured for this server. Please run `/setupverifysystem` first.",
+                description="The verification system is not configured for this server. Please run `/setup-verifysystem` first.",
                 color=discord.Color.red()
             )
             embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")

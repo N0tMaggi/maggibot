@@ -1,7 +1,11 @@
 {
     "1126009909830488135": {
-        "protection": true,
+        "logchannel": 1282105826991145054,
         "protectionlogchannel": 1343580972356210788,
-        "logchannel": 1282105826991145054
+        "protection": true,
+        "role_to_remove": 1280148426180395040,
+        "role_to_give": 1270151687373459569,
+        "modrole": 1283510932412170380,
+        "ghostping_channel": 1269752582822297713
     }
 }

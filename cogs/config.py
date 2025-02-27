@@ -47,11 +47,34 @@ class Server(Cog):
             await ctx.respond(embed=embed)
 
         except Exception as e:
-            # Log the error if there is an exception
             DebugHandler.LogDebug(f"An error occurred while setting the log channel: {e}")
             await ctx.respond(f"An error occurred while setting the log channel: {e}")
 
 
+    @commands.slash_command(name="setup-showconfig", description="Show the current server configuration")
+    @commands.has_permissions(administrator=True)
+    async def settings_showconfig(self, ctx):
+        try:
+            guild_id = str(ctx.guild.id)
+            config_data = self.serverconfig.get(guild_id, None)
+            embed = discord.Embed(
+                title="Server Configuration",
+                description="Current server configuration",
+                color=0x00ff00
+            )
+            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
+            embed.timestamp = datetime.datetime.utcnow()
+            embed.set_thumbnail(url=ctx.guild.icon.url)
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
+            if config_data is not None:
+                for key, value in config_data.items():
+                    embed.add_field(name=key, value=value, inline=False)
+            else:
+                embed.add_field(name="Error", value="No configuration found", inline=False)
+            await ctx.respond(embed=embed)
+        except Exception as e:
+            DebugHandler.LogDebug(f"An error occurred while showing the server configuration: {e}")
+        
 
 def setup(bot):
     bot.add_cog(Server(bot))
