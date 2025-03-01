@@ -48,10 +48,12 @@ class ErrorHandling(commands.Cog):
             if isinstance(ctx, discord.ApplicationContext):
                 if ctx.response.is_done():
                     await ctx.edit_original_response(embed=embed)
+                    
                 else:
                     await ctx.response.send_message(embed=embed, ephemeral=True)
             else:
                 await ctx.send(embed=embed)
+                await error_log_channel_id.send(embed=embed)
 
         except discord.Forbidden:
             print("Bot has no permission to send messages in this channel.")

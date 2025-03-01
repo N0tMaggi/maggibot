@@ -1,9 +1,6 @@
 import discord
 from discord.ext import commands
-import json
-import os
 import handlers.config as config
-
 
 class TicketVerify(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -22,28 +19,27 @@ class TicketVerify(commands.Cog):
         modrole: discord.Role,
         ghostping_channel: discord.TextChannel
     ):
-        config = config.loadserverconfig()
+        cfg = config.loadserverconfig()
         guild_id = str(ctx.guild.id)
 
-        # Check if the guild already has a config. If not, create an empty one.
-        if guild_id not in config:
-            config[guild_id] = {}
+        if guild_id not in cfg:
+            cfg[guild_id] = {}
 
-        # Add or update the config values for this guild
-        config[guild_id]["role_to_remove"] = role_to_remove.id
-        config[guild_id]["role_to_give"] = role_to_give.id
-        config[guild_id]["modrole"] = modrole.id
-        config[guild_id]["ghostping_channel"] = ghostping_channel.id
+        cfg[guild_id].update({
+            "role_to_remove": role_to_remove.id,
+            "role_to_give": role_to_give.id,
+            "modrole": modrole.id,
+            "ghostping_channel": ghostping_channel.id
+        })
 
-        config.saveserverconfig(config)
+        config.saveserverconfig(cfg)
 
-        # Enhanced embed with emojis, footer, and image
         embed = discord.Embed(
             title="✅ Verify System Configured Successfully!",
             description="The verification system has been successfully set up for this server.",
             color=discord.Color.green()
         )
-        embed.set_thumbnail(url="https://ag7-dev.de/favicon/favicon.ico")  # Replace with your own image URL
+        embed.set_thumbnail(url="https://ag7-dev.de/favicon/favicon.ico")
         embed.add_field(name="🔴 Role to Remove", value=role_to_remove.mention, inline=True)
         embed.add_field(name="🟢 Role to Give", value=role_to_give.mention, inline=True)
         embed.add_field(name="🛡️ Moderator Role", value=modrole.mention, inline=True)
@@ -58,31 +54,18 @@ class TicketVerify(commands.Cog):
         description="Verify a user by updating their roles."
     )
     async def verify(self, ctx: discord.ApplicationContext, user: discord.User):
-        config = config.loadserverconfig()
+        cfg = config.loadserverconfig()
         guild_id = str(ctx.guild.id)
-        if guild_id not in config:
-            embed = discord.Embed(
-                title="❌ Configuration Missing",
-                description="The verification system is not configured for this server. Please run `/setup-verifysystem` first.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.respond(embed=embed, ephemeral=True)
+
+        if guild_id not in cfg:
+            await ctx.respond(embed=self.error_embed("Configuration Missing", "The verification system is not configured for this server. Please run `/setup-verifysystem` first."), ephemeral=True)
             return
 
-        guild_config = config[guild_id]
-        modrole_id = guild_config.get("modrole")
-        modrole = ctx.guild.get_role(modrole_id)
-        if modrole not in ctx.author.roles:
-            embed = discord.Embed(
-                title="❌ Insufficient Permissions",
-                description=f"You need the {modrole.mention} role to use this command.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.respond(embed=embed, ephemeral=True)
+        guild_config = cfg[guild_id]
+        modrole = ctx.guild.get_role(guild_config.get("modrole"))
+
+        if not modrole or modrole not in ctx.author.roles:
+            await ctx.respond(embed=self.error_embed("Insufficient Permissions", f"You need the {modrole.mention} role to use this command."), ephemeral=True)
             return
 
         role_to_remove = ctx.guild.get_role(guild_config.get("role_to_remove"))
@@ -90,53 +73,21 @@ class TicketVerify(commands.Cog):
         ghostping_channel = ctx.guild.get_channel(guild_config.get("ghostping_channel"))
 
         member = ctx.guild.get_member(user.id)
-        if member is None:
-            embed = discord.Embed(
-                title="❌ User Not Found",
-                description="The specified user is not in this server.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.respond(embed=embed, ephemeral=True)
+        if not member:
+            await ctx.respond(embed=self.error_embed("User Not Found", "The specified user is not in this server."), ephemeral=True)
             return
 
         try:
-            if role_to_remove in member.roles:
+            if role_to_remove and role_to_remove in member.roles:
                 await member.remove_roles(role_to_remove, reason="Verified via ticket verify system.")
-            await member.add_roles(role_to_give, reason="Verified via ticket verify system.")
+            if role_to_give:
+                await member.add_roles(role_to_give, reason="Verified via ticket verify system.")
         except Exception as e:
-            embed = discord.Embed(
-                title="❌ Role Update Failed",
-                description=f"An error occurred while updating roles for {member.mention}: {e}",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=self.error_embed("Role Update Failed", f"An error occurred while updating roles: {e}"), ephemeral=True)
             return
 
-        # Ghost ping the user in the designated channel
         if ghostping_channel:
-            verify_embed = discord.Embed(
-                title="✅ User Verified",
-                description=f"**{member.mention}** has been successfully verified and updated with the new role.",
-                color=discord.Color.green()
-            )
-            try:
-                ghost_msg = await ghostping_channel.send(embed=verify_embed)
-                ghost_ping = await ghostping_channel.send(f"{member.mention}")
-                await ghost_msg.delete(delay=1)
-                await ghost_ping.delete(delay=1)
-            except Exception as ex:
-                error_embed = discord.Embed(
-                    title="❌ Ghost Ping Failed",
-                    description=f"An error occurred while ghost pinging the user: {ex}",
-                    color=discord.Color.red()
-                )
-                error_embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
-                error_embed.timestamp = discord.utils.utcnow()
-                await ctx.respond(embed=error_embed, ephemeral=True)
+            await self.ghost_ping(member, ghostping_channel)
 
         embed = discord.Embed(
             title="✅ Verification Successful",
@@ -148,6 +99,27 @@ class TicketVerify(commands.Cog):
         embed.timestamp = discord.utils.utcnow()
 
         await ctx.respond(embed=embed, ephemeral=True)
+
+    async def ghost_ping(self, member, channel):
+        try:
+            verify_embed = discord.Embed(
+                title="✅ User Verified",
+                description=f"**{member.mention}** has been successfully verified and updated with the new role.",
+                color=discord.Color.green()
+            )
+            ghost_msg = await channel.send(embed=verify_embed)
+            ghost_ping = await channel.send(f"{member.mention}")
+            await ghost_msg.delete(delay=1)
+            await ghost_ping.delete(delay=1)
+        except Exception as ex:
+            print(f"Ghost ping failed: {ex}")
+
+    def error_embed(self, title, description):
+        embed = discord.Embed(title=f"❌ {title}", description=description, color=discord.Color.red())
+        embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(TicketVerify(bot))

@@ -75,6 +75,6 @@ class Server(Cog):
         except Exception as e:
             DebugHandler.LogDebug(f"An error occurred while showing the server configuration: {e}")
         
-
+        
 def setup(bot):
     bot.add_cog(Server(bot))

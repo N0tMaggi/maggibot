@@ -35,6 +35,11 @@ class Button(commands.Cog):
     async def inter(self, ctx):
         await ctx.respond("🔥 Click here to see Inters Secrets 🔥", view=InterButton())
 
+    @commands.slash_command(description="nom nom")
+    @commands.cooldown(1, 120, commands.BucketType.user)
+    async def nom(self, ctx):
+        await ctx.respond(ephemeral=False, view=NonNom())
+
         
 def setup(bot: discord.Bot):
     bot.add_cog(Button(bot))
@@ -124,3 +129,12 @@ class InterButton(discord.ui.View):
             
             except discord.Forbidden:
                 await interaction.followup.send("❌ I couldn't timeout this user! Do they have higher permissions than me?", ephemeral=False)
+
+
+class NonNom(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+    @discord.ui.button(label="nom", style=discord.ButtonStyle.primary)
+    async def button1(self, button: discord.ui.Button, interaction: discord.Interaction):
+        user = interaction.user
+        await interaction.response.send_message(f"🍪 nom nom", ephemeral=False)

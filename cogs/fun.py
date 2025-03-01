@@ -155,5 +155,6 @@ class TrollCommands(commands.Cog):
             await ctx.followup.send(file=discord.File(fp=image_binary, filename='quote.png'))
 
 
+
 def setup(bot: commands.Bot):
     bot.add_cog(TrollCommands(bot))

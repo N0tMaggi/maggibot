@@ -114,6 +114,24 @@ class MacBan(commands.Cog):
         embed.add_field(name="Ban Date", value=ban_record["bandate"], inline=True)
         await ctx.respond(embed=embed)
 
+        try:
+            user_embed = discord.Embed(
+                title="Global Ban Notification",
+                description="You have been globally banned by MAC™ and cannot join any server where MAC™ is present.",
+                color=discord.Color.red()
+            )
+            user_embed.add_field(name="📅 Ban Date", value=ban_record["bandate"], inline=True)
+            user_embed.add_field(name="📝 Reason", value=trim_field(reason), inline=True)   
+            await user.send(embed=user_embed)
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="User DM Error",
+                description="The user has their DMs closed.",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed, ephemeral=True)
+
+
     @commands.slash_command(name="macunban", description="Remove a global ban for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macunban(self, ctx: discord.ApplicationContext, user: discord.User):
@@ -139,6 +157,22 @@ class MacBan(commands.Cog):
             color=discord.Color.green()
         )
         await ctx.respond(embed=embed)
+
+        try:
+            user_embed = discord.Embed(
+                title="Global Ban Removed",
+                description="You have been removed from the global ban list by MAC™.",
+                color=discord.Color.green()
+            )
+            await user.send(embed=user_embed)
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="User DM Error",
+                description="The user has their DMs closed.",
+                color=discord.Color.red()
+                )
+            await ctx.send(embed=embed, ephemeral=True)
+            
 
     @commands.slash_command(name="macinfo", description="Display overall info about the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)

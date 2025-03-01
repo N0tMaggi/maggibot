@@ -1708,5 +1708,23 @@
         "serverid": 1126009909830488135,
         "servername": "Nico\u2019s Femboy\u2019s place",
         "bannedby": "Imported"
+    },
+    {
+        "id": 1243395881089110088,
+        "name": "prototbh_",
+        "bandate": "2025-02-27T08:44:11.008837",
+        "reason": "Mac IMPORTEDLIST from Server: Nico\u2019s Femboy\u2019s place",
+        "serverid": 1126009909830488135,
+        "servername": "Nico\u2019s Femboy\u2019s place",
+        "bannedby": "Imported"
+    },
+    {
+        "id": 1299260548726128640,
+        "name": "mj07077",
+        "bandate": "2025-02-28T11:23:15.255890",
+        "reason": "Massive Disrespect",
+        "serverid": 1126009909830488135,
+        "servername": "Nico\u2019s Femboy\u2019s place",
+        "bannedby": "literally.ag7"
     }
 ]
