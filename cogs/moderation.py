@@ -23,7 +23,6 @@ class Moderation(commands.Cog):
     async def checkperms(self, ctx):
 
 
-        # Send an initial scanning animation embed
         scanning_embed = discord.Embed(
             title="Scanning Bot Permissions",
             description="⏳ Scanning for required permissions...",
@@ -31,7 +30,6 @@ class Moderation(commands.Cog):
         )
         await ctx.respond(embed=scanning_embed)
 
-        # Simulate a scanning delay for animation effect
         await asyncio.sleep(2)
 
         # Check for required permissions (currently only 'administrator' is required)
@@ -68,7 +66,6 @@ class Moderation(commands.Cog):
         final_embed.set_footer(text="Permission Check | ModSystem | Maggi", icon_url=ctx.bot.user.avatar.url)
 
 
-        # Generate a detailed permissions report for the server owner
         bot_perms = ctx.guild.me.guild_permissions
         perms_dict = {perm: getattr(bot_perms, perm) for perm in discord.Permissions.VALID_FLAGS}
         enabled_perms = [perm.replace("_", " ").title() for perm, value in perms_dict.items() if value]
@@ -89,7 +86,6 @@ class Moderation(commands.Cog):
         )
         owner_embed.set_footer(text="This report is for the server owner only.")
 
-        # Attempt to send a DM with the detailed report to the server owner
         owner = ctx.guild.owner
         dm_success = True
         try:
@@ -97,10 +93,8 @@ class Moderation(commands.Cog):
         except discord.Forbidden:
             dm_success = False
 
-        # Update the original scanning embed with the final result
         await ctx.interaction.edit_original_response(embed=final_embed)
 
-        # If sending the DM failed, send a follow-up message that pings the owner
         if not dm_success:
             error_embed = discord.Embed(
                 title="Privacy Settings Error",
@@ -250,60 +244,6 @@ class Moderation(commands.Cog):
                 return_embed.timestamp = datetime.datetime.utcnow()
                 return_embed.add_field(name="User ID", value=user.id, inline=True)
                 await ctx.respond(embed=return_embed)
-
-
-
-    @commands.slash_command(name="mod-showbanlist", description="Show the list of banned users")
-    @commands.has_permissions(ban_members=True)
-    async def mod_showbanlist(self, ctx):
-        """Show the list of banned users"""
-        
-        banned_users = ctx.guild.bans()  # Get the BanIterator
-        banned_user_list = []
-    
-        async for entry in banned_users:
-            user = entry.user
-            if user is not None and hasattr(user, 'id'):
-                user_info = f"{user} ({user.id})"
-            else:
-                user_info = "Unknown User (ID not available)"
-            banned_user_list.append(user_info)
-    
-        if not banned_user_list:
-            return_embed = discord.Embed(
-                title="INFO: No Banned Users",
-                description="There are no banned users in this server.",
-                color=discord.Color.yellow()
-            )
-            return_embed.set_footer(text="No Banned Users | ModSystem | Maggi")
-            return_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
-            return_embed.timestamp = datetime.datetime.utcnow()
-            await ctx.respond(embed=return_embed)
-        else:
-            with open("banned_users.txt", "w", encoding="utf-8", errors='replace') as f:
-                for user_info in banned_user_list:
-                    f.write(f"{user_info}\n")
-    
-            await ctx.respond(file=discord.File("banned_users.txt"))
-            os.remove("banned_users.txt")
-    
-            log_channel = cfg.get_log_channel(ctx.guild.id)
-            if log_channel:
-                log_embed = discord.Embed(
-                    title="INFO: Banned Users List",
-                    description="The list of banned users has been sent as a file.",
-                    color=discord.Color.green()
-                )
-                log_embed.set_footer(text="Banned Users List | ModSystem | Maggi")
-                log_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
-                log_embed.timestamp = datetime.datetime.utcnow()
-                await log_channel.send(embed=log_embed)
-            else:
-                await ctx.respond(embed=discord.Embed(
-                    title="INFO: Log Channel Missing",
-                    description="No log channel has been set for this server. Please set one using /setup-logchannel",
-                    color=discord.Color.yellow()
-                ))
 
 
 

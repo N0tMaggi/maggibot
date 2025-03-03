@@ -41,7 +41,6 @@ class MacBan(commands.Cog):
             ban_record = next(ban for ban in bans if ban["id"] == member.id)
             attempted_server = member.guild.name
 
-            # Try to send the user a DM
             try:
                 dm_embed = discord.Embed(
                     title="🚫 Global Ban Notification",
@@ -55,13 +54,11 @@ class MacBan(commands.Cog):
             except discord.Forbidden:
                 pass
 
-            # Kick the user
             try:
                 await member.kick(reason="Globally banned user attempted to join.")
             except Exception as e:
                 pass
 
-            # Send a notification in the defined channel
             channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
             if channel:
                 notify_embed = discord.Embed(
@@ -297,7 +294,6 @@ class MacBan(commands.Cog):
             await ctx.respond("❌ You are not authorized to use this command.")
             return
 
-        # Defer the response so the user sees that the bot is working
         await ctx.defer(ephemeral=True)
         working_embed = discord.Embed(
             title="⏳ Importing Server Bans",
@@ -324,7 +320,7 @@ class MacBan(commands.Cog):
         global_bans = load_bans()
         imported_users = []
         skipped_users = []
-        file_lines = []  # Für die TXT-Datei
+        file_lines = []  
         for ban_entry in bans_list:
             user = ban_entry.user
             if any(ban["id"] == user.id for ban in global_bans):

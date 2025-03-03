@@ -130,7 +130,7 @@ class TicketVerify(commands.Cog):
             await ghost_msg.delete(delay=1)
             await ghost_ping.delete(delay=1)
         except Exception as ex:
-            print(f"Ghost ping failed: {ex}")
+            raise Exception (f"Error sending ghost ping: {ex}")
 
     def error_embed(self, title, description):
         embed = discord.Embed(title=f"❌ {title}", description=description, color=discord.Color.red())

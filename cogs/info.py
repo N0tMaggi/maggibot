@@ -25,29 +25,30 @@ class InfoSystem(commands.Cog):
     )
     async def info(self, ctx: discord.ApplicationContext):
         main_embed = discord.Embed(
-            title="Bot Information",
-            description="This bot was developed by AG7.",
+            title="🤖 Bot Information",
+            description="This bot was developed by AG7. 🚀",
             color=discord.Color.blue()
         )
         main_embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         main_embed.set_image(url="https://ag7-dev.de/favicon/favicon.ico")  
-        main_embed.add_field(name="Bot Name", value=self.bot.user.name, inline=True)
-        main_embed.add_field(name="Bot ID", value=self.bot.user.id, inline=True)
-        main_embed.add_field(name="Bot Owner", value=f"<@{self.owner_id}>", inline=True)
+        main_embed.add_field(name="🤖 Bot Name", value=self.bot.user.name, inline=True)
+        main_embed.add_field(name="📝 Bot ID", value=self.bot.user.id, inline=True)
+        main_embed.add_field(name="👑 Bot Owner", value=f"<@{self.owner_id}>", inline=True)
         main_embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")  
         main_embed.timestamp = discord.utils.utcnow()
-
+    
         support_embed = discord.Embed(
-            title="Support Server",
-            description="Join the support server for the bot here: [Support Server](https://discord.ag7-dev.de)\nIf you need help with the bot, you can ask in the support server or DM the bot owner.",
+            title="🤝 Support Server",
+            description="Join the support server for the bot here: [Support Server](https://discord.ag7-dev.de)\nIf you need help with the bot, you can ask in the support server or DM the bot owner. 🤔",
             color=discord.Color.green()
         )
         support_embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         support_embed.set_image(url="https://ag7-dev.de/favicon/favicon.ico")  
-        support_embed.add_field(name="Bot Owner", value=f"<@{self.owner_id}>", inline=True)
+        support_embed.add_field(name="👑 Bot Owner", value=f"<@{self.owner_id}>", inline=True)
+        support_embed.add_field(name="📚 Documentation", value="[Documentation](https://ag7-dev.de/docs)", inline=True)
         support_embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")  
         support_embed.timestamp = discord.utils.utcnow()
-
+    
         await ctx.respond(embeds=[main_embed, support_embed])
 
 
@@ -85,10 +86,31 @@ class InfoSystem(commands.Cog):
             await ctx.respond(embed=embed)
         
         except Exception as e:
-            # If an error occurs, show an error message
+            raise Exception("An error occurred while fetching the bot's status." + str(e)) 
+
+
+    @commands.slash_command(name="error-normal", description="Trigger An Error")
+    async def error_normal(self, ctx: discord.ApplicationContext):
+        if ctx.author.id == int(self.owner_id):
+            raise Exception("This is a test error!")
+        else:
             embed = discord.Embed(
                 title="❌ Error",
-                description=f"An error occurred while fetching bot status:\n{str(e)}",
+                description="You are not authorized to use this command.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.respond(embed=embed)
+
+    @commands.slash_command(name="error-fatal", description="Trigger A Fatal Error")
+    async def error_fatal(self, ctx: discord.ApplicationContext):
+        if ctx.author.id == int(self.owner_id):  
+            raise Exception("This is a Fatal error triggered for testing purposes!")  
+        else:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="You are not authorized to use this command.",
                 color=discord.Color.red()
             )
             embed.set_footer(text="AG7 Dev Team", icon_url="https://ag7-dev.de/favicon/favicon.ico")

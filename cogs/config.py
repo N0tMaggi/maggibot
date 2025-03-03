@@ -48,7 +48,7 @@ class Server(Cog):
 
         except Exception as e:
             DebugHandler.LogDebug(f"An error occurred while setting the log channel: {e}")
-            await ctx.respond(f"An error occurred while setting the log channel: {e}")
+            raise Exception(f"An error occurred while setting the log channel: {e}")
 
 
     @commands.slash_command(name="setup-showconfig", description="Show the current server configuration")
@@ -64,17 +64,15 @@ class Server(Cog):
             )
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
             embed.timestamp = datetime.datetime.utcnow()
-            embed.set_thumbnail(url=ctx.guild.icon.url)
-            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
             if config_data is not None:
                 for key, value in config_data.items():
                     embed.add_field(name=key, value=value, inline=False)
             else:
                 embed.add_field(name="Error", value="No configuration found", inline=False)
-            await ctx.respond(embed=embed)
+            await ctx.respond(embed=embed, ephemeral=True)
         except Exception as e:
             DebugHandler.LogDebug(f"An error occurred while showing the server configuration: {e}")
-        
+            raise Exception(f"An error occurred while showing the server configuration: {e}")
         
 def setup(bot):
     bot.add_cog(Server(bot))

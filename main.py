@@ -26,7 +26,6 @@ currenttime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 intents = discord.Intents.all()
 TOKEN = os.getenv('TOKEN')
 
-# Correct class to instantiate the bot
 bot = discord.Bot(
     intents=intents,
     #debug_guilds=[int(os.getenv('DEBUG_GUILD_ID'))],
@@ -131,27 +130,14 @@ try:
     print(f'Loaded {cog_count} Cogs')
     print(f'------------------------------------')
 
-    # Loading extensions (cogs)
     for filename in os.listdir("cogs"):
         if filename.endswith('.py'):
             bot.load_extension(f"cogs.{filename[:-3]}")
 
-    # Start the bot
     bot.run(TOKEN)  
 
 except Exception as e:
-    error_log_channel_id = int(os.getenv('ERROR_LOG_CHANNEL_ID'))
-    if error_log_channel_id != None:
-        error_log_channel = bot.get_channel(error_log_channel_id)
-        error_embed = discord.Embed(
-            title="Error",
-            description=f"```{e}```",
-            color=0xff0000
-        )
-        error_log_channel.send(embed=error_embed)
-        print(f"Error: {e}")
-    else:
-        print(f"Error in Errohandling: {e}")
+    raise Exception(f"An error occured while starting the bot: {e}")
 except KeyboardInterrupt:
     print("\n Keyboard Interrupt detected..... Stopping the bot...")
     bot.close()

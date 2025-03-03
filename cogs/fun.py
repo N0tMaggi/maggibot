@@ -17,7 +17,6 @@ class TrollCommands(commands.Cog):
         description="Perform a jumpscare on a user by joining their voice channel and playing a sound."
     )
     async def jumpscare(self, ctx: discord.ApplicationContext, user: discord.Member, name: str):
-        # Check if the target user is in a voice channel.
         if not user.voice or not user.voice.channel:
             embed = discord.Embed(
                 title="Voice Channel Not Found",
@@ -64,14 +63,9 @@ class TrollCommands(commands.Cog):
             source = discord.FFmpegPCMAudio(file_path)
             vc.play(source)
         except Exception as e:
-            embed = discord.Embed(
-                title="Playback Error",
-                description=f"❌ Failed to play the sound: {e}",
-                color=discord.Color.red()
-            )
             await vc.disconnect()
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            return
+            raise Exception(f"Failed to play audio: {e}")
+
 
         await asyncio.sleep(1)
         await vc.disconnect()
@@ -85,7 +79,7 @@ class TrollCommands(commands.Cog):
 
     @commands.slash_command(description="Creates a quote image with your profile picture")
     async def quote(self, ctx: discord.ApplicationContext, text: str):
-        await ctx.defer()  # Defer the response to allow time for image processing
+        await ctx.defer()  
 
         # Fetch profile picture
         avatar_url = ctx.author.display_avatar.url
@@ -94,10 +88,10 @@ class TrollCommands(commands.Cog):
 
         # Image dimensions and padding
         avatar_size = 128
-        padding = 20  # Larger padding between profile picture and text
+        padding = 20  
         text_area_width = 400
         total_width = avatar_size + text_area_width + padding
-        total_height = 150  # Adjustable image height based on text length
+        total_height = 150
 
         # Gradient background creation
         gradient = Image.new('RGBA', (text_area_width, total_height), color=0)
@@ -108,8 +102,8 @@ class TrollCommands(commands.Cog):
 
         # Load fonts
         try:
-            font_path_regular = "arial.ttf"  # Replace with your font file
-            font_path_bold = "arialbd.ttf"   # Replace with your font file
+            font_path_regular = "arial.ttf"  
+            font_path_bold = "arialbd.ttf"   
             font_regular = ImageFont.truetype(font_path_regular, 24)
             font_bold = ImageFont.truetype(font_path_bold, 24)
         except IOError:
@@ -117,13 +111,13 @@ class TrollCommands(commands.Cog):
             font_bold = ImageFont.load_default()
 
         # Text wrapping
-        max_chars_per_line = 40  # Maximum characters per line (can be adjusted)
-        wrapped_text = textwrap.fill(text, max_chars_per_line)  # Automatic line break
+        max_chars_per_line = 40  
+        wrapped_text = textwrap.fill(text, max_chars_per_line)  
 
         # Text positioning
-        text_x = avatar_size + padding + 10  # Start further to the left
-        text_y = 20  # Text slightly higher
-        username_y = text_y + 40  # Space between text and username
+        text_x = avatar_size + padding + 10  
+        text_y = 20  
+        username_y = text_y + 40  
 
         # Draw text
         draw.text((text_x, text_y), wrapped_text, font=font_regular, fill=(255, 255, 255, 255))
@@ -131,7 +125,7 @@ class TrollCommands(commands.Cog):
 
         # Combine images
         combined = Image.new('RGBA', (total_width, total_height))
-        combined.paste(avatar.resize((avatar_size, avatar_size)), (10, 10))  # Avatar slightly lower
+        combined.paste(avatar.resize((avatar_size, avatar_size)), (10, 10))  
         combined.paste(gradient, (avatar_size + padding, 0), mask=gradient)
 
         # Add subtle rounded corners
@@ -153,6 +147,7 @@ class TrollCommands(commands.Cog):
             final_image.save(image_binary, 'PNG')
             image_binary.seek(0)
             await ctx.followup.send(file=discord.File(fp=image_binary, filename='quote.png'))
+
 
 
 

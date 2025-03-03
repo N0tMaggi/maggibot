@@ -50,166 +50,165 @@ class UserStats(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Only count messages in guild channels (not DMs)
-        if not message.guild:
-            return
-        # Ignore bot messages
-        if message.author.bot:
+        if not message.guild or message.author.bot:
             return
 
         stats = load_stats()
         user_id = str(message.author.id)
         guild_id = str(message.guild.id)
-        # Create entry for user if not existing
-        if user_id not in stats:
-            stats[user_id] = {"xp": 0.0, "servers": {}}
-        if guild_id not in stats[user_id]["servers"]:
-            stats[user_id]["servers"][guild_id] = {"messages": 0, "media": 0}
-        # Base XP gain from environment variables
+        
+        # Create entries if they don't exist
+        stats[user_id] = stats.get(user_id, {"xp": 0.0, "servers": {}})
+        stats[user_id]["servers"][guild_id] = stats[user_id]["servers"].get(guild_id, {"messages": 0, "media": 0})
+        
         xp_gain = MESSAGE_XP_COUNT
         stats[user_id]["servers"][guild_id]["messages"] += 1
-        # Count attachments that are images/videos
-        media_count = 0
-        for attachment in message.attachments:
-            if attachment.content_type and (attachment.content_type.startswith("image/") or attachment.content_type.startswith("video/")):
-                media_count += 1
-        if media_count > 0:
+        
+        media_count = sum(1 for attachment in message.attachments 
+                         if attachment.content_type and 
+                         (attachment.content_type.startswith("image/") or 
+                          attachment.content_type.startswith("video/")))
+        
+        if media_count:
             xp_gain += ATTACHMENT_XP_COUNT * media_count
             stats[user_id]["servers"][guild_id]["media"] += media_count
 
-        # Apply multiplier if message is in a channel configured for multipliers and the user has the corresponding role(s)
-        multiplier_config = load_multiplier_config()
-        if str(message.channel.id) in multiplier_config.get("channels", []):
-            applicable_multipliers = []
-            for role in message.author.roles:
-                role_id_str = str(role.id)
-                if role_id_str in multiplier_config.get("multipliers", {}):
-                    applicable_multipliers.append(multiplier_config["multipliers"][role_id_str])
-            if applicable_multipliers:
-                # If multiple multipliers apply, use the highest one
-                xp_gain *= max(applicable_multipliers)
+        # Apply multipliers
+        config = load_multiplier_config()
+        if str(message.channel.id) in config["channels"]:
+            applicable = [config["multipliers"].get(str(r.id), 1) for r in message.author.roles]
+            xp_gain *= max(applicable) if applicable else 1
 
         stats[user_id]["xp"] += xp_gain
         save_stats(stats)
 
     @commands.slash_command(name="stats", description="Display your stats or a specified user's stats.")
     async def stats(self, ctx: discord.ApplicationContext, user: discord.User = None):
-        if user is None:
-            user = ctx.author
-        stats = load_stats()
-        user_id = str(user.id)
-        if user_id not in stats:
+        user = user or ctx.author
+        stats = load_stats().get(str(user.id), {})
+        
+        if not stats:
             embed = discord.Embed(
                 title="User Stats",
                 description=f"ℹ️ No stats available for {user.mention}.",
                 color=discord.Color.orange()
             )
+        else:
+            xp = stats.get("xp", 0.0)
+            server_stats = stats.get("servers", {})
+            
+            embed = discord.Embed(
+                title=f"🌟 Stats for {user.name}",
+                color=discord.Color.blue()
+            )
             embed.set_thumbnail(url=user.display_avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.respond(embed=embed)
-            return
-        user_stats = stats[user_id]
-        xp = user_stats.get("xp", 0.0)
-        embed = discord.Embed(
-            title=f"Stats for {user.name}",
-            color=discord.Color.blue()
+            
+            embed.add_field(name="Total XP", value=f"🌟 **{xp:.2f} XP**", inline=False)
+            
+            details = []
+            for guild_id, data in server_stats.items():
+                guild = self.bot.get_guild(int(guild_id)) or f"Server {guild_id}"
+                details.append(f"📈 **{guild}**: {data['messages']} msgs | 📎 {data['media']} media")
+            
+            embed.add_field(name="Server Stats", value="\n".join(details) if details else "No server stats", inline=False)
+        
+        embed.set_footer(
+            text=f"Requested by {ctx.author.name} ⏰",
+            icon_url=ctx.author.display_avatar.url
         )
-        embed.set_thumbnail(url=user.display_avatar.url)
-        embed.add_field(name="Total XP", value=f"🌟 {xp:.2f} XP", inline=False)
-        server_stats = user_stats.get("servers", {})
-        details = ""
-        for guild_id, data in server_stats.items():
-            # Try to get the server name from cache
-            guild = self.bot.get_guild(int(guild_id))
-            guild_name = guild.name if guild else f"Server {guild_id}"
-            details += f"📈 **{guild_name}**: {data['messages']} messages, {data['media']} media\n"
-        if details == "":
-            details = "No server stats available."
-        embed.add_field(name="Server Stats", value=details, inline=False)
-        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
+        embed.timestamp = datetime.datetime.now()
         await ctx.respond(embed=embed)
 
     @commands.slash_command(name="leaderboard", description="Display the global XP leaderboard.")
     async def leaderboard(self, ctx: discord.ApplicationContext):
         stats = load_stats()
-    
+        
         if not stats:
-            embed = discord.Embed(
-                title="Leaderboard",
+            return await ctx.respond(embed=discord.Embed(
+                title="🏆 Global Leaderboard",
                 description="ℹ️ No stats available yet.",
                 color=discord.Color.orange()
-            )
-            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.respond(embed=embed)
-            return
-
-        # Build a list of tuples (user_id, xp) and sort descending by XP
-        leaderboard_list = [(user_id, data.get("xp", 0)) for user_id, data in stats.items()]
-        leaderboard_list.sort(key=lambda x: x[1], reverse=True)
-        top = leaderboard_list[:10]
-
+            ).set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.display_avatar.url))
+        
+        leaderboard = sorted(stats.items(), key=lambda x: x[1].get("xp", 0), reverse=True)[:10]
+        
         embed = discord.Embed(
-            title="Global XP Leaderboard",
-            description="Here are the top 10 players with the highest XP!",
+            title="🏆 Global XP Leaderboard 🏆",
+            description="Here are the **top 10 players** with the highest XP! ✨",
             color=discord.Color.gold()
         )
-    
-        # Add each player as a field
-        rank = 1
-        for user_id, xp in top:
-            # Try to get the member from the current guild; if not found, use the ID
+        embed.set_thumbnail(url="https://ag7-dev.de/favicon/favicon.ico")
+        
+        for rank, (user_id, data) in enumerate(leaderboard, 1):
             member = ctx.guild.get_member(int(user_id))
             name = member.name if member else f"User {user_id}"
-            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"
+            avatar = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"
+            
+            emoji = ["🥇", "🥈", "🥉"][rank-1] if rank <=3 else f"{rank}️⃣"
+            
             embed.add_field(
-                name=f"**{rank}. {name}**",
-                value=f"{xp:.2f} XP",
+                name=f"**{emoji} {name}**",
+                value=f"🌟 **{data.get('xp', 0):.2f} XP**",
                 inline=False
             )
-            rank += 1
-
-        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
+        
+        embed.set_footer(
+            text=f"Requested by {ctx.author.name} on {ctx.guild.name}",
+            icon_url=ctx.author.display_avatar.url
+        )
+        embed.timestamp = datetime.datetime.now()
         await ctx.respond(embed=embed)
 
     @commands.slash_command(name="serverleaderboard", description="Display the XP leaderboard for this server.")
     async def serverleaderboard(self, ctx: discord.ApplicationContext):
         stats = load_stats()
-        server_id = str(ctx.guild.id)
-        leaderboard_list = []
-        # Calculate server-specific XP for each user (messages * base + media * base)
-        for user_id, data in stats.items():
-            server_data = data.get("servers", {}).get(server_id)
-            if server_data:
-                messages = server_data.get("messages", 0)
-                media = server_data.get("media", 0)
-                server_xp = messages * MESSAGE_XP_COUNT + media * ATTACHMENT_XP_COUNT
-                leaderboard_list.append((user_id, server_xp))
+        guild_id = str(ctx.guild.id)
         
-        if not leaderboard_list:
-            embed = discord.Embed(
-                title="Server Leaderboard",
+        leaderboard = []
+        for user_id, data in stats.items():
+            server = data["servers"].get(guild_id, {})
+            messages = server.get("messages", 0)
+            media = server.get("media", 0)
+            xp = messages * MESSAGE_XP_COUNT + media * ATTACHMENT_XP_COUNT
+            leaderboard.append((user_id, xp))
+        
+        if not leaderboard:
+            return await ctx.respond(embed=discord.Embed(
+                title="📊 Server Leaderboard",
                 description="ℹ️ No stats available for this server.",
                 color=discord.Color.orange()
-            )
-            embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.respond(embed=embed)
-            return
-        leaderboard_list.sort(key=lambda x: x[1], reverse=True)
-        top = leaderboard_list[:10]
-        description = ""
-        rank = 1
-        for user_id, xp in top:
+            ).set_footer(text=f"Requested by {ctx.author.name}", icon_url=ctx.author.display_avatar.url))
+        
+        leaderboard.sort(key=lambda x: x[1], reverse=True)
+        top = leaderboard[:10]
+        
+        embed = discord.Embed(
+            title=f"📊 Server Leaderboard for {ctx.guild.name}",
+            description="Top contributors in this server! 🔥",
+            color=discord.Color.blue()
+        )
+        embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else "https://ag7-dev.de/favicon/favicon.ico")
+        
+        for rank, (user_id, xp) in enumerate(top, 1):
             member = ctx.guild.get_member(int(user_id))
             name = member.name if member else f"User {user_id}"
-            avatar_url = member.display_avatar.url if member else "https://ag7-dev.de/favicon/favicon.ico"
-            description += f"**{rank}. {name}**  {xp:.2f} XP\n"
-            rank += 1
-        embed = discord.Embed(
-            title=f"Server Leaderboard for {ctx.guild.name}",
-            description=description,
-            color=discord.Color.gold()
+            server_data = stats.get(user_id, {}).get("servers", {}).get(guild_id, {})
+            
+            embed.add_field(
+                name=f"**{rank}️⃣ {name}**",
+                value=(
+                    f"📊 **{xp:.2f} XP**\n"
+                    f"💬 **{server_data.get('messages', 0)} msgs**\n"
+                    f"📎 **{server_data.get('media', 0)} media**"
+                ),
+                inline=False
+            )
+        
+        embed.set_footer(
+            text=f"Server stats as of {ctx.guild.name}",
+            icon_url=ctx.guild.icon.url if ctx.guild.icon else ""
         )
-        embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
+        embed.timestamp = datetime.datetime.now()
         await ctx.respond(embed=embed)
 
     @commands.slash_command(name="xp-setmultiplier", description="Set XP multiplier for a role (Owner only)")

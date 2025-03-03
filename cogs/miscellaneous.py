@@ -28,7 +28,7 @@ class Miscellaneous(commands.Cog):
 
             await ctx.respond(random.choice(responses))
 
-        @commands.slash_command(name= "stop", description="Stops the bot")
+        @commands.slash_command(name= "stop", description="[Owner only] Stop the bot 🛑")
         async def stop(self, ctx):
             authorised = int(os.getenv('OWNER_ID'))
             if ctx.author.id == authorised:

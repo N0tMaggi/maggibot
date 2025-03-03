@@ -1,42 +1,64 @@
 import dotenv
 import os
+
 from handlers.debug import LogDebug
 
 dotenv.load_dotenv()
 
 def get_owner():
-    return int(os.getenv('OWNER_ID'))
+    owner_id = os.getenv('OWNER_ID')
+    if not owner_id:
+        raise Exception("OWNER_ID not set in environment")
+    return int(owner_id)
 
 
 def get_token():
-    return int(os.getenv('TOKEN'))
+    token = os.getenv('TOKEN')
+    if not token:
+        raise Exception("TOKEN not set in environment")
+    return int(token)
+
 
 def get_version():
-    return os.getenv('BOT_VERSION')
+    version = os.getenv('BOT_VERSION')
+    if not version:
+        raise Exception("BOT_VERSION not set in environment")
+    return version
 
 
 def get_error_log_channel_id():
-    return int(os.getenv('ERROR_LOG_CHANNEL_ID'))
+    error_log_channel_id = os.getenv('ERROR_LOG_CHANNEL_ID')
+    if not error_log_channel_id:
+        raise Exception("ERROR_LOG_CHANNEL_ID not set in environment")
+    return int(error_log_channel_id)
+
 
 def get_command_log_channel_id():
-    return int(os.getenv('COMMAND_LOG_CHANNEL_ID'))
+    command_log_channel_id = os.getenv('COMMAND_LOG_CHANNEL_ID')
+    if not command_log_channel_id:
+        raise Exception("COMMAND_LOG_CHANNEL_ID not set in environment")
+    return int(command_log_channel_id)
+
 
 def get_banner(status):
-    if status:
-        try:
-            if status == "SUCCESS":
-                return os.getenv('SUCCESS_BANNER')
-            elif status == "ERROR":
-                return os.getenv('ERROR_BANNER')
-            elif status == "WARNING":
-                return os.getenv('WARNING_BANNER')
-            elif status == "INFO":
-                return os.getenv('INFO_BANNER')
-            else:
-                raise Exception("Invalid status")
-        except Exception as e:
-            LogDebug(f"Error while getting banner: {e}")
-            return None
-    else:
+    if not status:
         raise Exception("Status not provided")
-    
+
+    try:
+        if status == "SUCCESS":
+            banner = os.getenv('SUCCESS_BANNER')
+        elif status == "ERROR":
+            banner = os.getenv('ERROR_BANNER')
+        elif status == "WARNING":
+            banner = os.getenv('WARNING_BANNER')
+        elif status == "INFO":
+            banner = os.getenv('INFO_BANNER')
+        else:
+            raise Exception(f"Invalid status: {status}")
+        
+        if not banner:
+            raise Exception(f"Banner for status '{status}' not set in environment")
+        
+        return banner
+    except Exception as e:
+        raise Exception(f"Error while getting banner: {e}")
