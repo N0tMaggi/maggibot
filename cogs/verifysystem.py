@@ -100,6 +100,24 @@ class TicketVerify(commands.Cog):
 
         await ctx.respond(embed=embed, ephemeral=True)
 
+        # try to send user verify dm if possible    
+        try:
+            user_embed = discord.Embed(
+                title="Verification Successful",
+                description=f"Hey you have been successfully verified in **{ctx.guild.name}**.",
+                color=discord.Color.green()
+            )
+            user_embed.add_field(name="Role Removed", value=role_to_remove.mention if role_to_remove else "None", inline=True)
+            user_embed.add_field(name="Role Given", value=role_to_give.mention if role_to_give else "None", inline=True)
+            user_embed.set_thumbnail(url="https://ag7-dev.de/favicon/favicon.ico")
+            user_embed.set_footer(text="AG7 Dev Team | Verification System", icon_url="https://ag7-dev.de/favicon/favicon.ico")
+            user_embed.timestamp = discord.utils.utcnow()
+            await member.send(embed=user_embed)
+        except Exception as ex:
+            pass
+
+
+
     async def ghost_ping(self, member, channel):
         try:
             verify_embed = discord.Embed(

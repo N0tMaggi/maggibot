@@ -80,7 +80,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macban(self, ctx: discord.ApplicationContext, user: discord.User, reason: str = "No reason provided"):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         bans = load_bans()
@@ -90,7 +90,7 @@ class MacBan(commands.Cog):
                 description=f"🔨 {user.mention} is already globally banned.",
                 color=discord.Color.orange()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         ban_record = {
@@ -129,14 +129,14 @@ class MacBan(commands.Cog):
                 description="The user has their DMs closed.",
                 color=discord.Color.red()
             )
-            await ctx.send(embed=embed, ephemeral=True)
+            await ctx.send(embed=embed)
 
 
     @commands.slash_command(name="macunban", description="Remove a global ban for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macunban(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         bans = load_bans()
@@ -147,7 +147,7 @@ class MacBan(commands.Cog):
                 description=f"ℹ️ {user.mention} is not globally banned.",
                 color=discord.Color.orange()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         save_bans(new_bans)
@@ -171,14 +171,14 @@ class MacBan(commands.Cog):
                 description="The user has their DMs closed.",
                 color=discord.Color.red()
                 )
-            await ctx.send(embed=embed, ephemeral=True)
+            await ctx.send(embed=embed)
             
 
     @commands.slash_command(name="macinfo", description="Display overall info about the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macinfo(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
     
         bans = load_bans()
@@ -200,7 +200,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maclookup(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         bans = load_bans()
@@ -226,7 +226,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maccheck(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         bans = load_bans()
@@ -252,7 +252,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def macbanall(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         await ctx.defer()
@@ -261,7 +261,7 @@ class MacBan(commands.Cog):
             description="Please wait while I ban all users from the global ban list...",
             color=discord.Color.blue()
         )
-        await ctx.respond(embed=working_embed, ephemeral=True)
+        await ctx.respond(embed=working_embed)
 
         bans = load_bans()
         if not bans:
@@ -270,7 +270,7 @@ class MacBan(commands.Cog):
                 description="ℹ️ The global ban list is empty.",
                 color=discord.Color.green()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         banned_members = []
@@ -294,7 +294,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macgetserverbannedusersandban(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         # Defer the response so the user sees that the bot is working
@@ -304,12 +304,12 @@ class MacBan(commands.Cog):
             description="Fetching server ban list. Please wait...",
             color=discord.Color.blue()
         )
-        await ctx.respond(embed=working_embed, ephemeral=True)
+        await ctx.respond(embed=working_embed)
 
         try:
             bans_list = [ban async for ban in ctx.guild.bans()]
         except Exception as e:
-            await ctx.respond(f"❌ Failed to fetch bans: {e}", ephemeral=True)
+            await ctx.respond(f"❌ Failed to fetch bans: {e}")
             return
 
         if not bans_list:
@@ -318,7 +318,7 @@ class MacBan(commands.Cog):
                 description="ℹ️ There are no banned users in this server.",
                 color=discord.Color.green()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         global_bans = load_bans()
@@ -365,7 +365,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macunbanallserver(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         await ctx.defer()
@@ -374,7 +374,7 @@ class MacBan(commands.Cog):
             description="Please wait while I unban all users from this server...",
             color=discord.Color.blue()
         )
-        await ctx.respond(embed=working_embed, ephemeral=True)
+        await ctx.respond(embed=working_embed)
 
         global_bans = load_bans()
         server_bans = [ban for ban in global_bans if ban.get("serverid") == ctx.guild.id]
@@ -384,7 +384,7 @@ class MacBan(commands.Cog):
                 description="ℹ️ There are no global ban records for this server.",
                 color=discord.Color.green()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         unbanned_users = []
@@ -410,7 +410,7 @@ class MacBan(commands.Cog):
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def maclookupserver(self, ctx: discord.ApplicationContext, serverid: str):
         if not self.is_authorized(ctx):
-            await ctx.respond("❌ You are not authorized to use this command.", ephemeral=True)
+            await ctx.respond("❌ You are not authorized to use this command.")
             return
 
         global_bans = load_bans()
@@ -421,7 +421,7 @@ class MacBan(commands.Cog):
                 description=f"ℹ️ There are no global ban records for server ID **{serverid}**.",
                 color=discord.Color.green()
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(embed=embed)
             return
 
         embed = discord.Embed(title="📜 Global Ban Records for Server", color=discord.Color.red())
