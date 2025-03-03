@@ -337,12 +337,10 @@ class MacBan(commands.Cog):
             }
             global_bans.append(ban_record)
             imported_users.append(f"{user.name} ({user.id})")
-            # Zeile für die TXT-Datei
             file_lines.append(f"{user.name} ({user.id}) - Reason: Mac IMPORTEDLIST from Server: {ctx.guild.name}\n")
-            await asyncio.sleep(1)  # Kurze Pause, um Rate Limits zu vermeiden
+            await asyncio.sleep(1)  
 
         save_bans(global_bans)
-        # Erstelle den Inhalt der TXT-Datei
         file_content = "".join(file_lines)
         from io import BytesIO
         file_bytes = file_content.encode("utf-8")

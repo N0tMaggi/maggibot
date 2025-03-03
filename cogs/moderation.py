@@ -32,7 +32,6 @@ class Moderation(commands.Cog):
 
         await asyncio.sleep(2)
 
-        # Check for required permissions (currently only 'administrator' is required)
         required_permissions = ["administrator"]
         missing_permissions = []
         for permission in required_permissions:
