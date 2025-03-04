@@ -113,7 +113,6 @@ class RandomMath(commands.Cog):
         try:
             await self.wait_for_answer(message.channel, answer, message.author.id)
         except asyncio.CancelledError:
-            # Handle cancellation gracefully
             embed = discord.Embed(
                 title="Challenge Cancelled!",
                 description="The challenge was cancelled.",

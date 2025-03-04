@@ -15,7 +15,10 @@ class Protection(commands.Cog):
         self.bot = bot
     
     def is_authorized(ctx):
-        return ctx.author.guild_permissions.administrator
+        if ctx.author.guild_permissions.administrator:
+            return True
+        else:
+            raise commands.CommandError(f"User {ctx.author} is not authorized to use this command")
 
     @commands.slash_command(name="setup-protectionlog", description="Set the protection log channel")
     @commands.check(is_authorized)

@@ -275,5 +275,27 @@ class UserStats(commands.Cog):
         embed.set_footer(text=f"Requested by {ctx.author.name} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
 
+    @commands.slash_command(name="xp-count", description="Shows how many users have stats in the database.")
+    async def xp_count(self, ctx: discord.ApplicationContext):
+        stats = load_stats()
+        if isinstance(stats, str):
+            stats = json.loads(stats)
+
+        total_users = len(stats)
+        users_with_xp = len([user for user in stats.values() if isinstance(user, dict) and user.get('xp', 0) != 0])
+
+        embed = discord.Embed(
+            title="XP Stats Overview",
+            description="Here is a summary of user statistics from the database:",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Total Users", value=f"**{total_users}**", inline=False)
+        embed.add_field(name="Users with XP", value=f"**{users_with_xp}**", inline=False)
+        embed.set_footer(text=f"Requested by {ctx.author} on {ctx.guild.name}", icon_url=ctx.author.display_avatar.url)
+
+        await ctx.respond(embed=embed)
+
+
+
 def setup(bot: commands.Bot):
     bot.add_cog(UserStats(bot))

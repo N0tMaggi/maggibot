@@ -35,6 +35,10 @@ class ErrorHandling(commands.Cog):
             await self.handle_error(ctx, error, "⚠️ Application Command Invoke Error")
         elif isinstance(error, commands.CommandOnCooldown):
             await self.handle_error_without_log(ctx, error, "⏰ Command on cooldown")
+        elif isinstance(error, commands.MissingPermissions):
+            await self.handle_error_without_log(ctx, error, "🚫 Missing Permissions")  
+        elif isinstance(error, commands.CommandError):
+            await self.handle_error_without_log(ctx, error, "❌ Command Error")
         else:
             await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error")
 
