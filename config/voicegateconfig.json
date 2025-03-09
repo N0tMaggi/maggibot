@@ -1,1 +1,8 @@
-{}
+{
+    "1126009909830488135": {
+        "gate_channel_id": 1346392232810381312,
+        "final_channel_id": 1346392433373741107,
+        "need_accept_rules": true,
+        "rules_text": "1.    Be quiet \u2013 Don\u2019t disturb others.\n    2.    No loud talking or yelling \u2013 Keep your voice low.\n    3.    No background noise \u2013 No music, static, or annoying sounds.\n    4.    Respect others\u2019 sleep \u2013 Let people rest.\n    5.    No spam or trolling \u2013 Don\u2019t make unnecessary noises or messages.\n    6.    Quiet chatting is okay \u2013 Whispering or soft talking is allowed if it doesn\u2019t disturb others.\n    7.    Mods have the final say \u2013 Follow their instructions."
+    }
+}
