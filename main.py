@@ -1,11 +1,10 @@
 import discord
 from discord.ext import commands
 import os
-from discord.commands import slash_command  # Import slash_command correctly
+from discord.commands import slash_command
 import datetime
 import json
 import requests
-import re
 import dotenv
 from dotenv import load_dotenv
 import time
@@ -17,7 +16,6 @@ load_dotenv()
 
 DEBUG = os.getenv('DEBUG_MODE')
 
-
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -25,11 +23,7 @@ currenttime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 intents = discord.Intents.all()
 TOKEN = os.getenv('TOKEN')
 
-bot = discord.Bot(
-    intents=intents,
-    #debug_guilds=[int(os.getenv('DEBUG_GUILD_ID'))],
-
-)
+bot = discord.Bot(intents=intents)
 
 def is_admin(ctx):
     return ctx.author.guild_permissions.administrator
@@ -37,10 +31,9 @@ def is_admin(ctx):
 def is_connected_to_internet():
     try:
         requests.get("https://google.com")
-        return (True, "Connected to the internet")
+        return True, "Connected to the internet"
     except:
-        return (False, "Not connected to the internet") 
-
+        return False, "Not connected to the internet"
 
 def check_json_files(directory):
     for filename in os.listdir(directory):
@@ -54,8 +47,6 @@ def check_json_files(directory):
                 return False
     return True
 
-
-
 def DEBUG_MODE_PRINT_ENV():
     if DEBUG == 'TRUE':
         DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
@@ -65,78 +56,67 @@ def DEBUG_MODE_PRINT_ENV():
         time.sleep(5)
         logging.basicConfig(level=logging.DEBUG)
         return True
-    else:
-        return False
+    return False
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    print(f"-------------------------------------------")
+    print("-------------------------------------------")
     print(f'Connected to {len(bot.guilds)} servers: ')
     for guild in bot.guilds:
         print(f'- {guild.name} (ID: {guild.id})')
-    print(f"-------------------------------------------")
+    print("-------------------------------------------")
     print(f'Connected to the internet: {is_connected_to_internet()[0]}')
-    print(f"-------------------------------------------")
+    print("-------------------------------------------")
     print(f'JSON files are valid: {check_json_files("data")}')
-    print(f"-------------------------------------------")
+    print("-------------------------------------------")
     print(f'Current time: {currenttime}')
-    print(f"-------------------------------------------")
+    print("-------------------------------------------")
     await bot.change_presence(activity=discord.Game(name="with your mom"))
 
-
-
-#------------------ START OF BOT
+def load_cogs(bot, directory='cogs'):
+    cog_count = 0
+    for root, _, files in os.walk(directory):
+        for filename in files:
+            if filename.endswith('.py'):
+                module_name = os.path.join(root, filename)[:-3].replace(os.sep, '.')
+                try:
+                    bot.load_extension(module_name)
+                    print(f'Loaded COG: {module_name}')
+                    cog_count += 1
+                except Exception as e:
+                    print(f'Failed to load {module_name}: {e}')
+    print(f'------------------------------------')
+    print(f'Loaded {cog_count} Cogs')
+    print(f'------------------------------------')
 
 try:
-    if is_connected_to_internet()[0]:
-        pass
-    else:
+    if not is_connected_to_internet()[0]:
         print('Not connected to the Internet')
         os._exit(1)
     
     if DEBUG_MODE_PRINT_ENV():
         pass
-    else:
-        pass
-
+    
     if not check_json_files('data'):
         print("Not all JSON files are valid")
         os._exit(1)
     else:
         print("All JSON files are valid!")
-
-
+    
     clear_screen()
-    
-
     print('------------STARTING THE BOT------------')
-    
-    asciiheader = """
+    print("""
     ╔╦╗┌─┐┌─┐┌─┐┬╔═╗┬ ┬┌─┐┌┬┐┌─┐┌┬┐
     ║║║├─┤│ ┬│ ┬│╚═╗└┬┘└─┐ │ ├┤ │││
     ╩ ╩┴ ┴└─┘└─┘┴╚═╝ ┴ └─┘ ┴ └─┘┴ ┴
-    """
-    print(asciiheader)
+    """)
     print(f'------------------------------------')
-
-    cog_count = 0
-    for filename in os.listdir("cogs"):
-        if filename.endswith('.py'):
-            cog_count += 1
-            print(f'Loaded COG: {filename}')
-
-    print(f'Loaded {cog_count} Cogs')
-    print(f'------------------------------------')
-
-    for filename in os.listdir("cogs"):
-        if filename.endswith('.py'):
-            bot.load_extension(f"cogs.{filename[:-3]}")
-
-    bot.run(TOKEN)  
+    load_cogs(bot)
+    bot.run(TOKEN)
 
 except Exception as e:
-    raise Exception(f"An error occured while starting the bot: {e}")
+    raise Exception(f"An error occurred while starting the bot: {e}")
 except KeyboardInterrupt:
     print("\n Keyboard Interrupt detected..... Stopping the bot...")
     bot.close()

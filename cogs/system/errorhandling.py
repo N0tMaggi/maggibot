@@ -3,7 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 import os
 import traceback
-from cogs.commandlockdown import LockdownCheckFailure
+from cogs.owner.commandlockdown import LockdownCheckFailure
 import sys
 from colorama import Fore, Style, init
 import handlers.debug as DebugHandler
@@ -50,10 +50,8 @@ class ErrorHandling(commands.Cog):
         error_info = f"{error.__class__.__name__}: {error}"
         tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
 
-        # Prüfen, ob der Traceback länger als 1024 Zeichen ist
         traceback_text = "".join(tb_lines)
         if len(traceback_text) > 1024:
-            # Wenn der Traceback zu lang ist, erstellen wir eine Datei mit dem Traceback
             traceback_file = await self.create_traceback_file(traceback_text)
 
             embed = discord.Embed(
@@ -73,7 +71,6 @@ class ErrorHandling(commands.Cog):
                 icon_url=ctx.author.avatar.url if ctx.author.avatar else None
             )
 
-            # Loggen des Fehlers mit der Datei
             await self.log_error(ctx, error, embed, traceback_file)
         else:
             embed = discord.Embed(
@@ -93,7 +90,6 @@ class ErrorHandling(commands.Cog):
                 icon_url=ctx.author.avatar.url if ctx.author.avatar else None
             )
 
-            # Loggen des Fehlers ohne Datei
             await self.log_error(ctx, error, embed)
 
     async def handle_error_without_log(self, ctx, error, error_type):
@@ -136,7 +132,6 @@ class ErrorHandling(commands.Cog):
         try:
             log_channel = self.bot.get_channel(int(error_log_channel_id))
             if log_channel:
-                # Falls eine Datei mit dem Traceback vorhanden ist, anhängen
                 if traceback_file:
                     await log_channel.send(embed=embed, file=traceback_file)
                 else:
@@ -148,15 +143,13 @@ class ErrorHandling(commands.Cog):
             traceback.print_exc()
 
     async def create_traceback_file(self, traceback_text):
-        # Erstelle eine Textdatei mit dem Traceback
         file_name = f"traceback_{datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-        file_path = os.path.join("logs", file_name)  # Stellen Sie sicher, dass der "logs" Ordner existiert
+        file_path = os.path.join("logs", file_name)  
         os.makedirs("logs", exist_ok=True)
 
         with open(file_path, "w") as f:
             f.write(traceback_text)
 
-        # Sende die Datei
         file = discord.File(file_path, filename=file_name)
         return file
 
