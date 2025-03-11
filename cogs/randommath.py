@@ -123,37 +123,44 @@ class RandomMath(commands.Cog):
         finally:
             del self.active_challenges[message.channel.id]
 
+
     async def wait_for_answer(self, channel, answer, user_id):
         def check(msg):
-            return msg.channel.id == channel.id and msg.author.id == user_id and msg.content.strip().replace(",", ".").isdigit()
-        
-        try:
-            msg = await self.bot.wait_for("message", check=check, timeout=30)
-            if round(float(msg.content), 2) == answer:
-                self.cookies[str(msg.author.id)] = self.cookies.get(str(msg.author.id), 0) + 1
-                save_json(COOKIES_FILE, self.cookies)
+            return msg.channel.id == channel.id and msg.author.id == user_id
+    
+        start_time = asyncio.get_event_loop().time()
+        while True:
+            try:
+                msg = await self.bot.wait_for("message", check=check, timeout=30 - (asyncio.get_event_loop().time() - start_time))
+                try:
+                    user_answer = float(msg.content.strip().replace(",", "."))
+                except ValueError:
+                    await channel.send(f"{msg.author.mention}, please provide a valid number.")
+                    continue
+                
+                if round(user_answer, 2) == answer:
+                    self.cookies[str(msg.author.id)] = self.cookies.get(str(msg.author.id), 0) + 1
+                    save_json(COOKIES_FILE, self.cookies)
+                    embed = discord.Embed(
+                        title="Correct Answer!",
+                        description=f"{msg.author.mention}, you earned a **🍪 cookie**!",
+                        color=discord.Color.green()
+                    )
+                    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
+                    await channel.send(embed=embed)
+                    break
+                else:
+                    await channel.send(f"{msg.author.mention}, that's incorrect. Try again!")
+            except asyncio.TimeoutError:
                 embed = discord.Embed(
-                    title="Correct Answer!",
-                    description=f"{msg.author.mention}, you earned a **🍪 cookie**!",
-                    color=discord.Color.green()
-                )
-                embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
-            else:
-                embed = discord.Embed(
-                    title="Wrong Answer!",
-                    description=f"The correct answer was **{answer}**. Better luck next time!",
+                    title="Time's Up!",
+                    description=f"No correct answer was given. The correct answer was **{answer}**.",
                     color=discord.Color.red()
                 )
                 embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
-            await channel.send(embed=embed)
-        except asyncio.TimeoutError:
-            embed = discord.Embed(
-                title="Time's Up!",
-                description=f"No answer was given. The correct answer was **{answer}**.",
-                color=discord.Color.red()
-            )
-            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
-            await channel.send(embed=embed)
+                await channel.send(embed=embed)
+                break
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(RandomMath(bot))
