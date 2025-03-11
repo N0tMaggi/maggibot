@@ -9,7 +9,6 @@ import re
 import dotenv
 from dotenv import load_dotenv
 import time
-import cogs.activity as MaggiActivity
 import handlers.debug as DebugHandler
 import logging
 

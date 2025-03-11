@@ -11,6 +11,9 @@
     },
     "1227993713813356654": {
         "protectionlogchannel": 1313121451703799930,
-        "protection": true
+        "protection": true,
+        "ticketrole": 1243920068941709444,
+        "ticketlogchannel": 1313121451703799930,
+        "ticketcategorie": 1261281788592918630
     }
 }

@@ -147,5 +147,37 @@ class Miscellaneous(commands.Cog):
             await loading_message.edit(embed=embed)
 
 
+
+
+        @commands.slash_command(name="dm-clean", description="Let the bot clean your DMs.")
+        @commands.cooldown(1, 180, commands.BucketType.user)
+        async def dm_clean(self, ctx):
+            await ctx.respond("Cleaning DMs...")
+            await ctx.author.send("Please confirm that you want to clean your DMs by typing `yes` in this chat.")
+
+            try:
+                msg = await self.bot.wait_for(
+                    "message",
+                    check=lambda message: message.author == ctx.author and message.content.lower() == "yes",
+                    timeout=60
+                )
+
+                async for message in ctx.author.dm_channel.history(limit=100):
+                    if message.author == self.bot.user:
+                        await message.delete()
+
+                message = await ctx.author.send("Your DMs have been cleaned.")
+                await asyncio.sleep(5)
+                await message.delete()
+
+            except asyncio.TimeoutError:
+                embed = discord.Embed(title="🚫 Timed out!", description="You took too long to respond.", color=discord.Color.red())
+                await ctx.author.send(embed=embed)
+
+            except Exception as e:
+                DebugHandler.LogDebug(f" An error occurred: {e}")
+                raise Exception ("An error occurred while cleaning DMs." + str(e))
+                
+
 def setup(bot):
     bot.add_cog(Miscellaneous(bot))

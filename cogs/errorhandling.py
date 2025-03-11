@@ -33,10 +33,12 @@ class ErrorHandling(commands.Cog):
             return
         if isinstance(error, discord.ApplicationCommandInvokeError):
             await self.handle_error(ctx, error, "⚠️ Application Command Invoke Error")
+        if isinstance(original_error, commands.NoPrivateMessage):
+            await self.handle_error_without_log(ctx, original_error, "🚫 No Private Message")
         elif isinstance(error, commands.CommandOnCooldown):
             await self.handle_error_without_log(ctx, error, "⏰ Command on cooldown")
         elif isinstance(error, commands.MissingPermissions):
-            await self.handle_error_without_log(ctx, error, "🚫 Missing Permissions")  
+            await self.handle_error_without_log(ctx, error, "🚫 Missing Permissions")
         elif isinstance(error, commands.CommandError):
             await self.handle_error_without_log(ctx, error, "❌ Command Error")
         else:
@@ -44,61 +46,66 @@ class ErrorHandling(commands.Cog):
 
     async def handle_error(self, ctx, error, error_type):
         DebugHandler.LogDebug(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
+        
+        error_info = f"{error.__class__.__name__}: {error}"
+        tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
 
-        if "Fatal" in str(error):
-            await self.fatal_error("A fatal error occurred in the command.", error)
-            return  
+        # Prüfen, ob der Traceback länger als 1024 Zeichen ist
+        traceback_text = "".join(tb_lines)
+        if len(traceback_text) > 1024:
+            # Wenn der Traceback zu lang ist, erstellen wir eine Datei mit dem Traceback
+            traceback_file = await self.create_traceback_file(traceback_text)
 
-        embed = discord.Embed(
-            title=error_type,
-            description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
-            color=discord.Color.red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="📝 Error Details", value=f"```py\n{error}\n```", inline=False)
-        embed.add_field(name="👤 User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
-        embed.add_field(name="💬 Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
-        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
-        embed.add_field(name="🏰 Server", value=guild_info, inline=True)
-        embed.set_footer(
-            text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-        )
+            embed = discord.Embed(
+                title=error_type,
+                description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
+                color=discord.Color.red(),
+                timestamp=datetime.utcnow()
+            )
+            embed.add_field(name="📝 Error Details", value=f"{error_info}\n", inline=False)
+            embed.add_field(name="🔍 Traceback", value="Traceback too long, see attached file for full details.", inline=False)
+            embed.add_field(name="👤 User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
+            embed.add_field(name="💬 Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
+            guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
+            embed.add_field(name="🏰 Server", value=guild_info, inline=True)
+            embed.set_footer(
+                text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
 
-        try:
-            if isinstance(ctx, discord.ApplicationContext):
-                if ctx.response.is_done():
-                    await ctx.followup.send(embed=embed, ephemeral=True)
-                else:
-                    await ctx.response.send_message(embed=embed, ephemeral=True)
-            else:
-                await ctx.send(embed=embed)
-        except discord.Forbidden:
-            DebugHandler.LogDebug(f"Permission error while sending message in channel: {ctx.channel.id}")  # Log debug message
+            # Loggen des Fehlers mit der Datei
+            await self.log_error(ctx, error, embed, traceback_file)
+        else:
+            embed = discord.Embed(
+                title=error_type,
+                description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
+                color=discord.Color.red(),
+                timestamp=datetime.utcnow()
+            )
+            embed.add_field(name="📝 Error Details", value=f"{error_info}\n", inline=False)
+            embed.add_field(name="🔍 Traceback", value=f"{traceback_text}\n", inline=False)
+            embed.add_field(name="👤 User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
+            embed.add_field(name="💬 Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
+            guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
+            embed.add_field(name="🏰 Server", value=guild_info, inline=True)
+            embed.set_footer(
+                text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
 
-            owner = ctx.guild.owner if ctx.guild else None
-            if owner:
-                try:
-                    await owner.send(f"The bot doesn't have permission to send messages in the channel `{ctx.channel.name}`.")
-                except discord.Forbidden:
-                    DebugHandler.LogDebug(f"Failed to notify server owner about permission issue in channel {ctx.channel.id}.")
-
-            pass
-        except discord.HTTPException:
-            DebugHandler.LogDebug(f"HTTP error while sending error message in channel: {ctx.channel.id}")  # Log debug message
-            self.fatal_error("Failed to send error message.", "HTTPError")
-
-        await self.log_error(ctx, error, embed)
-
+            # Loggen des Fehlers ohne Datei
+            await self.log_error(ctx, error, embed)
 
     async def handle_error_without_log(self, ctx, error, error_type):
+        error_info = f"{error.__class__.__name__}: {error}"
+
         embed = discord.Embed(
             title=error_type,
             description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
-        embed.add_field(name="📝 Error Details", value=f"```py\n{error}\n```", inline=False)
+        embed.add_field(name="📝 Error Details", value=f"{error_info}\n", inline=False)
         embed.add_field(name="👤 User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
         embed.add_field(name="💬 Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
         guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
@@ -117,26 +124,44 @@ class ErrorHandling(commands.Cog):
             else:
                 await ctx.send(embed=embed)
         except discord.Forbidden:
-            self.fatal_error("Bot has no permission to send messages in this channel.", "ForbiddenError")
+            await self.fatal_error("Bot has no permission to send messages in this channel.", "ForbiddenError")
         except discord.HTTPException:
-            self.fatal_error("Failed to send error message.", "HTTPError")
+            await self.fatal_error("Failed to send error message.", "HTTPError")
 
-    async def log_error(self, ctx, error, embed):
+    async def log_error(self, ctx, error, embed, traceback_file=None):
         if not error_log_channel_id:
-            self.fatal_error("No error log channel ID set.", "MissingConfig")
+            await self.fatal_error("No error log channel ID set.", "MissingConfig")
             return
 
         try:
             log_channel = self.bot.get_channel(int(error_log_channel_id))
             if log_channel:
-                await log_channel.send(embed=embed)
+                # Falls eine Datei mit dem Traceback vorhanden ist, anhängen
+                if traceback_file:
+                    await log_channel.send(embed=embed, file=traceback_file)
+                else:
+                    await log_channel.send(embed=embed)
             else:
-                self.fatal_error(f"Could not find the log channel with ID: {error_log_channel_id}", "InvalidChannel")
+                await self.fatal_error(f"Could not find the log channel with ID: {error_log_channel_id}", "InvalidChannel")
         except Exception as e:
-            self.fatal_error("Error logging the error", e)
+            await self.fatal_error("Error logging the error", e)
             traceback.print_exc()
 
+    async def create_traceback_file(self, traceback_text):
+        # Erstelle eine Textdatei mit dem Traceback
+        file_name = f"traceback_{datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+        file_path = os.path.join("logs", file_name)  # Stellen Sie sicher, dass der "logs" Ordner existiert
+        os.makedirs("logs", exist_ok=True)
+
+        with open(file_path, "w") as f:
+            f.write(traceback_text)
+
+        # Sende die Datei
+        file = discord.File(file_path, filename=file_name)
+        return file
+
     async def fatal_error(self, error_message, error):
+        DebugHandler.LogDebug(f"FATAL ERROR: {error_message} | Details: {error}")
         print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         print(Fore.RED + Style.BRIGHT + f"FATAL ERROR: {error_message}")
         print(Fore.RED + Style.BRIGHT + f"Error details: {error}")
@@ -149,7 +174,7 @@ class ErrorHandling(commands.Cog):
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
-        fatal_embed.add_field(name="📝 Error Details", value=f"```py\n{error}\n```", inline=False)
+        fatal_embed.add_field(name="📝 Error Details", value=f"{error.__class__.__name__}: {error}\n", inline=False)
         fatal_embed.set_footer(text="FATAL System Failure")
 
         try:
