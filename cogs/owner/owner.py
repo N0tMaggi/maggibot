@@ -49,6 +49,7 @@ class OwnerCommands(commands.Cog):
     @commands.is_owner()
     async def stop(self, ctx: discord.ApplicationContext):
         if self.shutdown_in_progress:
+            DH.LogDebug(f" Shutdown already in progress, skipping...")
             return await ctx.respond("Shutdown already in progress!", ephemeral=True)
         
         self.shutdown_in_progress = True
@@ -60,6 +61,7 @@ class OwnerCommands(commands.Cog):
                 description="Only the bot owner can perform this action",
                 color=discord.Color.brand_red()
             )
+            DH.LogDebug(f" Access denied for {ctx.author} to stop the bot")
             return await ctx.respond(embed=embed, ephemeral=True)
         
         if not await self.check_running_tasks():
@@ -68,8 +70,10 @@ class OwnerCommands(commands.Cog):
                 description="There are still active tasks running. Please try again later.",
                 color=discord.Color.yellow()
             )
+            DH.LogDebug(f" Safety check failed, stopping...")
             return await ctx.respond(embed=embed, ephemeral=True)
         
+        DH.LogDebug(f" Stopping the bot...")
         await self.shutdown_sequence(ctx)
         
         try:
@@ -86,6 +90,7 @@ class OwnerCommands(commands.Cog):
     @commands.is_owner()
     async def reboot(self, ctx: discord.ApplicationContext):
         if self.reboot_in_progress:
+            DH.LogDebug(f" Reboot already in progress for {ctx.author}")
             return await ctx.respond("Reboot already in progress!", ephemeral=True)
         
         self.reboot_in_progress = True
@@ -105,6 +110,7 @@ class OwnerCommands(commands.Cog):
                 description="There are still active tasks running. Please try again later.",
                 color=discord.Color.yellow()
             )
+            DH.LogDebug(f" Safety check failed, skipping...")
             return await ctx.respond(embed=embed, ephemeral=True)
         
         await self.reboot_sequence(ctx)
