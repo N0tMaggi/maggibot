@@ -7,7 +7,10 @@
         "role_to_give": 1270151687373459569,
         "modrole": 1283510932412170380,
         "ghostping_channel": 1269752582822297713,
-        "autoroleid": 1280148426180395040
+        "autoroleid": 1280148426180395040,
+        "ticketrole": 1283510932412170380,
+        "ticketlogchannel": 1338113356137107466,
+        "ticketcategorie": 1283510935209771019
     },
     "1227993713813356654": {
         "protectionlogchannel": 1313121451703799930,

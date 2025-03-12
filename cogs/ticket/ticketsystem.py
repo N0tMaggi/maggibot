@@ -45,8 +45,101 @@ class TicketSystem(Cog):
         return True
 
     def generate_ticket_id(self, author_id):
-        # Kombiniere die User-ID mit dem aktuellen Timestamp für eine eindeutige Ticket-ID
         return f"{author_id}-{int(datetime.datetime.utcnow().timestamp())}"
+    
+
+    @commands.slash_command(name="setup-ticketsystem", description="Setup the Ticket System for the server")
+    @commands.has_permissions(administrator=True)
+    async def setup_ticketsystem(
+        self,
+        ctx: discord.ApplicationContext,
+        role: discord.Role,
+        logchannel: discord.TextChannel,
+        categorie: discord.CategoryChannel
+    ):
+        try:
+            guild_id = str(ctx.guild.id)
+            DebugHandler.LogDebug(f"Current server config for guild {guild_id}: {self.serverconfig}")
+
+            if guild_id not in self.serverconfig:
+                self.serverconfig[guild_id] = {}
+
+            self.serverconfig[guild_id]["ticketrole"] = role.id
+            self.serverconfig[guild_id]["ticketlogchannel"] = logchannel.id
+            self.serverconfig[guild_id]["ticketcategorie"] = categorie.id
+            DebugHandler.LogDebug(f"Updated server config for guild {guild_id}: {self.serverconfig[guild_id]}")
+
+            config.saveserverconfig(self.serverconfig)
+
+            embed = discord.Embed(
+                title="Ticket System Setup",
+                description="The Ticket System has been successfully set up.",
+                color=0x00ff00,
+                timestamp=datetime.datetime.utcnow()
+            )
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                             icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
+            embed.add_field(name="Ticket Role", value=role.mention, inline=True)
+            embed.add_field(name="Ticket Log Channel", value=logchannel.mention, inline=True)
+            embed.add_field(name="Ticket Category", value=categorie.name, inline=True)
+            embed.add_field(name="Guild ID", value=ctx.guild.id, inline=False)
+
+            await ctx.respond(embed=embed)
+
+        except Exception as e:
+            DebugHandler.LogDebug(f"An error occurred while setting up the Ticket System: {e}")
+            raise Exception(f"An error occurred while setting up the Ticket System: {e}")
+        
+
+    @commands.slash_command(name="setup-deleteticketconfig", description="Deletes the Ticket System configuration entries for the server")
+    @commands.has_permissions(administrator=True)
+    async def setup_deleteticketconfig(
+        self,
+        ctx: discord.ApplicationContext
+    ):
+        try:
+            guild_id = str(ctx.guild.id)
+            DebugHandler.LogDebug(f"Current server config for guild {guild_id}: {self.serverconfig}")
+
+            if guild_id not in self.serverconfig or "ticketrole" not in self.serverconfig[guild_id]:
+                embed = discord.Embed(
+                    title="Ticket System Setup Deletion",
+                    description="No Ticket System configuration found for this server.",
+                    color=0xff0000,
+                    timestamp=datetime.datetime.utcnow()
+                )
+                embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                                 icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+                await ctx.respond(embed=embed)
+                return
+
+            self.serverconfig[guild_id].pop("ticketrole", None)
+            self.serverconfig[guild_id].pop("ticketlogchannel", None)
+            self.serverconfig[guild_id].pop("ticketcategorie", None)
+            DebugHandler.LogDebug(f"Removed Ticket System entries for guild {guild_id}: {self.serverconfig[guild_id]}")
+
+            config.saveserverconfig(self.serverconfig)
+
+            embed = discord.Embed(
+                title="Ticket System Setup Deletion",
+                description="The Ticket System configuration entries have been successfully deleted.",
+                color=0xff0000,
+                timestamp=datetime.datetime.utcnow()
+            )
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                             icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+
+            await ctx.respond(embed=embed)
+
+        except Exception as e:
+            DebugHandler.LogDebug(f"An error occurred while deleting the Ticket System configuration entries: {e}")
+            raise Exception(f"An error occurred while deleting the Ticket System configuration entries: {e}")
+
+
 
     @commands.slash_command(name="ticket-create", description="Create a ticket for support")
     async def ticket_create(self, ctx: discord.ApplicationContext):

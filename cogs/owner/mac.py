@@ -5,7 +5,7 @@ import datetime
 import os
 import asyncio
 import traceback
-
+from handlers.env import get_mac_banner
 AUTHORIZED_ID = int(os.getenv("OWNER_ID"))
 JSON_FILE = "data/mac.json"
 NOTIFY_CHANNEL_ID = 1341152168077557870  
@@ -50,6 +50,8 @@ class MacBan(commands.Cog):
                 dm_embed.add_field(name="🛡️ Server", value=attempted_server, inline=True)
                 dm_embed.add_field(name="📅 Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
                 dm_embed.add_field(name="📝 Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
+                dm_embed.add_field(name="📝 Dont know what to do?", value="Join our support server for help: https://discord.ag7-dev.de", inline=False)
+                dm_embed.set_image(url=get_mac_banner())
                 await member.send(embed=dm_embed)
             except discord.Forbidden:
                 pass
@@ -71,9 +73,10 @@ class MacBan(commands.Cog):
                 notify_embed.add_field(name="📅 Ban Date", value=ban_record.get("bandate", "Unknown"), inline=True)
                 notify_embed.add_field(name="📝 Reason", value=trim_field(ban_record.get("reason", "No reason provided")), inline=True)
                 notify_embed.set_footer(text="🔒 User is on the global ban list.")
+                notify_embed.set_image(url=get_mac_banner())
                 await channel.send(embed=notify_embed)
     
-    @commands.slash_command(name="macban", description="Globally ban a user and add them to the global ban list.")
+    @commands.slash_command(name="mac-ban", description="Globally ban a user and add them to the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macban(self, ctx: discord.ApplicationContext, user: discord.User, reason: str = "No reason provided"):
         if not self.is_authorized(ctx):
@@ -87,6 +90,7 @@ class MacBan(commands.Cog):
                 description=f"🔨 {user.mention} is already globally banned.",
                 color=discord.Color.orange()
             )
+            embed.set_image(url=get_mac_banner())
             await ctx.respond(embed=embed)
             return
 
@@ -109,6 +113,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="Reason", value=reason, inline=False)
         embed.add_field(name="Banned By", value=ctx.author.mention, inline=True)
         embed.add_field(name="Ban Date", value=ban_record["bandate"], inline=True)
+        embed.set_image(url=get_mac_banner())
         await ctx.respond(embed=embed)
 
         try:
@@ -119,6 +124,7 @@ class MacBan(commands.Cog):
             )
             user_embed.add_field(name="📅 Ban Date", value=ban_record["bandate"], inline=True)
             user_embed.add_field(name="📝 Reason", value=trim_field(reason), inline=True)   
+            user_embed.set_image(url=get_mac_banner())
             await user.send(embed=user_embed)
         except discord.Forbidden:
             embed = discord.Embed(
@@ -126,10 +132,11 @@ class MacBan(commands.Cog):
                 description="The user has their DMs closed.",
                 color=discord.Color.red()
             )
+            embed.set_image(url=get_mac_banner())
             await ctx.send(embed=embed)
 
 
-    @commands.slash_command(name="macunban", description="Remove a global ban for a user.")
+    @commands.slash_command(name="mac-unban", description="Remove a global ban for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macunban(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -144,6 +151,7 @@ class MacBan(commands.Cog):
                 description=f"ℹ️ {user.mention} is not globally banned.",
                 color=discord.Color.orange()
             )
+            embed.set_image(url=get_mac_banner())
             await ctx.respond(embed=embed)
             return
 
@@ -153,6 +161,7 @@ class MacBan(commands.Cog):
             description=f"✅ {user.mention} has been removed from the global ban list.",
             color=discord.Color.green()
         )
+        embed.set_image(url=get_mac_banner())
         await ctx.respond(embed=embed)
 
         try:
@@ -161,6 +170,7 @@ class MacBan(commands.Cog):
                 description="You have been removed from the global ban list by MAC™.",
                 color=discord.Color.green()
             )
+            user_embed.set_image(url=get_mac_banner())
             await user.send(embed=user_embed)
         except discord.Forbidden:
             embed = discord.Embed(
@@ -168,10 +178,11 @@ class MacBan(commands.Cog):
                 description="The user has their DMs closed.",
                 color=discord.Color.red()
                 )
+            embed.set_image(url=get_mac_banner())
             await ctx.send(embed=embed)
             
 
-    @commands.slash_command(name="macinfo", description="Display overall info about the global ban list.")
+    @commands.slash_command(name="mac-info", description="Display overall info about the global ban list.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def macinfo(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -189,11 +200,12 @@ class MacBan(commands.Cog):
             embed.add_field(name="📰 Recent Bans", value=trim_field(ban_list), inline=False)
         else:
             embed.add_field(name="🚫 No Bans", value="The global ban list is empty.", inline=False)
-    
+            
+        embed.set_image(url=get_mac_banner())
         embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
         await ctx.respond(embed=embed)
 
-    @commands.slash_command(name="maclookup", description="Lookup detailed ban info for a user.")
+    @commands.slash_command(name="mac-lookup", description="Lookup detailed ban info for a user.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maclookup(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -209,6 +221,7 @@ class MacBan(commands.Cog):
                 embed.add_field(name="Reason", value=trim_field(ban["reason"]), inline=True)
                 embed.add_field(name="Server", value=f"{ban['servername']} (ID: {ban['serverid']})", inline=False)
                 embed.add_field(name="Banned By", value=ban["bannedby"], inline=True)
+                embed.set_image(url=get_mac_banner())
                 await ctx.respond(embed=embed)
                 return
 
@@ -217,9 +230,11 @@ class MacBan(commands.Cog):
             description=f"ℹ️ {user.mention} is not globally banned.",
             color=discord.Color.green()
         )
+        embed.set_image(url=get_mac_banner())
+
         await ctx.respond(embed=embed)
 
-    @commands.slash_command(name="maccheck", description="Check if a user is globally banned.")
+    @commands.slash_command(name="mac-check", description="Check if a user is globally banned.")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def maccheck(self, ctx: discord.ApplicationContext, user: discord.User):
         if not self.is_authorized(ctx):
@@ -245,7 +260,7 @@ class MacBan(commands.Cog):
         )
         await ctx.respond(embed=embed)
 
-    @commands.slash_command(name="macbanall", description="Ban all users from the global ban list in this server.")
+    @commands.slash_command(name="mac-banall", description="Ban all users from the global ban list in this server.")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def macbanall(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -285,9 +300,10 @@ class MacBan(commands.Cog):
         embed = discord.Embed(title="Global Ban All Executed", color=discord.Color.red())
         embed.add_field(name="Successfully Banned", value="\n".join(banned_members) if banned_members else "None", inline=False)
         embed.add_field(name="Failed to Ban", value="\n".join(failed_members) if failed_members else "None", inline=False)
+        embed.set_image(url=get_mac_banner())
         await ctx.respond(embed=embed)
 
-    @commands.slash_command(name="macgetserverbannedusersandban", description="Import all banned users from this server into the global ban list.")
+    @commands.slash_command(name="mac-getserverbannedusersandban", description="Import all banned users from this server into the global ban list.")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macgetserverbannedusersandban(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -351,11 +367,13 @@ class MacBan(commands.Cog):
         summary_embed.add_field(name="Imported Users", value=f"{len(imported_users)}", inline=True)
         summary_embed.add_field(name="Skipped (Already Imported)", value=f"{len(skipped_users)}", inline=True)
         summary_embed.set_footer(text="See attached file for details.")
+        summary_embed.set_image(url=get_mac_banner())
+
 
         await ctx.respond(embed=summary_embed, file=discord.File(fp=file_obj, filename="imported_users.txt"))
 
 
-    @commands.slash_command(name="macunbanallserver", description="Unban all users from this server that were imported via the global ban list.")
+    @commands.slash_command(name="mac-unbanallserver", description="Unban all users from this server that were imported via the global ban list.")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def macunbanallserver(self, ctx: discord.ApplicationContext):
         if not self.is_authorized(ctx):
@@ -378,6 +396,7 @@ class MacBan(commands.Cog):
                 description="ℹ️ There are no global ban records for this server.",
                 color=discord.Color.green()
             )
+            embed.set_image(url=get_mac_banner())
             await ctx.respond(embed=embed)
             return
 
@@ -397,10 +416,11 @@ class MacBan(commands.Cog):
         embed = discord.Embed(title="Unban All from Server", color=discord.Color.green())
         embed.add_field(name="Successfully Unbanned", value="\n".join(unbanned_users) if unbanned_users else "None", inline=False)
         embed.add_field(name="Failed to Unban", value="\n".join(failed_users) if failed_users else "None", inline=False)
+        embed.set_image(url=get_mac_banner())
         await ctx.respond(embed=embed)
 
 
-    @commands.slash_command(name="maclookupserver", description="Lookup global ban records for a specific server by ID.")
+    @commands.slash_command(name="mac-lookupserver", description="Lookup global ban records for a specific server by ID.")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def maclookupserver(self, ctx: discord.ApplicationContext, serverid: str):
         if not self.is_authorized(ctx):
@@ -422,6 +442,7 @@ class MacBan(commands.Cog):
         embed.add_field(name="🔍 Server ID", value=serverid, inline=True)
         server_name = server_bans[0].get("servername", "Unknown")
         embed.add_field(name="🏷️ Server Name", value=server_name, inline=True)
+        embed.set_image(url=get_mac_banner())
 
         ban_list = ""
         for ban in server_bans:
@@ -429,6 +450,72 @@ class MacBan(commands.Cog):
 
         embed.add_field(name="👥 Banned Users", value=trim_field(ban_list) or "No banned users found.", inline=False)
         await ctx.respond(embed=embed)
+
+    @commands.slash_command(name="mac-scanserver", description="Scans if any user on the server is globally banned.")
+    @commands.cooldown(1, 180, commands.BucketType.user)
+    @commands.has_permissions(administrator=True)
+    async def macscanserver(self, ctx: discord.ApplicationContext):
+
+        loading_embed = discord.Embed(
+            title="🔄 Scanning for Banned Users...",
+            description="Please wait while I scan the server for globally banned users. This may take a moment.",
+            color=discord.Color.blue()
+        )
+        loading_embed.set_footer(text="Loading... Please be patient.")
+        loading_message = await ctx.respond(embed=loading_embed)
+
+        global_bans = load_bans()
+        banned_users = []
+
+        for member in ctx.guild.members:
+            for ban in global_bans:
+                if str(ban.get("serverid")) == str(ctx.guild.id) and str(ban.get("id")) == str(member.id):
+                    banned_users.append(ban)
+                    break
+
+        if not banned_users:
+            embed = discord.Embed(
+                title="🚫 No Banned Users Found",
+                description="There are no users in this server who are currently banned globally.",
+                color=discord.Color.green()
+            )
+            embed.set_image(url=get_mac_banner())
+            embed.set_footer(text="Global Ban Scan completed.")
+            await loading_message.edit(embed=embed)
+            return
+
+        embed = discord.Embed(
+            title="🚫 Banned Users Found",
+            description="The following users are globally banned and are currently on this server:",
+            color=discord.Color.red()
+        )
+
+        banned_user_details = []
+        for ban in banned_users:
+            member = ctx.guild.get_member(ban["id"])
+            if member:
+                banned_user_details.append(f"{member.mention} - ID: {ban['id']}")
+                embed.add_field(
+                    name=f"{member.name} (ID: {ban['id']})",
+                    value=f"**Ban Date**: {ban['bandate']}\n"
+                           f"**Reason**: {trim_field(ban['reason'])}\n"
+                           f"**Server**: {ban['servername']} (ID: {ban['serverid']})\n"
+                           f"**Banned By**: {ban['bannedby']}",
+                    inline=False
+                )
+
+        embed.add_field(
+            name="Banned Users List",
+            value="\n".join(banned_user_details),
+            inline=False
+        )
+        embed.set_image(url=get_mac_banner())
+        embed.set_footer(text="Global Ban Scan completed.")
+        await loading_message.edit(embed=embed)
+
+
+
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(MacBan(bot))

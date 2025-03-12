@@ -28,31 +28,7 @@ class Miscellaneous(commands.Cog):
 
             await ctx.respond(random.choice(responses))
 
-        @commands.slash_command(name= "stop", description="[Owner only] Stop the bot 🛑")
-        async def stop(self, ctx):
-            authorised = int(os.getenv('OWNER_ID'))
-            if ctx.author.id == authorised:
-                embed = discord.Embed(
-                    title="🛑 Bot Shutdown",
-                    description="The bot is shutting down... Please wait a moment.",
-                    color=discord.Color.red()
-                )
-                embed.add_field(name="Shutdown Reason", value="Manual shutdown initiated by the owner.", inline=False)
-                embed.add_field(name="Time of Shutdown", value=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"), inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-                await ctx.respond(embed=embed)
-                await self.bot.close()
-            else:
-                embed = discord.Embed(
-                    title="🚫 Permission Denied",
-                    description="You do not have permission to stop the bot. Please contact the owner for assistance.",
-                    color=discord.Color.orange()
-                )
-                embed.add_field(name="Owner ID", value=os.getenv('OWNER_ID'), inline=True)
-                embed.add_field(name="Your ID", value=ctx.author.id, inline=True)
-                embed.add_field(name="Contact Method", value="Please send a direct message to the owner.", inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author} | ID: {ctx.author.id}", icon_url=ctx.author.avatar.url)
-                await ctx.respond(embed=embed)
+
 
         @commands.slash_command(name= "serverinfo", description="Get Info from a server")
         async def serverinfo(self, ctx):
@@ -72,19 +48,7 @@ class Miscellaneous(commands.Cog):
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
             await ctx.respond(embed=embed)
 
-        @commands.slash_command(name= "reboot", description="[Owner only] Reboot the bot 🔄")
-        @commands.is_owner()
-        async def reboot(self, ctx):
-            embed = discord.Embed(
-                title="🤖 Bot Reboot",
-                description="The bot is rebooting... Please wait a moment. ⏰",
-                color=discord.Color.blue()
-            )
-            embed.add_field(name="🔧 Reboot Reason", value="Manual reboot initiated by the owner.", inline=False)
-            embed.add_field(name="🔄 Reboot Status", value="In Progress...", inline=False)
-            embed.set_footer(text=f"Requested by {ctx.author} | Rebooting...", icon_url=ctx.author.avatar.url)
-            await ctx.respond(embed=embed)
-            await self.bot.close()
+
 
         @commands.slash_command(name= "userinfo", description="Get Info from a user")
         async def userinfo(self, ctx, target: discord.Member = None):

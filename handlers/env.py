@@ -62,3 +62,11 @@ def get_banner(status):
         return banner
     except Exception as e:
         raise Exception(f"Error while getting banner: {e}")
+    
+
+def get_mac_banner():
+    try:
+        banner = os.getenv('MAC_NORMAL_BANNER')
+        return banner
+    except Exception as e:
+        raise Exception(f"Error while getting MAC banner: {e}")
