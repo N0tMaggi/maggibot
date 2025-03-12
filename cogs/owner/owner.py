@@ -1,71 +1,124 @@
 import discord
 from discord.ext import commands
 import datetime
-import handlers.debug as DH
 import os
-
+import asyncio
+from typing import Optional
+import handlers.debug as DH
 
 class OwnerCommands(commands.Cog):
-        def __init__(self, bot):
-            self.bot = bot
+    def __init__(self, bot):
+        self.bot = bot
+        self.shutdown_in_progress = False
+        self.reboot_in_progress = False
 
+    async def check_running_tasks(self) -> bool:
+        # Work in progress
+        return True
+    
 
-        @commands.slash_command(name= "stop", description="[Owner only] Stop the bot 🛑")
-        async def stop(self, ctx):
-            authorised = int(os.getenv('OWNER_ID'))
-            if ctx.author.id == authorised:
-                embed = discord.Embed(
-                    title="🛑 Bot Shutdown",
-                    description="The bot is shutting down... Please wait a moment.",
-                    color=discord.Color.red()
-                )
-                embed.add_field(name="Shutdown Reason", value="Manual shutdown initiated by the owner.", inline=False)
-                embed.add_field(name="Time of Shutdown", value=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"), inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-                await ctx.respond(embed=embed)
-                DH.LogDebug(f"Bot shutdown initiated by {ctx.author} ({ctx.author.id})")
-                await self.bot.close()
-            else:
-                embed = discord.Embed(
-                    title="🚫 Permission Denied",
-                    description="You do not have permission to stop the bot. Please contact the owner for assistance.",
-                    color=discord.Color.orange()
-                )
-                embed.add_field(name="Owner ID", value=os.getenv('OWNER_ID'), inline=True)
-                embed.add_field(name="Your ID", value=ctx.author.id, inline=True)
-                embed.add_field(name="Contact Method", value="Please send a direct message to the owner.", inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author} | ID: {ctx.author.id}", icon_url=ctx.author.avatar.url)
-                DH.LogDebug(f" Stop Permission denied for {ctx.author} | ID: {ctx.author.id}") 
-                await ctx.respond(embed=embed)
+    async def shutdown_sequence(self, ctx: discord.ApplicationContext):
+        embed = discord.Embed(
+            title="🛑 Bot Shutdown",
+            description="Shutdown sequence initiated...",
+            color=discord.Color.red()
+        )
+        msg = await ctx.respond(embed=embed)
+        
+        for i in range(1, 6):
+            progress = "▰" * i + "▱" * (5 - i)
+            embed.description = f"Shutting down... [{progress}] ({i*20}%)"
+            await msg.edit(embed=embed)
+            await asyncio.sleep(0.5)
 
+    async def reboot_sequence(self, ctx: discord.ApplicationContext):
+        embed = discord.Embed(
+            title="🔄 Bot Reboot",
+            description="Reboot sequence initiated...",
+            color=discord.Color.blue()
+        )
+        msg = await ctx.respond(embed=embed)
+        
+        for i in range(1, 6):
+            progress = "▰" * i + "▱" * (5 - i)
+            embed.description = f"Rebooting... [{progress}] ({i*20}%)"
+            await msg.edit(embed=embed)
+            await asyncio.sleep(0.5)
 
-        @commands.slash_command(name= "reboot", description="[Owner only] Reboot the bot 🔄")
-        async def reboot(self, ctx):
-            authorised = int(os.getenv('OWNER_ID'))
-            if ctx.author.id == authorised:
-                embed = discord.Embed(
-                    title="🤖 Bot Reboot",
-                    description="The bot is rebooting... Please wait a moment. ⏰",
-                    color=discord.Color.blue()
-                )
-                embed.add_field(name="🔧 Reboot Reason", value="Manual reboot initiated by the owner.", inline=False)
-                embed.add_field(name="🔄 Reboot Status", value="In Progress...", inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author} | Rebooting...", icon_url=ctx.author.avatar.url)
-                await ctx.respond(embed=embed)
-                DH.LogDebug(f"Reboot initiated by {ctx.author} | ID: {ctx.author.id}")
-                await self.bot.close()
-            else:
-                embed = discord.Embed(
-                    title="🚫 Permission Denied",
-                    description="You do not have permission to reboot the bot. Please contact the owner for assistance.",
-                    color=discord.Color.orange()
-                )
-                embed.add_field(name="Owner ID", value=os.getenv('OWNER_ID'), inline=True)
-                embed.add_field(name="Your ID", value=ctx.author.id, inline=True)
-                embed.add_field(name="Contact Method", value="Please send a direct message to the owner.", inline=False)
-                embed.set_footer(text=f"Requested by {ctx.author} | ID: {ctx.author.id}", icon_url=ctx.author.avatar.url)
-                DH.LogDebug(f" Reboot Permission denied for {ctx.author} | ID: {ctx.author.id}") 
-                await ctx.respond(embed=embed)
+    @commands.slash_command(name="stop", description="[Owner only] Stop the bot 🛑")
+    @commands.is_owner()
+    async def stop(self, ctx: discord.ApplicationContext):
+        if self.shutdown_in_progress:
+            return await ctx.respond("Shutdown already in progress!", ephemeral=True)
+        
+        self.shutdown_in_progress = True
+        authorised = int(os.getenv('OWNER_ID'))
+        
+        if ctx.author.id != authorised:
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="Only the bot owner can perform this action",
+                color=discord.Color.brand_red()
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+        
+        if not await self.check_running_tasks():
+            embed = discord.Embed(
+                title="⚠️ Safety Check Failed",
+                description="There are still active tasks running. Please try again later.",
+                color=discord.Color.yellow()
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+        
+        await self.shutdown_sequence(ctx)
+        
+        try:
+            await self.bot.close()
+        except Exception as e:
+            DH.LogError(f"Shutdown failed: {str(e)}")
+            await ctx.edit(embed=discord.Embed(
+                title="❌ Shutdown Failed",
+                description="An error occurred during shutdown",
+                color=discord.Color.dark_red()
+            ))
+
+    @commands.slash_command(name="reboot", description="[Owner only] Reboot the bot 🔄")
+    @commands.is_owner()
+    async def reboot(self, ctx: discord.ApplicationContext):
+        if self.reboot_in_progress:
+            return await ctx.respond("Reboot already in progress!", ephemeral=True)
+        
+        self.reboot_in_progress = True
+        authorised = int(os.getenv('OWNER_ID'))
+        
+        if ctx.author.id != authorised:
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="Only the bot owner can perform this action",
+                color=discord.Color.brand_red()
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+        
+        if not await self.check_running_tasks():
+            embed = discord.Embed(
+                title="⚠️ Safety Check Failed",
+                description="There are still active tasks running. Please try again later.",
+                color=discord.Color.yellow()
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+        
+        await self.reboot_sequence(ctx)
+        
+        try:
+            await self.bot.close()
+            
+        except Exception as e:
+            DH.LogError(f"Reboot failed: {str(e)}")
+            await ctx.edit(embed=discord.Embed(
+                title="❌ Reboot Failed",
+                description="An error occurred during reboot",
+                color=discord.Color.dark_red()
+            ))
 
 def setup(bot):
     bot.add_cog(OwnerCommands(bot))

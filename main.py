@@ -10,6 +10,10 @@ from dotenv import load_dotenv
 import time
 import handlers.debug as DebugHandler
 import logging
+from colorama import Fore, Style, init
+
+
+init(autoreset=True)
 
 # Load the .env file
 load_dotenv()
@@ -47,6 +51,19 @@ def check_json_files(directory):
                 return False
     return True
 
+def delete_traceback_files():
+    for filename in os.listdir('./logs'):
+        if filename.startswith('traceback_'):
+            try:
+                os.remove(os.path.join('./logs', filename))
+                DebugHandler.LogDebug(f" Deleted traceback file {filename}")
+                print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+                print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
+            except Exception as e:
+                DebugHandler.LogDebug(f" Error deleting log file {filename}: {e}")
+                raise Exception (f"Error deleting log file {filename}: {e}")
+    print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+    
 def DEBUG_MODE_PRINT_ENV():
     if DEBUG == 'TRUE':
         DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
@@ -99,12 +116,15 @@ try:
         pass
     
     if not check_json_files('data'):
-        print("Not all JSON files are valid")
+        print(Fore.RED + Style.BRIGHT + f"Not all JSON files are valid")
         os._exit(1)
     else:
-        print("All JSON files are valid!")
+        print(Fore.GREEN + Style.BRIGHT + f"All JSON files are valid!")
     
+
     clear_screen()
+    delete_traceback_files()
+    time.sleep(1)
     print('------------STARTING THE BOT------------')
     print("""
     ╔╦╗┌─┐┌─┐┌─┐┬╔═╗┬ ┬┌─┐┌┬┐┌─┐┌┬┐

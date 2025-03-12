@@ -30,60 +30,244 @@ class Miscellaneous(commands.Cog):
 
 
 
-        @commands.slash_command(name= "serverinfo", description="Get Info from a server")
-        async def serverinfo(self, ctx):
+        @commands.slash_command(name="serverinfo", description="Get detailed information about the server")
+        async def serverinfo(self, ctx: discord.ApplicationContext):
+            await ctx.defer() 
             server = ctx.guild
-            embed = discord.Embed(title=f"Server Info - {server.name}", color=0x00
+
+            thumbnail_url = server.icon.url if server.icon else None
+            owner = server.owner
+            owner_avatar = owner.display_avatar.url if owner else None
+
+            verification_level = str(server.verification_level).title()
+
+            boost_level = server.premium_tier
+            boosts = server.premium_subscription_count
+
+            features = server.features
+            features_list = [f.replace('_', ' ').title() for f in features]
+            if features_list:
+                features_str = ", ".join(features_list)
+                if len(features_str) > 1024:
+                    features_str = features_str[:1021] + "..."
+            else:
+                features_str = "None"
+
+            text_channels = len(server.text_channels)
+            voice_channels = len(server.voice_channels)
+            categories = len(server.categories)
+            channels_str = f"💬 Text: {text_channels}\n🔊 Voice: {voice_channels}\n📁 Categories: {categories}"
+
+            embed = discord.Embed(
+                title=f"📊  𝚂𝙴𝚁𝚅𝙴𝚁 𝙸𝙽𝙵𝙾: {server.name}",
+                description=f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n{server.description or '*No description*'}",
+                color=0x5865F2
             )
-            embed.set_thumbnail(url=server.icon.url)
-            embed.add_field(name="Server Name", value=server.name, inline=True)
-            embed.add_field(name="Server ID", value=server.id, inline=True)
-            embed.add_field(name="Owner", value=server.owner, inline=True)
-            embed.add_field(name="Member Count", value=server.member_count, inline=True)
-            embed.add_field(name="Created At", value=server.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
-            embed.add_field(name="Boost Level", value=server.premium_tier, inline=True)
-            embed.add_field(name="Verification Level", value=server.verification_level, inline=True)
-            embed.add_field(name="Max Members", value=server.max_members, inline=True)
-            embed.set_author(name=server.owner, icon_url=server.owner.avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
+
+            if thumbnail_url:
+                embed.set_thumbnail(url=thumbnail_url)
+            if server.banner:
+                embed.set_image(url=server.banner.url)
+
+            embed.add_field(name="\n👑  𝙾𝚠𝚗𝚎𝚛", 
+                            value=f"» {owner.mention if owner else 'Unknown'}\n{'-'*18}", 
+                            inline=False)
+
+            embed.add_field(name="🆔  𝚂𝚎𝚛𝚟𝚎𝚛 𝙸𝙳", 
+                            value=f"```{server.id}```",
+                            inline=True)
+
+            embed.add_field(name="📆  𝙲𝚛𝚎𝚊𝚝𝚎𝚍 𝙾𝚗", 
+                            value=f"» {discord.utils.format_dt(server.created_at, 'D')}\n» ({discord.utils.format_dt(server.created_at, 'R')})",
+                            inline=True)
+
+            embed.add_field(name="\n👥  𝙼𝚎𝚖𝚋𝚎𝚛𝚜", 
+                            value=f"▹ **Total:** {server.member_count}\n"
+                                  f"▹ **Online:** {server.approximate_presence_count if hasattr(server, 'approximate_presence_count') else 'N/A'}\n"
+                                  f"{'-'*30}",
+                            inline=False)
+
+            embed.add_field(name="🚀  𝙱𝚘𝚘𝚜𝚝𝚜", 
+                            value=f"» Level {boost_level}\n"
+                                  f"» {boosts} Boosts", 
+                            inline=True)
+
+            embed.add_field(name="🛡️  𝚅𝚎𝚛𝚒𝚏𝚒𝚌𝚊𝚝𝚒𝚘𝚗", 
+                            value=f"» {verification_level}", 
+                            inline=True)
+
+            embed.add_field(name="\n📚  𝙲𝚑𝚊𝚗𝚗𝚎𝚕𝚜", 
+                            value=f"▹ 💬 Text: {text_channels}\n"
+                                  f"▹ 🔊 Voice: {voice_channels}\n"
+                                  f"▹ 📁 Categories: {categories}\n"
+                                  f"{'-'*30}",
+                            inline=False)
+
+            embed.add_field(name="🎭  𝚁𝚘𝚕𝚎𝚜", 
+                            value=f"» {len(server.roles)}", 
+                            inline=True)
+
+            embed.add_field(name="😄  𝙴𝚖𝚘𝚓𝚒𝚜", 
+                            value=f"» {len(server.emojis)}", 
+                            inline=True)
+
+            embed.add_field(name="\n✨  𝙵𝚎𝚊𝚝𝚞𝚛𝚎𝚜", 
+                            value=f"```{features_str}```\n"
+                                  f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", 
+                            inline=False)
+
+            embed.set_footer(
+                text=f"🔮 Requested by {ctx.author}",
+                icon_url=ctx.author.display_avatar.url
+            )
+            embed.timestamp = server.created_at
+
             await ctx.respond(embed=embed)
 
 
 
-        @commands.slash_command(name= "userinfo", description="Get Info from a user")
-        async def userinfo(self, ctx, target: discord.Member = None):
+        @commands.slash_command(name="userinfo", description="Get detailed information about a user")
+        async def userinfo(self, ctx: discord.ApplicationContext, target: discord.Member = None):
+            await ctx.defer()
             target = target or ctx.author
-            embed = discord.Embed(
-                title="👤 User Information",
-                colour=target.colour,
-                timestamp=datetime.utcnow()
-            )
-            embed.set_thumbnail(url=target.avatar.url)
 
+            # Pre-calculate values with error handling
+            created_at = discord.utils.format_dt(target.created_at, "F")
+            joined_at = discord.utils.format_dt(target.joined_at, "F") if target.joined_at else "Unknown"
+            premium_since = discord.utils.format_dt(target.premium_since, "R") if target.premium_since else "Not boosting"
             user_guilds_count = sum(1 for guild in self.bot.guilds if target in guild.members)
 
-            fields = [
-                ("📝 Name", str(target), True),
-                ("🆔 ID", target.id, True),
-                ("🤖 Bot?", "Yes" if target.bot else "No", True),
-                ("🏅 Top Role", target.top_role.mention, True),
-                ("💬 Status", str(target.status).title(), True),
-                ("🎮 Activity", f"{str(target.activity.type).split('.')[-1].title() if target.activity else 'N/A'} {target.activity.name if target.activity else ''}", True),
-                ("📅 Created At", target.created_at.strftime("%d/%m/%Y %H:%M:%S"), True),
-                ("📅 Joined At", target.joined_at.strftime("%d/%m/%Y %H:%M:%S"), True),
-                ("🚀 Boosted", "Yes" if target.premium_since else "No", True),
-                ("🔖 Roles", ", ".join([role.mention for role in target.roles[1:]]) if len(target.roles) > 1 else "None", False),
-                ("🖼️ Avatar URL", target.avatar.url, False),
-                ("🔢 Discriminator", target.discriminator, True),
-                ("🌐 Is Online?", "Yes" if target.status == discord.Status.online else "No", True),
-                ("📺 Is Streaming?", "Yes" if target.activity and target.activity.type == discord.ActivityType.streaming else "No", True),
-                ("🌍 Servers with Bot", user_guilds_count, True)
-            ]
+            # Activity parsing
+            activity = ""
+            if target.activities:
+                for act in target.activities:
+                    if isinstance(act, discord.CustomActivity):
+                        activity = f"🎨 Custom Status: {act.name}"
+                    elif act.type == discord.ActivityType.playing:
+                        activity = f"🎮 Playing {act.name}"
+                    elif act.type == discord.ActivityType.streaming:
+                        activity = f"📺 Streaming [{act.name}]({act.url})"
+                    elif act.type == discord.ActivityType.listening:
+                        activity = f"🎧 Listening to {act.title}" if hasattr(act, "title") else f"🎧 {act.name}"
+                    elif act.type == discord.ActivityType.watching:
+                        activity = f"📽️ Watching {act.name}"
 
-            for name, value, inline in fields:
-                embed.add_field(name=name, value=value, inline=inline)
+            # Badge parsing
+            flags = target.public_flags
+            badges = []
+            if flags.staff: badges.append("👑 Staff")
+            if flags.partner: badges.append("🤝 Partner")
+            if flags.hypesquad: badges.append("⚔️ HypeSquad")
+            if flags.bug_hunter: badges.append("🐛 Bug Hunter")
+            if flags.bug_hunter_level_2: badges.append("🐛 Bug Hunter Lv2")
+            if flags.early_supporter: badges.append("🌟 Early Supporter")
+            if flags.active_developer: badges.append("💻 Active Developer")
+            if flags.verified_bot_developer: badges.append("🤖 Bot Developer")
 
-            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
+
+            mutual_guilds = [guild.name for guild in self.bot.guilds if target in guild.members][:5]
+            mutual_guilds_str = "\n".join(mutual_guilds) + (f"\n+ {len(mutual_guilds)-5} more..." if len(mutual_guilds) > 5 else "")
+
+
+            roles = [role.mention for role in target.roles[1:]]  # Exclude @everyone
+            roles_str = " ".join(roles) if roles else "No special roles"
+            
+            embed = discord.Embed(
+                title=f"📋  𝚄𝚂𝙴𝚁 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽 - {target.display_name}",
+                color=target.color if target.color.value != 0 else 0x5865F2,
+                timestamp=discord.utils.utcnow()
+            )
+
+            # Header Section
+            embed.set_author(name=f"{target}", icon_url=target.display_avatar.url)
+            embed.set_thumbnail(url=target.display_avatar.url)
+
+            if target.banner:
+                embed.set_image(url=target.banner.url)
+
+            # Basic Information
+            embed.add_field(
+                name="\n🔖  𝙱𝙰𝚂𝙸𝙲 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽",
+                value=f"""
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+            » **Name:** {target.name}
+            » **ID:** `{target.id}`
+            » **Discriminator:** #{target.discriminator}
+            » **Bot:** {'✅' if target.bot else '❌'}
+
+            » **Account Created:**  
+            {created_at}
+            » **Server Join Date:**  
+            {joined_at}
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                """,
+                inline=False
+            )
+
+            # Server Profile
+            embed.add_field(
+                name="\n🏰  𝚂𝙴𝚁𝚅𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴",
+                value=f"""
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+            » **Top Role:** {target.top_role.mention if target.top_role else 'None'}
+            » **Boosting Since:**  
+            {premium_since}
+            » **Current Status:**  
+            {str(target.status).title()}
+            » **Active Client:**  
+            {'📱 Mobile' if target.is_on_mobile() else '💻 Desktop'}
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                """,
+                inline=False
+            )
+
+            if activity:
+                embed.add_field(
+                    name="\n📡  𝙲𝚄𝚁𝚁𝙴𝙽𝚃 𝙰𝙲𝚃𝙸𝚅𝙸𝚃𝚈",
+                    value=f"""
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+            {activity}
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                    """,
+                    inline=False
+                )
+
+            if badges:
+                embed.add_field(
+                    name="\n🏆  𝙱𝙰𝙳𝙶𝙴𝚂",
+                    value=f"""
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+            {'  '.join(badges)}
+            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                    """,
+                    inline=False
+                )
+
+            embed.add_field(
+                name=f"\n🤝  𝙼𝚄𝚃𝚄𝙰𝙻 𝚂𝙴𝚁𝚅𝙴𝚁𝚂 ({user_guilds_count})",
+                value=f"""
+            ▬▬▬▬▬▬▬▬▬▬
+            {mutual_guilds_str if mutual_guilds else 'None'}
+            ▬▬▬▬▬▬▬▬▬▬
+                """,
+                inline=True
+            )
+
+            embed.add_field(
+                name=f"\n🎭  𝚁𝙾𝙻𝙴𝚂 ({len(roles)})",
+                value=f"""
+            ▬▬▬▬▬▬▬▬▬▬
+            {roles_str}
+            ▬▬▬▬▬▬▬▬▬▬
+                """,
+                inline=True
+            )
+
+            embed.set_footer(
+                text=f"🔮  𝚁𝙴𝚀𝚄𝙴𝚂𝚃𝙴𝙳 𝙱𝚈 {ctx.author}  •  𝚄𝚂𝙴𝚁 𝙸𝙳: {target.id}",
+                icon_url=ctx.author.display_avatar.url
+            )
+
             await ctx.respond(embed=embed)
 
         @commands.slash_command(name="test", description='TEST COMMAND')
