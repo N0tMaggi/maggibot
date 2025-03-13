@@ -134,15 +134,14 @@ class UserStats(commands.Cog):
                 for guild_id, data in server_stats.items():
                     guild = self.bot.get_guild(int(guild_id)) or f"Server {guild_id}"
                     server_info.append(
-                        f"**{guild}**\n"
-                        f"📨 Messages: {data['messages']} "
-                        f"(+{data['messages']*MESSAGE_XP_COUNT:.2f} XP)\n"
-                        f"📎 Media: {data['media']} "
-                        f"(+{data['media']*ATTACHMENT_XP_COUNT:.2f} XP)"
+                        f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- \n"
+                        f"\n**{guild}**\n"
+                        f"\n📨 Messages: {data['messages']} \n"
+                        f"\n📎 Media: {data['media']} \n"
                     )
                 
                 embed.add_field(
-                    name="🌐 Server Breakdown",
+                    name="🌐 Server Breakdown \n",
                     value="\n".join(server_info) or "No data",
                     inline=False
                 )

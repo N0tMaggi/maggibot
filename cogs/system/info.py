@@ -88,7 +88,7 @@ class InfoSystem(commands.Cog):
             )
             support_embed.add_field(
                 name="💻 GitHub Repository",
-                value="[View Source]()",
+                value="[View Source](https://github.com/ag7dev/maggibot)",
                 inline=True
             )
             support_embed.set_image(url="")
