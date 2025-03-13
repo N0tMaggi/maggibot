@@ -4,65 +4,13 @@ import json
 import datetime
 import handlers.debug as DebugHandler
 import handlers.config as config
-import time
-
-mention_count = {}
 
 
 
-class Protection(commands.Cog):
+class Antibot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-    
-    def is_authorized(ctx):
-        if ctx.author.guild_permissions.administrator:
-            return True
-        else:
-            raise commands.CommandError(f"User {ctx.author} is not authorized to use this command")
 
-    @commands.slash_command(name="setup-protectionlog", description="Set the protection log channel")
-    @commands.check(is_authorized)
-    async def setprotectionlogchannel(self, ctx, channel: discord.TextChannel):
-        serverconfig = config.loadserverconfig()
-        serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
-        serverconfig[str(ctx.guild.id)]["protectionlogchannel"] = channel.id
-        config.saveserverconfig(serverconfig)
-
-        reaction_embed = discord.Embed(
-            title="Protection Log Channel",
-            description=f"Protection log channel has been set to {channel.mention}",
-            color=discord.Color.green()
-        )
-        reaction_embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-        reaction_embed.timestamp = datetime.datetime.utcnow()
-
-        await ctx.respond(embed=reaction_embed)
-
-    @commands.slash_command(name="setup-protection", description="Enable or disable the protection system")
-    @commands.check(is_authorized)
-    async def antiraid(self, ctx, enabled: bool):
-        serverconfig = config.loadserverconfig()
-        serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
-        serverconfig[str(ctx.guild.id)]["protection"] = enabled
-        config.saveserverconfig(serverconfig)
-
-        reaction_embed = discord.Embed(
-            title="🔒 Protection System",
-            description=f"Maggi Protection system has been {'✅ Enabled' if enabled else '❌ Disabled'}",
-            color=discord.Color.green() if enabled else discord.Color.red()
-        )
-
-        reaction_embed.add_field(name="Status", value="Enabled" if enabled else "Disabled", inline=True)
-        reaction_embed.add_field(name="Requested By", value=f"{ctx.author.mention}", inline=True)
-        reaction_embed.add_field(name="Server", value=ctx.guild.name, inline=True)
-
-        reaction_embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-        reaction_embed.timestamp = datetime.datetime.utcnow()
-
-        if ctx.guild.icon:
-            reaction_embed.set_thumbnail(url=ctx.guild.icon.url)
-
-        await ctx.respond(embed=reaction_embed)
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -175,40 +123,5 @@ class Protection(commands.Cog):
             DebugHandler.LogDebug(f"Member is not a bot: {member.name}")  
 
 
-
-    # Event for detecting mass mentions
-        @commands.Cog.listener()
-        async def on_message(self, message):
-            if message.author == self.bot.user:
-                return
-            if message.guild is None:
-                return
-            serverconfig = config.loadserverconfig()
-            serverconfig[str(message.guild.id)] = serverconfig.get(str(message.guild.id), {})
-            if not serverconfig[str(message.guild.id)].get("protection"):
-                return
-            if message.author.guild_permissions.administrator:
-                return
-            if message.author.bot:
-                return
-            if message.mentions:
-                if len(message.mentions) > 10:
-                    try:
-                        protection_log_channel = await message.guild.fetch_channel(serverconfig[str(message.guild.id)]["protectionlogchannel"])
-                        reaction_embed = discord.Embed(
-                            title="🚨 Mass Mention Detected 🚨",
-                            description=f"{message.author.mention} has sent a message with {len(message.mentions)} mentions. 🚷",
-                            color=discord.Color.red()
-                        )
-                        reaction_embed.add_field(name="Message Content", value=message.content, inline=False)
-                        reaction_embed.add_field(name="Message ID", value=message.id, inline=False)
-                        reaction_embed.add_field(name="Channel", value=message.channel.mention, inline=False)
-                        reaction_embed.timestamp = datetime.datetime.utcnow()
-                        await protection_log_channel.send(embed=reaction_embed)
-                    except Exception as e:
-                        DebugHandler.LogError(f"Error while sending message to log channel: {e}")
-
-
-    
 def setup(bot):
-    bot.add_cog(Protection(bot))
+    bot.add_cog(Antibot(bot))
