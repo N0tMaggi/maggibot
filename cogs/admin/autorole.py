@@ -38,8 +38,8 @@ class AutoRole(Cog):
             await ctx.respond(embed=embed)
 
         except Exception as e:
-            DebugHandler.LogDebug(f"Error setting up autorole: {str(e)}")
-            await ctx.respond(f"An error occurred while setting up autorole: {str(e)}", ephemeral=True)
+            DebugHandler.LogError(f"Error setting up autorole: {str(e)}")
+            raise Exception ("Error setting up autorole") from e
 
     @commands.slash_command(name="delete-autorole", description="Delete autorole configuration for the server")
     @commands.has_permissions(administrator=True)
@@ -74,7 +74,7 @@ class AutoRole(Cog):
                 await ctx.respond(embed=embed, ephemeral=True)
 
         except Exception as e:
-            DebugHandler.LogDebug(f"Error deleting autorole: {str(e)}")
+            DebugHandler.LogError(f"Error deleting autorole: {str(e)}")
             await ctx.respond(f"An error occurred while deleting autorole: {str(e)}", ephemeral=True)
 
     @commands.Cog.listener()
@@ -91,9 +91,9 @@ class AutoRole(Cog):
                 await member.add_roles(role)
                 DebugHandler.LogDebug(f"Added autorole to {member.name} ({member.id}) in guild {guild_id}")
             else:
-                DebugHandler.LogDebug(f"Role {role_id} not found in guild {guild_id}")
+                DebugHandler.LogError(f"Role {role_id} not found in guild {guild_id}")
         except Exception as e:
-            DebugHandler.LogDebug(f"Error in on_member_join autorole listener: {str(e)}")
+            DebugHandler.LogError(f"Error in on_member_join autorole listener: {str(e)}")
             raise e 
 
 

@@ -47,10 +47,10 @@ class ErrorHandling(commands.Cog):
             await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error ❌")
 
     async def handle_error(self, ctx, error, error_type):
-        DebugHandler.LogDebug(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
+        DebugHandler.LogError(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
         
         error_uid = str(uuid.uuid4())
-        DebugHandler.LogDebug(f"Generated error UID: {error_uid}")
+        DebugHandler.LogError(f"Generated error UID: {error_uid}")
 
         error_info = f"{error.__class__.__name__}: {error}"
         tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
@@ -97,7 +97,7 @@ class ErrorHandling(commands.Cog):
 
     async def handle_error_without_log(self, ctx, error, error_type):
         error_uid = str(uuid.uuid4())  
-        DebugHandler.LogDebug(f"Generated error UID: {error_uid}")
+        DebugHandler.LogError(f"Generated error UID: {error_uid}")
 
         error_info = f"{error.__class__.__name__}: {error}"
 
@@ -133,7 +133,7 @@ class ErrorHandling(commands.Cog):
 
     async def handle_missing_permissions_error(self, ctx, error, error_type):
         error_uid = str(uuid.uuid4())   
-        DebugHandler.LogDebug(f"Generated error UID: {error_uid}")
+        DebugHandler.LogError(f"Generated error UID: {error_uid}")
 
         missing_perms = ", ".join(error.missing_permissions)  
         error_info = f"Missing Permissions: `{missing_perms}`"
@@ -199,7 +199,7 @@ class ErrorHandling(commands.Cog):
         return discord.File(file_path, filename=file_name)
 
     async def fatal_error(self, error_message, error):
-        DebugHandler.LogDebug(f"FATAL ERROR: {error_message} | Details: {error}")
+        DebugHandler.LogError(f"FATAL ERROR: {error_message} | Details: {error}")
         print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         print(Fore.RED + Style.BRIGHT + f"FATAL ERROR: {error_message}")
         print(Fore.RED + Style.BRIGHT + f"Error details: {error}")

@@ -4,8 +4,7 @@ import json
 import os
 import datetime
 import uuid 
-from handlers.debug import LogDebug
-
+import handlers.debug as DH
 ADMINFEEDBACKFILE = "data/adminfeedback.json"
 
 def load_admin_feedback():
@@ -24,7 +23,7 @@ def load_admin_feedback():
                     data["feedbacks"] = {}
                 return data
     except Exception as e:
-        LogDebug(f"❌ Error loading admin feedback: {e}")
+        DH.LogError(f"❌ Error loading admin feedback: {e}")
         return {"configs": {}, "feedbacks": {}}
 
 def save_admin_feedback(data):
@@ -32,7 +31,7 @@ def save_admin_feedback(data):
         with open(ADMINFEEDBACKFILE, "w") as f:
             json.dump(data, f, indent=4)
     except Exception as e:
-        LogDebug(f"❌ Error saving admin feedback: {e}")
+        DH.LogError(f"❌ Error saving admin feedback: {e}")
 
 class AdminFeedback(commands.Cog):
     def __init__(self, bot):
@@ -54,7 +53,7 @@ class AdminFeedback(commands.Cog):
             embed.set_footer(text="Use /feedback to send feedback to an admin.")
             await ctx.respond(embed=embed)
         except Exception as e:
-            LogDebug(f"❌ Error setting up admin feedback: {e}")
+            DH.LogError(f"❌ Error setting up admin feedback: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while setting up.",
@@ -81,7 +80,7 @@ class AdminFeedback(commands.Cog):
                 )
             await ctx.respond(embed=embed)
         except Exception as e:
-            LogDebug(f"❌ Error deleting admin feedback configuration: {e}")
+            DH.LogError(f"❌ Error deleting admin feedback configuration: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while deleting.",
@@ -146,7 +145,7 @@ class AdminFeedback(commands.Cog):
                     color=discord.Color.red()
                 ))
         except Exception as e:
-            LogDebug(f"❌ Error sending feedback: {e}")
+            DH.LogError(f"❌ Error sending feedback: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while sending your feedback.",
@@ -184,7 +183,7 @@ class AdminFeedback(commands.Cog):
             )
             await ctx.respond(embed=embed)
         except Exception as e:
-            LogDebug(f"❌ Error viewing feedbacks: {e}")
+            DH.LogError(f"❌ Error viewing feedbacks: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while retrieving feedbacks.",
@@ -211,7 +210,7 @@ class AdminFeedback(commands.Cog):
                     color=discord.Color.red()
                 ))
         except Exception as e:
-            LogDebug(f"❌ Error deleting feedback: {e}")
+            DH.LogError(f"❌ Error deleting feedback: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while deleting the feedback.",
@@ -249,7 +248,7 @@ class AdminFeedback(commands.Cog):
             )
             await ctx.respond(embed=embed)
         except Exception as e:
-            LogDebug(f"❌ Error viewing feedbacks: {e}")
+            DH.LogError(f"❌ Error viewing feedbacks: {e}")
             await ctx.respond(embed=discord.Embed(
                 title="❌ Error",
                 description="An error occurred while retrieving feedbacks.",

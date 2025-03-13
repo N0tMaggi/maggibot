@@ -11,7 +11,8 @@ log_files = {
     'system': os.path.join(logging_dir, 'system.log'),
     'network': os.path.join(logging_dir, 'network.log'),
     'discord': os.path.join(logging_dir, 'discord.log'),
-    'debug': os.path.join(logging_dir, 'debug.log')
+    'debug': os.path.join(logging_dir, 'debug.log'),
+    'error': os.path.join(logging_dir, 'error.log')
 }
 
 for file in log_files.values():
@@ -32,7 +33,7 @@ for category, file in log_files.items():
     logger.propagate = False
     loggers[category] = logger
 
-def log(message):
+def LogSystem(message):
     loggers['system'].info(message)
 
 def LogDebug(value):
@@ -40,8 +41,12 @@ def LogDebug(value):
         print(value)
     loggers['debug'].info(value)
 
-def log_network(message):
+def LogNetwork(message):
     loggers['network'].info(message)
 
-def log_discord(message):
+def LogDiscord(message):
     loggers['discord'].info(message)
+
+def LogError(message):
+    loggers['error'].info(message)
+

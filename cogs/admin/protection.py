@@ -85,9 +85,9 @@ class Protection(commands.Cog):
                         DebugHandler.LogDebug(f"Bot {member.name} was invited by {inviter.name}")  
                         break
                 if inviter is None:
-                    DebugHandler.LogDebug(f"Could not find the inviter for bot {member.name}")  
+                    DebugHandler.LogError(f"Could not find the inviter for bot {member.name} in {member.guild.name}")  
             except Exception as e:
-                DebugHandler.LogDebug(f"Error while fetching audit logs: {e}")  
+                DebugHandler.LogError(f"Error while fetching audit logs: {e}")  
                 raise Exception("Error while fetching audit logs" + str(e))
 
             if member.public_flags.verified_bot:
@@ -111,7 +111,7 @@ class Protection(commands.Cog):
                         await protection_log_channel.send(embed=reaction_embed)
                         DebugHandler.LogDebug("Message sent to protection log channel for verified bot.")  
                     except Exception as e:
-                        DebugHandler.LogDebug(f"Error while sending message to log channel: {e}") 
+                        DebugHandler.LogError(f"Error while sending message to log channel: {e}") 
                         raise Exception("Error while sending message to log channel" + str(e))
             else:
                 DebugHandler.LogDebug(f"Unverified bot detected: {member.name}")  
@@ -122,7 +122,7 @@ class Protection(commands.Cog):
                             await member.kick(reason="Unverified bot 🚫")
                             DebugHandler.LogDebug(f"Kicked bot: {member.name}")  
                         except Exception as e:
-                            DebugHandler.LogDebug(f"Error while kicking bot: {e}")  
+                            DebugHandler.LogError(f"Error while kicking bot: {e}")  
                             protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
                             reaction_embed = discord.Embed(
                                 title="⚠️ Unverified Bot NOT Kicked! ❌",
@@ -148,7 +148,7 @@ class Protection(commands.Cog):
                             await protection_log_channel.send(embed=reaction_embed)
                             DebugHandler.LogDebug("Message sent to protection log channel for unverified bot.")  
                         except Exception as e:
-                            DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")  
+                            DebugHandler.LogError(f"Error while sending message to log channel: {e}")  
                             raise Exception("Error while sending message to log channel" + str(e))
                     else:
                         try:
@@ -168,7 +168,7 @@ class Protection(commands.Cog):
                             await protection_log_channel.send(embed=reaction_embed)
                             DebugHandler.LogDebug("Message sent to protection log channel for unverified bot allowed to stay.")  
                         except Exception as e:
-                            DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")  
+                            DebugHandler.LogError(f"Error while sending message to log channel: {e}")  
                 else:
                     DebugHandler.LogDebug(f"Protection log channel not set for guild {member.guild.name}")  
         else:
@@ -206,7 +206,7 @@ class Protection(commands.Cog):
                         reaction_embed.timestamp = datetime.datetime.utcnow()
                         await protection_log_channel.send(embed=reaction_embed)
                     except Exception as e:
-                        DebugHandler.LogDebug(f"Error while sending message to log channel: {e}")
+                        DebugHandler.LogError(f"Error while sending message to log channel: {e}")
 
 
     

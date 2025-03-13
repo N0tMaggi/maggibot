@@ -89,7 +89,7 @@ class TicketSystem(Cog):
             await ctx.respond(embed=embed)
 
         except Exception as e:
-            DebugHandler.LogDebug(f"An error occurred while setting up the Ticket System: {e}")
+            DebugHandler.LogError(f"An error occurred while setting up the Ticket System: {e}")
             raise Exception(f"An error occurred while setting up the Ticket System: {e}")
         
 
@@ -136,7 +136,7 @@ class TicketSystem(Cog):
             await ctx.respond(embed=embed)
 
         except Exception as e:
-            DebugHandler.LogDebug(f"An error occurred while deleting the Ticket System configuration entries: {e}")
+            DebugHandler.LogError(f"An error occurred while deleting the Ticket System configuration entries: {e}")
             raise Exception(f"An error occurred while deleting the Ticket System configuration entries: {e}")
 
 
@@ -189,7 +189,7 @@ class TicketSystem(Cog):
                 overwrites=overwrites
             )
         except Exception as e:
-            DebugHandler.LogDebug(f"Failed to create ticket channel: {e}")
+            DebugHandler.LogError(f"Failed to create ticket channel: {e}")
             await ctx.respond("Failed to create ticket channel.", ephemeral=True)
             return
 
@@ -251,7 +251,7 @@ class TicketSystem(Cog):
         try:
             await ctx.author.send(embed=embed_dm)
         except Exception as e:
-            DebugHandler.LogDebug(f"Failed to send DM to {ctx.author.id}: {e}")
+            DebugHandler.LogError(f"Failed to send DM to {ctx.author.id}: {e}")
 
         await ctx.respond("Ticket created successfully!", ephemeral=True)
 
@@ -315,7 +315,7 @@ class TicketSystem(Cog):
             dm_embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
             await ctx.author.send(embed=dm_embed)
         except Exception as e:
-            DebugHandler.LogDebug(f"Failed to send DM to {ctx.author.id}: {e}")
+            DebugHandler.LogError(f"Failed to send DM to {ctx.author.id}: {e}")
 
         # Update ticket status to Closed before deletion
         ticket_data["status"] = "Closed"
@@ -465,11 +465,11 @@ class TicketSystem(Cog):
                     dm_embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
                     await member.send(embed=dm_embed)
                 except Exception as e:
-                    DebugHandler.LogDebug(f"Failed to send DM to {member.id}: {e}")
+                    DebugHandler.LogError(f"Failed to send DM to {member.id}: {e}")
                 try:
                     await ticket_channel.delete()
                 except Exception as e:
-                    DebugHandler.LogDebug(f"Failed to delete ticket channel for {member.id}: {e}")
+                    DebugHandler.LogError(f"Failed to delete ticket channel for {member.id}: {e}")
                 del self.tickets[guild_id][user_id]
                 if not self.tickets[guild_id]:
                     del self.tickets[guild_id]
@@ -496,11 +496,11 @@ class TicketSystem(Cog):
                             try:
                                 await message.add_reaction("✅")
                             except Exception as e:
-                                DebugHandler.LogDebug(f"Failed to add reaction to DM message: {e}")
+                                DebugHandler.LogError(f"Failed to add reaction to DM message: {e}")
                             ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
                             save_ticket_data(self.tickets)
                         except Exception as e:
-                            DebugHandler.LogDebug(f"Error forwarding DM message: {e}")
+                            DebugHandler.LogError(f"Error forwarding DM message: {e}")
                     break
 
         elif message.guild is not None:
@@ -520,13 +520,13 @@ class TicketSystem(Cog):
                                 try:
                                     await message.add_reaction("✅")
                                 except Exception as e:
-                                    DebugHandler.LogDebug(f"Failed to add reaction to ticket channel message: {e}")
+                                    DebugHandler.LogError(f"Failed to add reaction to ticket channel message: {e}")
                             except Exception as e:
-                                DebugHandler.LogDebug(f"Error forwarding message to user DM: {e}")
+                                DebugHandler.LogError(f"Error forwarding message to user DM: {e}")
                                 try:
                                     await message.add_reaction("❌")
                                 except Exception as e2:
-                                    DebugHandler.LogDebug(f"Failed to add failure reaction: {e2}")
+                                    DebugHandler.LogError(f"Failed to add failure reaction: {e2}")
                         break
 
 def setup(bot):

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
-from handlers.debug import LogDebug
+import handlers.debug as DH
 
 voicegateconfigfile = "config/voicegateconfig.json"
 
@@ -48,7 +48,7 @@ class VoiceGate(commands.Cog):
         try:
             self.config = loadvoicegateconfig()
         except Exception as e:
-            LogDebug(f"Error initializing voice gate config: {e}")
+            DH.LogError(f"Error initializing voice gate config: {e}")
             self.config = {}
 
     @commands.slash_command(name="setup-voicegate", description="Set up a voice gate channel for this server")
@@ -95,12 +95,6 @@ class VoiceGate(commands.Cog):
             await safe_respond(ctx, embed_success)
 
         except Exception as e:
-            embed_error = discord.Embed(
-                title="Error",
-                description=str(e),
-                color=0xFF0000
-            )
-            await safe_respond(ctx, embed_error)
             raise Exception(f"Error in setup_voicegate command: {e}")
 
     @commands.slash_command(name="setup-showvoicegatesettings", description="Show the current voice gate settings for this server")
@@ -118,12 +112,6 @@ class VoiceGate(commands.Cog):
                 embed_settings.add_field(name=key, value=str(value), inline=False)
             await safe_respond(ctx, embed_settings)
         except Exception as e:
-            embed_error = discord.Embed(
-                title="Error",
-                description=str(e),
-                color=0xFF0000
-            )
-            await safe_respond(ctx, embed_error)
             raise Exception(f"Error in setup-showvoicegatesettings command: {e}")
 
     @commands.slash_command(name="setup-deletevoicegate", description="Delete the voice gate configuration for the given voice channel")
@@ -144,13 +132,7 @@ class VoiceGate(commands.Cog):
             )
             await safe_respond(ctx, embed_success)
         except Exception as e:
-            embed_error = discord.Embed(
-                title="Error",
-                description=str(e),
-                color=0xFF0000
-            )
-            await safe_respond(ctx, embed_error)
-            raise Exception(f"Error in setup-deletevoicegate command: {e}")
+            raise Exception(f"[VOICEGATE] Error in setup-deletevoicegate command: {e}")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -165,7 +147,7 @@ class VoiceGate(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except Exception as e:
-                    LogDebug(f"Failed to unmute member {member.id} after leaving gate channel: {e}")
+                    DH.LogError(f"[VOICEGATE] Failed to unmute member {member.id} after leaving gate channel: {e}")
                 self.pending_verifications.discard(member.id)
                 return
 
@@ -184,7 +166,7 @@ class VoiceGate(commands.Cog):
             try:
                 await member.edit(mute=True)
             except Exception as e:
-                LogDebug(f"Failed to mute member {member.id}: {e}")
+                DH.LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
 
             rules_text = config_data.get("rules_text", "No rules provided.")
             embed_rules = discord.Embed(
@@ -199,7 +181,7 @@ class VoiceGate(commands.Cog):
                 rules_message = await dm_channel.send(embed=embed_rules)
                 await rules_message.add_reaction("✅")
             except Exception as e:
-                LogDebug(f"Failed to send DM to member {member.id}: {e}")
+                DH.LogError(f"[VOICEGATE] Failed to send DM to member {member.id}: {e}")
                 return
 
             def reaction_check(reaction, user):
@@ -229,7 +211,7 @@ class VoiceGate(commands.Cog):
                     await member.move_to(None)
                     await member.send("You did not accept the rules in time. Please rejoin the voice channel to try again.")
                 except Exception as dm_e:
-                    LogDebug(f"Failed to send DM after timeout to member {member.id}: {dm_e}")
+                    DH.LogError(f"[VOICEGATE] Failed to send DM after timeout to member {member.id}: {dm_e}")
         finally:
             self.pending_verifications.discard(member.id)
 

@@ -45,7 +45,7 @@ class Server(Cog):
             await ctx.respond(embed=embed)
 
         except Exception as e:
-            DebugHandler.LogDebug(f"An error occurred while setting the log channel: {e}")
+            DebugHandler.LogError(f"An error occurred while setting the log channel: {e}")
             raise Exception(f"An error occurred while setting the log channel: {e}")
 
     @commands.slash_command(name="setup-showconfig", description="Show the current server configuration")
@@ -73,7 +73,7 @@ class Server(Cog):
 
             await ctx.respond(embed=embed, ephemeral=True)
         except Exception as e:
-            DebugHandler.LogDebug(f"An error occurred while showing the server configuration: {e}")
+            DebugHandler.LogError(f"An error occurred while showing the server configuration: {e}")
             raise Exception(f"An error occurred while showing the server configuration: {e}")
 
 def setup(bot):

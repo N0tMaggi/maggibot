@@ -323,7 +323,7 @@ class Miscellaneous(commands.Cog):
                 await ctx.author.send(embed=embed)
 
             except Exception as e:
-                DebugHandler.LogDebug(f" An error occurred: {e}")
+                DebugHandler.LogError(f" An error occurred: {e}")
                 raise Exception ("An error occurred while cleaning DMs." + str(e))
                 
 
