@@ -12,7 +12,8 @@ log_files = {
     'network': os.path.join(logging_dir, 'network.log'),
     'discord': os.path.join(logging_dir, 'discord.log'),
     'debug': os.path.join(logging_dir, 'debug.log'),
-    'error': os.path.join(logging_dir, 'error.log')
+    'error': os.path.join(logging_dir, 'error.log'),
+    'moderation': os.path.join(logging_dir, 'moderation.log'),
 }
 
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -46,3 +47,6 @@ def LogDiscord(message):
 
 def LogError(message):
     loggers['error'].error(message)  
+
+def LogModeration(message):
+    loggers['moderation'].info(message)
