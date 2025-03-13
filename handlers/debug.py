@@ -15,18 +15,15 @@ log_files = {
     'error': os.path.join(logging_dir, 'error.log')
 }
 
-for file in log_files.values():
-    if not os.path.exists(file):
-        with open(file, 'w') as f:
-            pass
-
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 loggers = {}
 for category, file in log_files.items():
     logger = logging.getLogger(category)
     logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(file)
+    
+    handler = logging.FileHandler(file, encoding='utf-8')
+    
     handler.setLevel(logging.INFO)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -48,5 +45,4 @@ def LogDiscord(message):
     loggers['discord'].info(message)
 
 def LogError(message):
-    loggers['error'].info(message)
-
+    loggers['error'].error(message)  

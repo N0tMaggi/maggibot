@@ -52,26 +52,27 @@ def check_json_files(directory):
     return True
 
 def delete_traceback_files():
-    for filename in os.listdir('./logs'):
+    for filename in os.listdir('./logs/traceback'):
         if filename.startswith('traceback_'):
             try:
-                os.remove(os.path.join('./logs', filename))
-                DebugHandler.LogDebug(f" Deleted traceback file {filename}")
+                os.remove(os.path.join('./logs/traceback', filename))
+                DebugHandler.LogSystem(f" Deleted traceback file {filename}")
                 print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
                 print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
             except Exception as e:
-                DebugHandler.LogDebug(f" Error deleting log file {filename}: {e}")
+                DebugHandler.LogError(f" Error deleting log file {filename}: {e}")
                 raise Exception (f"Error deleting log file {filename}: {e}")
     print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
     
 def DEBUG_MODE_PRINT_ENV():
     if DEBUG == 'TRUE':
+        DebugHandler.LogDebug("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
         DebugHandler.LogDebug(f"OWNER_ID: {os.getenv('OWNER_ID')}")
         DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
         DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
+        DebugHandler.LogDebug("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         time.sleep(5)
-        logging.basicConfig(level=logging.DEBUG)
         return True
     return False
 

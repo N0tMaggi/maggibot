@@ -190,8 +190,8 @@ class ErrorHandling(commands.Cog):
 
     async def create_traceback_file(self, traceback_text):
         file_name = f"traceback_{datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-        file_path = os.path.join("logs", file_name)  
-        os.makedirs("logs", exist_ok=True)
+        file_path = os.path.join("logs/traceback", file_name)  
+        os.makedirs("logs/traceback", exist_ok=True)
 
         with open(file_path, "w") as f:
             f.write(traceback_text)
