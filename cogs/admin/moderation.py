@@ -83,7 +83,7 @@ class Moderation(commands.Cog):
                 )
 
             await ctx.interaction.edit_original_response(embed=result_embed)
-            LogSystem(f"Permission check completed for {ctx.guild.id}")
+            LogDebug(f"Permission check completed for {ctx.guild.id}")
 
             # Owner report
             try:
@@ -108,7 +108,7 @@ class Moderation(commands.Cog):
                 )
 
                 await ctx.guild.owner.send(embed=owner_embed)
-                LogNetwork(f"Sent owner report to {ctx.guild.owner.id}")
+                LogModeration(f"Sent owner report to {ctx.guild.owner.id}")
             except discord.Forbidden:
                 warning_embed = self.create_embed(
                     "⚠️ Delivery Failed",
@@ -117,7 +117,7 @@ class Moderation(commands.Cog):
                     ctx.author
                 )
                 await ctx.followup.send(embed=warning_embed, ephemeral=True)
-                LogDebug(f"Failed to DM owner {ctx.guild.owner.id}")
+                LogError(f"Failed to DM owner {ctx.guild.owner.id}")
 
         except Exception as e:
             LogError(f"Checkperms error: {str(e)}")
@@ -146,9 +146,9 @@ class Moderation(commands.Cog):
                     'error'
                 )
                 await user.send(embed=user_embed)
-                LogNetwork(f"Ban notification sent to {user.id}")
+                LogModeration(f"Ban notification sent to {user.id}")
             except discord.Forbidden:
-                LogDebug(f"Failed to DM banned user {user.id}")
+                LogError(f"Failed to DM banned user {user.id}")
 
             # Execute ban
             try:
@@ -212,9 +212,9 @@ class Moderation(commands.Cog):
                     'error'
                 )
                 await user.send(embed=user_embed)
-                LogNetwork(f"Kick notification sent to {user.id}")
+                LogModeration(f"Kick notification sent to {user.id}")
             except discord.Forbidden:
-                LogDebug(f"Failed to DM kicked user {user.id}")
+                LogError(f"Failed to DM kicked user {user.id}")
 
             # Execute kick
             try:
