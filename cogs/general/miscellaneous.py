@@ -131,13 +131,11 @@ class Miscellaneous(commands.Cog):
             await ctx.defer()
             target = target or ctx.author
 
-            # Pre-calculate values with error handling
             created_at = discord.utils.format_dt(target.created_at, "F")
             joined_at = discord.utils.format_dt(target.joined_at, "F") if target.joined_at else "Unknown"
             premium_since = discord.utils.format_dt(target.premium_since, "R") if target.premium_since else "Not boosting"
             user_guilds_count = sum(1 for guild in self.bot.guilds if target in guild.members)
 
-            # Activity parsing
             activity = ""
             if target.activities:
                 for act in target.activities:
@@ -152,7 +150,6 @@ class Miscellaneous(commands.Cog):
                     elif act.type == discord.ActivityType.watching:
                         activity = f"📽️ Watching {act.name}"
 
-            # Badge parsing
             flags = target.public_flags
             badges = []
             if flags.staff: badges.append("👑 Staff")
@@ -169,7 +166,7 @@ class Miscellaneous(commands.Cog):
             mutual_guilds_str = "\n".join(mutual_guilds) + (f"\n+ {len(mutual_guilds)-5} more..." if len(mutual_guilds) > 5 else "")
 
 
-            roles = [role.mention for role in target.roles[1:]]  # Exclude @everyone
+            roles = [role.mention for role in target.roles[1:]]  
             roles_str = " ".join(roles) if roles else "No special roles"
             
             embed = discord.Embed(
@@ -178,14 +175,12 @@ class Miscellaneous(commands.Cog):
                 timestamp=discord.utils.utcnow()
             )
 
-            # Header Section
             embed.set_author(name=f"{target}", icon_url=target.display_avatar.url)
             embed.set_thumbnail(url=target.display_avatar.url)
 
             if target.banner:
                 embed.set_image(url=target.banner.url)
 
-            # Basic Information
             embed.add_field(
                 name="\n🔖  𝙱𝙰𝚂𝙸𝙲 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽",
                 value=f"""
@@ -204,7 +199,6 @@ class Miscellaneous(commands.Cog):
                 inline=False
             )
 
-            # Server Profile
             embed.add_field(
                 name="\n🏰  𝚂𝙴𝚁𝚅𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴",
                 value=f"""
@@ -293,7 +287,6 @@ class Miscellaneous(commands.Cog):
             )
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
             await loading_message.edit(embed=embed)
-
 
 
 

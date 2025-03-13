@@ -117,7 +117,7 @@ class InterButton(discord.ui.View):
         user = interaction.user
         #50% chance to get exposed
         exposed = random.choice([True, False])
-        if exposed:
+        if exposed == True:
             await interaction.response.send_message(f"🔥 {user.mention} ... **Inter HAS BEEN EXPOSED!** 🔥", ephemeral=False)
             await interaction.followup.send(f"[Here](https://ag7-dev.de/fun/nsfw)", ephemeral=False)
         else:

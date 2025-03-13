@@ -91,7 +91,6 @@ class RandomMath(commands.Cog):
         if message.author.bot or str(message.channel.id) not in self.math_channels:
             return
         
-        # Prevent concurrent challenges in the same channel
         if message.channel.id in self.active_challenges:
             return
         
@@ -103,7 +102,7 @@ class RandomMath(commands.Cog):
         num2 = random.randint(1, 10)
         operation = random.choice(["+", "-", "*", "/"])
         question = f"{num1} {operation} {num2}"
-        answer = round(eval(question), 2)  # Ensure consistent rounding
+        answer = round(eval(question), 2)  
         
         embed = discord.Embed(
             title="Math Challenge!",
@@ -126,11 +125,10 @@ class RandomMath(commands.Cog):
             embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2989/2989989.png")
             await message.channel.send(embed=embed)
         finally:
-            # Safely delete the active challenge entry
             try:
                 del self.active_challenges[message.channel.id]
             except KeyError:
-                pass  # Ignore if already removed
+                pass  
             
     async def wait_for_answer(self, channel, answer, user_id):
         def check(msg):
@@ -146,7 +144,6 @@ class RandomMath(commands.Cog):
                     await channel.send(f"{msg.author.mention}, please provide a valid number.")
                     continue
                 
-                # Compare rounded values to avoid floating point errors
                 if round(user_answer, 2) == answer:
                     self.cookies[str(msg.author.id)] = self.cookies.get(str(msg.author.id), 0) + 1
                     save_json(COOKIES_FILE, self.cookies)
