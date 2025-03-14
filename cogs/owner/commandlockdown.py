@@ -49,7 +49,7 @@ class CommandLockdown(commands.Cog):
             color=color,
             timestamp=datetime.datetime.utcnow()
         )
-        embed.set_thumbnail(url="https://i.imgur.com/3JxW7Hc.png")
+        embed.set_thumbnail(url="")
         embed.set_footer(
             text="Security System v1.0 • Emergency Protocol",
             icon_url=self.bot.user.avatar.url
@@ -131,7 +131,7 @@ async def global_lockdown_check(ctx: commands.Context):
                 color=discord.Color.dark_red(),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.set_thumbnail(url="https://i.imgur.com/5Q4z4hD.png")
+            embed.set_thumbnail(url="")
             embed.add_field(
                 name="🔒 Security Level",
                 value="```MAXIMUM ALERT```",

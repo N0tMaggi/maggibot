@@ -60,7 +60,7 @@ class TicketVerify(commands.Cog):
                            "Below are the current settings:",
                 color_type="success"
             )
-            embed.set_thumbnail(url="https://i.imgur.com/7kFj3Tq.png")
+            embed.set_thumbnail(url="")
             fields = [
                 ("🔴 Role to Remove", role_to_remove.mention, True),
                 ("🟢 Role to Grant", role_to_give.mention, True),
@@ -81,6 +81,7 @@ class TicketVerify(commands.Cog):
     async def verify(self, ctx: discord.ApplicationContext, user: discord.User):
         """Verify a user by adjusting their roles and sending notifications"""
         try:
+            await ctx.defer()
             cfg = config.loadserverconfig()
             guild_id = str(ctx.guild.id)
             
@@ -168,7 +169,7 @@ class TicketVerify(commands.Cog):
                     value=ctx.guild.name,
                     inline=False
                 )
-                user_embed.set_thumbnail(url="https://i.imgur.com/v7sW3yA.png")
+                user_embed.set_thumbnail(url="")
                 await member.send(embed=user_embed)
                 LogDebug(f"Successfully sent DM to {member}")
             except discord.Forbidden:
@@ -187,7 +188,7 @@ class TicketVerify(commands.Cog):
                       f"• Removed: {role_to_remove.mention if role_to_remove else 'None'}",
                 inline=False
             )
-            confirm_embed.set_thumbnail(url="https://i.imgur.com/v7sW3yA.png")
+            confirm_embed.set_thumbnail(url="")
             
             if user_dm_error:
                 confirm_embed.add_field(
