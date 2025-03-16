@@ -254,6 +254,36 @@ class Moderation(commands.Cog):
         except Exception as e:
             LogError(f"Kick error: {str(e)}")
             raise Exception(f"Kick operation failed: {str(e)}")
+        
+    
+    @commands.slash_command(name= "purge-onlymessages", description="Purge all messages without attachments in this channel.")
+    @commands.cooldown(1, 240, commands.BucketType.user)
+    @commands.has_permissions(manage_messages=True)
+    async def purge_onlymessages(self, ctx: discord.ApplicationContext, limit: int = 1000):
+        await ctx.defer()  # Prevent timeout issues
+        deleted_count = 0
+        
+        async for message in ctx.channel.history(limit=limit):  # Use user-defined limit
+            if not message.attachments and not message.pinned:
+                try:
+                    await message.delete()
+                    deleted_count += 1
+                except discord.Forbidden:
+                    continue  # Skip if the bot lacks permission
+                except discord.NotFound:
+                    continue  # Skip if the message is already deleted
+        
+        embed = discord.Embed(
+            title="Purge Completed",
+            description=f"🧹 Successfully deleted **{deleted_count}** messages without attachments.",
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f"Checked the last {limit} messages.")
+        
+        await ctx.respond(embed=embed, ephemeral=True)
+
+
+
 
 def setup(bot: discord.Bot):
     bot.add_cog(Moderation(bot))
