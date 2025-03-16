@@ -70,3 +70,11 @@ def get_mac_banner():
         return banner
     except Exception as e:
         raise Exception(f"Error while getting MAC banner: {e}")
+
+
+def get_tiktok_api_key():
+    try: 
+        APIKEY = os.getenv('AG7_DEV_API_KEY')
+        return APIKEY
+    except Exception as e:
+        raise Exception(f"Error while getting AG7-DEV API KEY: {e}")
