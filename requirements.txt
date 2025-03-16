@@ -1,11 +1,8 @@
 Pillow
 asyncio
-cogs
 colorama
-datetime
 discord.py
-dotenv
-handlers
+python-dotenv
 io
 json
 logging
