@@ -1,11 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.ext.commands import Cog
-import os
-import json
-import asyncio
 import datetime
-import logging
 import handlers.config as config
 import handlers.debug as DebugHandler
 
@@ -30,18 +26,29 @@ class Server(Cog):
             config.saveserverconfig(self.serverconfig)
 
             embed = discord.Embed(
-                title="Log Channel Set",
-                description=f"The log channel has been successfully set to {channel.mention}.",
-                color=0x00ff00,
+                title="📁 Log Channel Configuration",
+                description=f"**Successfully configured logging system!**",
+                color=0x3498DB,
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-            embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed.add_field(name="Channel", value=channel.mention, inline=True)
-            embed.add_field(name="Channel ID", value=channel.id, inline=True)
-            embed.add_field(name="Guild ID", value=ctx.guild.id, inline=True)
-
+            embed.set_author(
+                name=f"{ctx.guild.name} Settings",
+                icon_url=ctx.guild.icon.url if ctx.guild.icon else self.bot.user.avatar.url
+            )
+            embed.add_field(
+                name="⚙️ Setting Updated",
+                value=f"```diff\n+ Log Channel: #{channel.name}\n```",
+                inline=False
+            )
+            embed.add_field(
+                name="📝 Details",
+                value=f"• Channel: {channel.mention}\n• ID: `{channel.id}`\n• Server: `{ctx.guild.id}`",
+                inline=True
+            )
+            embed.set_footer(
+                text=f"Configured by {ctx.author.display_name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else self.bot.user.avatar.url
+            )
             await ctx.respond(embed=embed)
 
         except Exception as e:
@@ -57,21 +64,26 @@ class Server(Cog):
             config_data = self.serverconfig.get(guild_id, None)
 
             embed = discord.Embed(
-                title="Server Configuration",
-                description="Here is the current configuration for this server:",
-                color=0x00ff00,
+                title="🔧 Server Configuration",
+                description=f"**Current settings for {ctx.guild.name}**",
+                color=0x9B59B6,
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-
+            embed.set_author(
+                name=f"{ctx.guild.name} System Settings",
+                icon_url=ctx.guild.icon.url if ctx.guild.icon else self.bot.user.avatar.url
+            )
             if config_data:
-                for key, value in config_data.items():
-                    embed.add_field(name=key, value=str(value), inline=False)
+                config_list = "\n".join([f"• **{key}:** `{value}`" for key, value in config_data.items()])
+                embed.add_field(name="📜 Active Settings", value=config_list, inline=False)
             else:
-                embed.add_field(name="No configuration found", value="This server has no configuration settings yet.", inline=False)
-
+                embed.add_field(name="❌ No Configuration Found", value="This server hasn't set up any custom settings yet!", inline=False)
+            embed.set_footer(
+                text=f"Requested by {ctx.author.display_name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else self.bot.user.avatar.url
+            )
             await ctx.respond(embed=embed, ephemeral=True)
+            
         except Exception as e:
             DebugHandler.LogError(f"An error occurred while showing the server configuration: {e}")
             raise Exception(f"An error occurred while showing the server configuration: {e}")
