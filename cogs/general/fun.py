@@ -2,11 +2,7 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import requests
-from io import BytesIO
-import io
-import textwrap
+
 
 class TrollCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -76,6 +72,78 @@ class TrollCommands(commands.Cog):
             color=discord.Color.green()
         )
         await ctx.followup.send(embed=embed)
+
+    @commands.slash_command(name="troll-spammove", description="Move a user through voice channels for 5 seconds")
+    @commands.has_permissions(administrator=True)
+    async def troll_spammove(self, ctx: discord.ApplicationContext, user: discord.Member):
+        """Move a user through available voice channels for 5 seconds"""
+        error_color = discord.Color.red()
+        success_color = discord.Color.green()
+        warning_color = discord.Color.orange()
+
+        voice_channels = [ch for ch in ctx.guild.voice_channels if ch != user.voice.channel] if user.voice else []
+
+        if not voice_channels:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="No voice channels available or user is not in a voice channel!",
+                color=error_color
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+
+        if not user.voice:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="The user is not in a voice channel!",
+                color=error_color
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+
+        start_embed = discord.Embed(
+            title="⚠️ Troll started",
+            description=f"{user.mention} will be moved through channels for 5 seconds!",
+            color=warning_color
+        )
+        await ctx.respond(embed=start_embed)
+
+        start_time = discord.utils.utcnow()
+
+        try:
+            for i in range(5):
+                if (discord.utils.utcnow() - start_time).total_seconds() >= 5:
+                    break
+
+                target_channel = voice_channels[i % len(voice_channels)]
+
+                try:
+                    await user.move_to(target_channel, reason="Troll-Spammove")
+                    await asyncio.sleep(1)  # 1 second pause per move
+                except discord.Forbidden:
+                    embed = discord.Embed(
+                        title="❌ Missing Permissions",
+                        description="I cannot move the user!",
+                        color=error_color
+                    )
+                    await ctx.send(embed=embed)
+                    break
+                except discord.HTTPException as e:
+                    embed = discord.Embed(
+                        title="⚠️ Technical Error",
+                        description=f"Error moving user: {str(e)}",
+                        color=error_color
+                    )
+                    await ctx.send(embed=embed)
+                    break
+
+        finally:
+            final_embed = discord.Embed(
+                title="✅ Troll finished",
+                description=f"{user.mention} has been successfully trolled!",
+                color=success_color
+            )
+            await ctx.send(embed=final_embed)
+
+
 
 
 def setup(bot: commands.Bot):

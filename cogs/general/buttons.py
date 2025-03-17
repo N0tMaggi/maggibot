@@ -124,7 +124,6 @@ class OllieButton(discord.ui.View):
         await interaction.response.edit_message(view=self)
         
         try:
-            # Maximaler Timeout von 28 Tagen
             timeout_duration = datetime.timedelta(days=28)
             await interaction.user.timeout(
                 until=datetime.datetime.utcnow() + timeout_duration,
@@ -135,7 +134,6 @@ class OllieButton(discord.ui.View):
                 f"⏳ Timed out for **28 days**!",
                 ephemeral=False
             )
-            
         except discord.Forbidden:
             await interaction.followup.send(
                 "❌ Couldn't timeout this absolute madlad! "
