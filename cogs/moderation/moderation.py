@@ -256,30 +256,51 @@ class Moderation(commands.Cog):
             raise Exception(f"Kick operation failed: {str(e)}")
         
     
-    @commands.slash_command(name= "purge-onlymessages", description="Purge all messages without attachments in this channel.")
+    @commands.slash_command(name="purge-onlymessages", description="🧹 Purge only messages in a channel without deleting images")
     @commands.cooldown(1, 240, commands.BucketType.user)
     @commands.has_permissions(manage_messages=True)
     async def purge_onlymessages(self, ctx: discord.ApplicationContext, limit: int = 1000):
-        await ctx.defer()  # Prevent timeout issues
-        deleted_count = 0
-        
-        async for message in ctx.channel.history(limit=limit):  # Use user-defined limit
-            if not message.attachments and not message.pinned:
-                try:
-                    await message.delete()
-                    deleted_count += 1
-                except discord.Forbidden:
-                    continue  # Skip if the bot lacks permission
-                except discord.NotFound:
-                    continue  # Skip if the message is already deleted
-        
-        embed = discord.Embed(
-            title="Purge Completed",
-            description=f"🧹 Successfully deleted **{deleted_count}** messages without attachments.",
-            color=discord.Color.blue()
-        )
-        embed.set_footer(text=f"Checked the last {limit} messages.")
-        
+        await ctx.defer(ephemeral=True)  
+        def check(message):
+            return not message.attachments and not message.pinned
+        try:
+            deleted = await ctx.channel.purge(
+                limit=limit,
+                check=check,
+                bulk=True,
+                before=ctx.message  
+            )
+            deleted_count = len(deleted)
+            color = discord.Color.green() if deleted_count > 0 else discord.Color.orange()
+            description = (
+                f"🗑️ **{deleted_count}** purged!" 
+                if deleted_count > 0 
+                else "❌ No deleteable messages found!"
+            )
+            embed = discord.Embed(
+                title="Channel Purged" + (" ✅" if deleted_count > 0 else " ⚠️"),
+                description=description,
+                color=color
+            )
+            embed.add_field(
+                name="Checking Messages",
+                value=f"`{limit}`",
+                inline=True
+            )
+            embed.add_field(
+                name="Pinned Ignored",
+                value="✅",
+                inline=True
+            )
+            embed.set_footer(text="Maggi Bot • Deletion takes about 1 Minute", icon_url=ctx.guild.icon.url)
+        except discord.HTTPException as e:
+            embed = discord.Embed(
+                title="⚠️ Error Purge",
+                description=f"API-Error: `{e}`",
+                color=discord.Color.red()
+            )
+        except Exception as e:
+            raise
         await ctx.respond(embed=embed, ephemeral=True)
 
 
