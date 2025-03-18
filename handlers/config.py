@@ -1,8 +1,15 @@
 import json
 import os
 import handlers.debug as DebugHandler
+from dotenv import load_dotenv
 
 SERVERCONFIGFILE = "config/serverconfig.json"
+load_dotenv()
+MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
+ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.5))
+
+STATS_FILE = "data/stats.json"
+XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 
 def loadserverconfig():
     try:
@@ -27,3 +34,33 @@ def get_log_channel(guild):
     except Exception as e:
         DebugHandler.LogError(f"Error getting log channel: {e}")
         return None
+
+def load_stats():
+    if not os.path.exists(STATS_FILE):
+        return {}
+    try:
+        with open(STATS_FILE, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {}
+
+def save_stats(stats):
+    with open(STATS_FILE, "w") as f:
+        json.dump(stats, f, indent=4)
+
+def load_multiplier_config():
+    if not os.path.exists(XP_MULTIPLIER_FILE):
+        return {"channels": [], "multipliers": {}}
+    try:
+        with open(XP_MULTIPLIER_FILE, "r") as f:
+            data = json.load(f)
+            return {
+                "channels": data.get("channels", []),
+                "multipliers": data.get("multipliers", {})
+            }
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {"channels": [], "multipliers": {}}
+
+def save_multiplier_config(config):
+    with open(XP_MULTIPLIER_FILE, "w") as f:
+        json.dump(config, f, indent=4)

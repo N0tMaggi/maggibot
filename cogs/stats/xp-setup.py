@@ -153,5 +153,34 @@ class XPSetup(commands.Cog):
             raise
 
 
+    @commands.slash_command(name="xp-count", description="📦 Show stats database info")
+    async def xp_count(self, ctx: discord.ApplicationContext):
+        await ctx.defer()
+        
+        try:
+            stats = load_stats()
+            total = len(stats)
+            active = sum(1 for u in stats.values() if u.get("xp", 0) > 0)
+            
+            embed = self.create_embed(
+                "📦 Database Statistics",
+                color_type="stats"
+            )
+            embed.add_field(
+                name="Total Users",
+                value=f"```yaml\n{total}```",
+                inline=True
+            )
+            embed.add_field(
+                name="Active Users",
+                value=f"```yaml\n{active}```",
+                inline=True
+            )
+            await ctx.followup.send(embed=embed)
+
+        except Exception as e:
+            LogError(f"XP count error: {str(e)}")
+            raise
+
 def setup(bot):
     bot.add_cog(XPSetup(bot))
