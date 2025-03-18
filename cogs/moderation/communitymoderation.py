@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.commands import slash_command
 import datetime
 import handlers.config as cfg
+from handlers.modextensions import send_mod_log
 from handlers.debug import LogError, LogModeration
 
 class ModCommunityBan(commands.Cog):
@@ -27,20 +28,7 @@ class ModCommunityBan(commands.Cog):
         embed.set_footer(text="Community ModSystem", icon_url=self.bot.user.avatar.url)
         return embed
 
-    async def send_mod_log(self, guild_id, log_data):
-        try:
-            log_channel = cfg.get_log_channel(guild_id)
-            if log_channel:
-                embed = self.create_embed(
-                    title=log_data["title"],
-                    description=log_data["description"],
-                    color_type=log_data.get("color_type", "mod_action"),
-                    author=log_data["author"]
-                )
-                await log_channel.send(embed=embed)
-                LogModeration(f"Community ban log sent to {log_channel.id}")
-        except Exception as e:
-            LogError(f"Community ban log error: {str(e)}")
+
 
     @slash_command(name="mod-community-ban", description="Initiate a community ban vote")
     @commands.has_permissions(ban_members=True)
@@ -92,15 +80,12 @@ class ModCommunityBan(commands.Cog):
                     await interaction.response.send_message("⏳ Ban already executed!", ephemeral=True)
                     return
 
-                if not interaction.guild.me.guild_permissions.ban_members:
-                    await interaction.response.send_message("❌ Missing ban permissions!", ephemeral=True)
-                    return
-
                 if interaction.user == self.target:
                     await interaction.response.send_message("❌ Cannot self-ban!", ephemeral=True)
                     return
 
-                await self.target.ban(reason=f"Community ban by {interaction.user}: {self.reason}")
+                # Updated line: Use guild.ban instead of self.target.ban
+                await interaction.guild.ban(self.target, reason=f"Community ban by {interaction.user}: {self.reason}")
                 self.confirmed = True
                 button.disabled = True
 
