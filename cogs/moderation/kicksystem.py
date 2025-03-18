@@ -5,7 +5,7 @@ import datetime
 import asyncio
 import os
 import handlers.config as cfg
-from handlers.modextensions import create_mod_embed, send_mod_log
+from extensions.modextensions import create_mod_embed, send_mod_log
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
 
 

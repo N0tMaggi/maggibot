@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.commands import slash_command
 import datetime
 import handlers.config as cfg
-from handlers.modextensions import send_mod_log
+from extensions.modextensions import send_mod_log
 from handlers.debug import LogError, LogModeration
 
 class ModCommunityBan(commands.Cog):
@@ -115,7 +115,7 @@ class ModCommunityBan(commands.Cog):
                     "color_type": 'mod_action',
                     "author": interaction.user
                 }
-                await self.cog.send_mod_log(interaction.guild.id, log_data)
+                await send_mod_log(interaction.guild.id, log_data)
 
                 await interaction.response.send_message(f"✅ {interaction.user.mention} confirmed ban!", ephemeral=False)
 
