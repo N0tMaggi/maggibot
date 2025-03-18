@@ -14,7 +14,7 @@ def trim_field(value: str, max_length: int = 1024) -> str:
 def is_authorized(ctx: discord.ApplicationContext) -> bool:
     return ctx.author.id == AUTHORIZED_ID
 
-def create_embed(title, description, color=None):
+def create_mac_embed(title, description, color=None):
     embed_color = 0x2b2d31  
     embed = discord.Embed(
         title=title,

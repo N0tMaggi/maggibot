@@ -4,7 +4,7 @@ import datetime
 import asyncio
 from handlers.env import get_mac_banner, get_mac_channel, get_owner
 from handlers.config import mac_load_bans, mac_save_bans
-from extensions.macextension import trim_field, is_authorized, create_embed
+from extensions.macextension import trim_field, is_authorized, create_mac_embed
 
 NOTIFY_CHANNEL_ID = int(get_mac_channel())
 
@@ -21,7 +21,7 @@ class MacBan(commands.Cog):
 
         attempted_server = member.guild.name
         try:
-            dm_embed = create_embed(
+            dm_embed = create_mac_embed(
                 title="🚫 Global Ban Notification",
                 description="You are **globally banned** by MAC™ and cannot join any protected servers. Your account has been restricted from participating in MAC™ protected servers.",
                 color=discord.Color.red()
@@ -42,7 +42,7 @@ class MacBan(commands.Cog):
 
         channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
         if channel:
-            notify_embed = create_embed(
+            notify_embed = create_mac_embed(
                 title="🚨 Security Alert - Banned User Detected",
                 description=f"**{member.mention}** attempted to join `{attempted_server}`",
                 color=discord.Color.red()
@@ -61,7 +61,7 @@ class MacBan(commands.Cog):
 
         bans = mac_load_bans()
         if str(user.id) in bans:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="⚠️ Existing Ban Record",
                 description=f"**{user.mention}** is already globally banned",
                 color=discord.Color.orange()
@@ -80,7 +80,7 @@ class MacBan(commands.Cog):
         bans[str(user.id)] = ban_record
         mac_save_bans(bans)
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="🔨 Global Ban Issued",
             description=f"**{user.mention}** has been added to the global ban list",
             color=discord.Color.red()
@@ -92,7 +92,7 @@ class MacBan(commands.Cog):
         await ctx.respond(embed=embed)
 
         try:
-            user_embed = create_embed(
+            user_embed = create_mac_embed(
                 title="🚫 Global Ban Notification",
                 description="Your account has been restricted from participating in MAC™ protected servers.",
                 color=discord.Color.red()
@@ -111,7 +111,7 @@ class MacBan(commands.Cog):
 
         bans = mac_load_bans()
         if str(user.id) not in bans:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="⚠️ No Global Ban Found",
                 description=f"**{user.mention}** is not globally banned.",
                 color=discord.Color.orange()
@@ -122,7 +122,7 @@ class MacBan(commands.Cog):
         del bans[str(user.id)]
         mac_save_bans(bans)
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="✅ Global Ban Removed",
             description=f"**{user.mention}** has been removed from the global ban list.",
             color=discord.Color.green()
@@ -131,7 +131,7 @@ class MacBan(commands.Cog):
         await ctx.respond(embed=embed)
 
         try:
-            user_embed = create_embed(
+            user_embed = create_mac_embed(
                 title="Global Ban Removed",
                 description="You have been removed from the global ban list by MAC™.",
                 color=discord.Color.green()
@@ -139,7 +139,7 @@ class MacBan(commands.Cog):
             user_embed.set_thumbnail(url=get_mac_banner())
             await user.send(embed=user_embed)
         except discord.Forbidden:
-            dm_error_embed = create_embed(
+            dm_error_embed = create_mac_embed(
                 title="User DM Error",
                 description="The user has their DMs closed.",
                 color=discord.Color.red()
@@ -149,7 +149,7 @@ class MacBan(commands.Cog):
 
         channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
         if channel:
-            notify_embed = create_embed(
+            notify_embed = create_mac_embed(
                 title="🚨 Security Alert - Global Ban Removed",
                 description=f"**{user.mention}** has been removed from the global ban list.",
                 color=discord.Color.green()
@@ -166,7 +166,7 @@ class MacBan(commands.Cog):
             return
 
         bans = mac_load_bans()
-        embed = create_embed(
+        embed = create_mac_embed(
             title="🌍 Global Ban List Info",
             description="Here is the overall information about the global ban list.",
             color=discord.Color.blue()
@@ -196,7 +196,7 @@ class MacBan(commands.Cog):
         bans = mac_load_bans()
         for ban in bans.values():
             if ban["id"] == user.id:
-                embed = create_embed(
+                embed = create_mac_embed(
                     title="Global Ban Record Found",
                     description=f"Here is the detailed ban info for **{ban['name']}** (ID: {ban['id']}).",
                     color=discord.Color.red()
@@ -209,7 +209,7 @@ class MacBan(commands.Cog):
                 await ctx.respond(embed=embed)
                 return
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="No Ban Record",
             description=f"ℹ️ {user.mention} is not globally banned.",
             color=discord.Color.green()
@@ -227,7 +227,7 @@ class MacBan(commands.Cog):
         bans = mac_load_bans()
         for ban in bans.values():
             if ban["id"] == user.id:
-                embed = create_embed(
+                embed = create_mac_embed(
                     title="User is Globally Banned",
                     description=f"🔨 {user.mention} is globally banned.",
                     color=discord.Color.red()
@@ -236,7 +236,7 @@ class MacBan(commands.Cog):
                 await ctx.respond(embed=embed)
                 return
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="User is Not Globally Banned",
             description=f"✅ {user.mention} is not globally banned.",
             color=discord.Color.green()
@@ -252,7 +252,7 @@ class MacBan(commands.Cog):
             return
 
         await ctx.defer()
-        working_embed = create_embed(
+        working_embed = create_mac_embed(
             title="⏳ Processing Global Ban All",
             description="Please wait while I ban all users from the global ban list...",
             color=discord.Color.blue()
@@ -261,7 +261,7 @@ class MacBan(commands.Cog):
 
         bans = mac_load_bans()
         if not bans:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="No Global Bans",
                 description="ℹ️ The global ban list is empty.",
                 color=discord.Color.green()
@@ -282,7 +282,7 @@ class MacBan(commands.Cog):
                     failed_members.append(f"{ban['name']} ({ban['id']})")
                 await asyncio.sleep(2)
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="Global Ban All Executed",
             color=discord.Color.red()
         )
@@ -300,7 +300,7 @@ class MacBan(commands.Cog):
             return
 
         await ctx.defer(ephemeral=True)
-        working_embed = create_embed(
+        working_embed = create_mac_embed(
             title="⏳ Importing Server Bans",
             description="Fetching server ban list. Please wait...",
             color=discord.Color.blue()
@@ -314,7 +314,7 @@ class MacBan(commands.Cog):
             return
 
         if not bans_list:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="No Server Bans Found",
                 description="ℹ️ There are no banned users in this server.",
                 color=discord.Color.green()
@@ -352,7 +352,7 @@ class MacBan(commands.Cog):
         file_obj = BytesIO(file_bytes)
         file_obj.seek(0)
 
-        summary_embed = create_embed(
+        summary_embed = create_mac_embed(
             title="Server Ban List Imported",
             color=discord.Color.red()
         )
@@ -373,7 +373,7 @@ class MacBan(commands.Cog):
             return
 
         await ctx.defer()
-        working_embed = create_embed(
+        working_embed = create_mac_embed(
             title="⏳ Processing Unban All",
             description="Please wait while I unban all users from this server...",
             color=discord.Color.blue()
@@ -383,7 +383,7 @@ class MacBan(commands.Cog):
         global_bans = mac_load_bans()
         server_bans = [ban for ban in global_bans if ban.get("serverid") == ctx.guild.id]
         if not server_bans:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="No Server Ban Records",
                 description="ℹ️ There are no global ban records for this server.",
                 color=discord.Color.green()
@@ -407,7 +407,7 @@ class MacBan(commands.Cog):
         remaining_bans = [ban for ban in global_bans if ban.get("serverid") != ctx.guild.id]
         mac_save_bans(remaining_bans)
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="Unban All from Server",
             color=discord.Color.green()
         )
@@ -428,7 +428,7 @@ class MacBan(commands.Cog):
         global_bans = mac_load_bans()
         server_bans = [ban for ban in global_bans if str(ban.get("serverid")) == serverid]
         if not server_bans:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="🚫 No Ban Records for Server",
                 description=f"ℹ️ There are no global ban records for server ID **{serverid}**.",
                 color=discord.Color.green()
@@ -436,7 +436,7 @@ class MacBan(commands.Cog):
             await ctx.respond(embed=embed)
             return
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="📜 Global Ban Records for Server",
             color=discord.Color.red()
         )
@@ -458,7 +458,7 @@ class MacBan(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def macscanserver(self, ctx: discord.ApplicationContext):
 
-        loading_embed = create_embed(
+        loading_embed = create_mac_embed(
             title="🔄 Scanning for Banned Users...",
             description="Please wait while I scan the server for globally banned users. This may take a moment.",
             color=discord.Color.blue()
@@ -476,7 +476,7 @@ class MacBan(commands.Cog):
                     break
 
         if not banned_users:
-            embed = create_embed(
+            embed = create_mac_embed(
                 title="🚫 No Banned Users Found",
                 description="There are no users in this server who are currently banned globally.",
                 color=discord.Color.green()
@@ -486,7 +486,7 @@ class MacBan(commands.Cog):
             await loading_message.edit(embed=embed)
             return
 
-        embed = create_embed(
+        embed = create_mac_embed(
             title="🚫 Banned Users Found",
             description="The following users are globally banned and are currently on this server:",
             color=discord.Color.red()
