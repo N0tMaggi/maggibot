@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 
 SERVERCONFIGFILE = "config/serverconfig.json"
 load_dotenv()
-MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
-ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.5))
+MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.1))
+ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.3))
+VOICE_XP_COUNT = float(os.getenv('VOICE_XP_COUNT', 0.2))
 
 STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"

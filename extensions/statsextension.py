@@ -1,7 +1,7 @@
 import discord
 import datetime
 
-def create_embed(title, description="", color_type="stats", author=None):
+def create_stats_embed(title, description="", color_type="stats", author=None):
     embed_colors = {
         "stats": 0x3498DB,
         "leaderboard": 0xF1C40F,
