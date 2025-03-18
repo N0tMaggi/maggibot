@@ -55,77 +55,18 @@
 └── maggibot/
     ├── README.md
     ├── assets
-    │   ├── alert.mp3
-    │   ├── gay.mp3
-    │   ├── maul.mp3
-    │   ├── meow.mp3
-    │   ├── sigmaboy.mp3
-    │   └── tagesschau.mp3
+    │   └── All the Mp3 files are stored here
     ├── cogs
-    │   ├── admin
-    │   │   ├── adminfeedback.py
-    │   │   ├── autorole.py
-    │   │   ├── config.py
-    │   │   └── voicegate.py
-    │   ├── fun
-    │   │   ├── fun.py
-    │   │   └── funnybuttons.py
-    │   ├── general
-    │   │   └── quote.py
-    │   ├── media
-    │   │   └── tiktok.py
-    │   ├── misc
-    │   │   └── miscellaneous.py
-    │   ├── moderation
-    │   │   ├── bansystem.py
-    │   │   ├── communitymoderation.py
-    │   │   ├── kicksystem.py
-    │   │   └── moderation.py
-    │   ├── owner
-    │   │   ├── commandlockdown.py
-    │   │   ├── mac.py
-    │   │   └── owner.py
-    │   ├── protection
-    │   │   ├── antibot.py
-    │   │   ├── antispam.py
-    │   │   └── protection-setup.py
-    │   ├── server
-    │   │   ├── onlyimages.py
-    │   │   ├── randommath.py
-    │   │   └── tags.py
-    │   ├── stats
-    │   │   ├── leaderboard.py
-    │   │   ├── stats.py
-    │   │   └── xp-setup.py
-    │   ├── system
-    │   │   ├── errorhandling.py
-    │   │   ├── info.py
-    │   │   └── logging.py
-    │   ├── ticket
-    │   │   └── ticketsystem.py
-    │   └── verify
-    │       └── verifysystem.py
+    │   └── All Cogs Are Stored here
+    │       └── Including all Files
     ├── config
-    │   ├── lockdown.json
-    │   ├── serverconfig.json
-    │   └── voicegateconfig.json
+    │   └── All Config Files Are Stored here
     ├── data
-    │   ├── adminfeedback.json
-    │   ├── cookies.json
-    │   ├── mac.json
-    │   ├── onlyimages.json
-    │   ├── randommathchannel.json
-    │   ├── stats.json
-    │   ├── tags.json
-    │   ├── tickets.json
-    │   └── xpmultiplier.json
+    │   └── All data like stats ans so on are stored here
     ├── extensions
-    │   ├── modextensions.py
-    │   └── statsextension.py
+    │   └── All extensions are stored here
     ├── handlers
-    │   ├── config.py
-    │   ├── debug.py
-    │   └── env.py
+    │   └── All Handlers are here
     ├── main.py
     ├── requirements.txt
     └── start.bat
