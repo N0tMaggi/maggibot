@@ -1,87 +1,115 @@
 import dotenv
 import os
-
 from handlers.debug import LogDebug
 
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Initialization
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 dotenv.load_dotenv()
 
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Core Bot Configuration
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def get_owner():
-    owner_id = os.getenv('OWNER_ID')
-    if not owner_id:
-        raise Exception("OWNER_ID not set in environment")
-    return int(owner_id)
-
+    try:
+        owner_id = os.getenv('OWNER_ID')
+        if not owner_id:
+            raise ValueError("OWNER_ID not set in environment")
+        return int(owner_id)
+    except Exception as e:
+        LogDebug(f"get_owner error: {str(e)}")
+        raise
 
 def get_token():
-    token = os.getenv('TOKEN')
-    if not token:
-        raise Exception("TOKEN not set in environment")
-    return int(token)
-
+    try:
+        token = os.getenv('TOKEN')
+        if not token:
+            raise ValueError("TOKEN not set in environment")
+        return int(token)
+    except Exception as e:
+        LogDebug(f"get_token error: {str(e)}")
+        raise
 
 def get_version():
-    version = os.getenv('BOT_VERSION')
-    if not version:
-        raise Exception("BOT_VERSION not set in environment")
-    return version
+    try:
+        version = os.getenv('BOT_VERSION')
+        if not version:
+            raise ValueError("BOT_VERSION not set in environment")
+        return version
+    except Exception as e:
+        LogDebug(f"get_version error: {str(e)}")
+        raise
 
-
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Logging Channels
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def get_error_log_channel_id():
-    error_log_channel_id = os.getenv('ERROR_LOG_CHANNEL_ID')
-    if not error_log_channel_id:
-        raise Exception("ERROR_LOG_CHANNEL_ID not set in environment")
-    return int(error_log_channel_id)
-
+    try:
+        channel_id = os.getenv('ERROR_LOG_CHANNEL_ID')
+        if not channel_id:
+            raise ValueError("ERROR_LOG_CHANNEL_ID not set in environment")
+        return int(channel_id)
+    except Exception as e:
+        LogDebug(f"get_error_log_channel_id error: {str(e)}")
+        raise
 
 def get_command_log_channel_id():
-    command_log_channel_id = os.getenv('COMMAND_LOG_CHANNEL_ID')
-    if not command_log_channel_id:
-        raise Exception("COMMAND_LOG_CHANNEL_ID not set in environment")
-    return int(command_log_channel_id)
-
-
-def get_banner(status):
-    if not status:
-        raise Exception("Status not provided")
-
     try:
-        if status == "SUCCESS":
-            banner = os.getenv('SUCCESS_BANNER')
-        elif status == "ERROR":
-            banner = os.getenv('ERROR_BANNER')
-        elif status == "WARNING":
-            banner = os.getenv('WARNING_BANNER')
-        elif status == "INFO":
-            banner = os.getenv('INFO_BANNER')
-        else:
-            raise Exception(f"Invalid status: {status}")
+        channel_id = os.getenv('COMMAND_LOG_CHANNEL_ID')
+        if not channel_id:
+            raise ValueError("COMMAND_LOG_CHANNEL_ID not set in environment")
+        return int(channel_id)
+    except Exception as e:
+        LogDebug(f"get_command_log_channel_id error: {str(e)}")
+        raise
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Banner Configuration
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def get_banner(status):
+    try:
+        if not status:
+            raise ValueError("Status not provided")
         
+        banner_map = {
+            "SUCCESS": os.getenv('SUCCESS_BANNER'),
+            "ERROR": os.getenv('ERROR_BANNER'),
+            "WARNING": os.getenv('WARNING_BANNER'),
+            "INFO": os.getenv('INFO_BANNER')
+        }
+        
+        if status not in banner_map:
+            raise ValueError(f"Invalid status: {status}")
+            
+        banner = banner_map[status]
         if not banner:
-            raise Exception(f"Banner for status '{status}' not set in environment")
-        
+            raise ValueError(f"Banner for status '{status}' not set")
+            
         return banner
     except Exception as e:
-        raise Exception(f"Error while getting banner: {e}")
-    
+        LogDebug(f"get_banner error: {str(e)}")
+        raise
 
 def get_mac_banner():
     try:
-        banner = os.getenv('MAC_NORMAL_BANNER')
-        return banner
+        return os.getenv('MAC_NORMAL_BANNER')
     except Exception as e:
-        raise Exception(f"Error while getting MAC banner: {e}")
+        LogDebug(f"get_mac_banner error: {str(e)}")
+        raise
 
-
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# API & External Services
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def get_tiktok_api_key():
-    try: 
-        APIKEY = os.getenv('AG7_DEV_API_KEY')
-        return APIKEY
+    try:
+        return os.getenv('AG7_DEV_API_KEY')
     except Exception as e:
-        raise Exception(f"Error while getting AG7-DEV API KEY: {e}")
+        LogDebug(f"get_tiktok_api_key error: {str(e)}")
+        raise
 
 def get_mac_channel():
     try:
-        mac_channel = os.getenv('MAC_NOTIFY_CHANNEL_ID')
-        return mac_channel
+        return os.getenv('MAC_NOTIFY_CHANNEL_ID')
     except Exception as e:
-        raise Exception(f"Error while getting MAC channel: {e}")
+        LogDebug(f"get_mac_channel error: {str(e)}")
+        raise
