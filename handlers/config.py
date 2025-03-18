@@ -3,8 +3,12 @@ import os
 import handlers.debug as DebugHandler
 from dotenv import load_dotenv
 
-SERVERCONFIGFILE = "config/serverconfig.json"
 load_dotenv()
+
+SERVERCONFIGFILE = "config/serverconfig.json"
+
+MACFILE = "data/mac.json"
+
 MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.1))
 ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.3))
 VOICE_XP_COUNT = float(os.getenv('VOICE_XP_COUNT', 0.2))
@@ -65,3 +69,22 @@ def load_multiplier_config():
 def save_multiplier_config(config):
     with open(XP_MULTIPLIER_FILE, "w") as f:
         json.dump(config, f, indent=4)
+
+
+def mac_load_bans():
+    if not os.path.exists(MACFILE):
+        return {}
+    try:
+        with open(MACFILE, "r") as f:
+            data = json.load(f)
+            # Convert old list format to new dictionary format
+            if isinstance(data, list):
+                return {str(ban["id"]): ban for ban in data}
+            return {str(k): v for k, v in data.items()}
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {}
+
+def mac_save_bans(bans):
+    os.makedirs(os.path.dirname(MACFILE), exist_ok=True)
+    with open(MACFILE, "w") as f:
+        json.dump(bans, f, indent=4)

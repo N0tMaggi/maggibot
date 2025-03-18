@@ -78,3 +78,10 @@ def get_tiktok_api_key():
         return APIKEY
     except Exception as e:
         raise Exception(f"Error while getting AG7-DEV API KEY: {e}")
+
+def get_mac_channel():
+    try:
+        mac_channel = os.getenv('MAC_NOTIFY_CHANNEL_ID')
+        return mac_channel
+    except Exception as e:
+        raise Exception(f"Error while getting MAC channel: {e}")
