@@ -3,37 +3,7 @@ from discord.ext import commands
 import json
 import os
 import handlers.debug as DH
-
-voicegateconfigfile = "config/voicegateconfig.json"
-
-def loadvoicegateconfig():
-    if not os.path.exists(voicegateconfigfile):
-        try:
-            os.makedirs(os.path.dirname(voicegateconfigfile), exist_ok=True)
-        except Exception as e:
-            raise Exception(f"Error creating config directory: {e}")
-        try:
-            with open(voicegateconfigfile, 'w') as f:
-                json.dump({}, f, indent=4)
-        except Exception as e:
-            raise Exception(f"Error creating config file: {e}")
-    try:
-        with open(voicegateconfigfile, 'r') as f:
-            return json.load(f)
-    except json.JSONDecodeError as e:
-        raise Exception(f"Error loading voice gate config: {e}")
-
-def savevoicegateconfig(config):
-    if not os.path.exists(voicegateconfigfile):
-        try:
-            os.makedirs(os.path.dirname(voicegateconfigfile), exist_ok=True)
-        except Exception as e:
-            raise Exception(f"Error creating config directory: {e}")
-    try:
-        with open(voicegateconfigfile, 'w') as f:
-            json.dump(config, f, indent=4)
-    except Exception as e:
-        raise Exception(f"An error occurred while saving voice gate config: {e}")
+from handlers.config import loadvoicegateconfig, savevoicegateconfig
 
 async def safe_respond(ctx: discord.ApplicationContext, embed: discord.Embed):
     try:

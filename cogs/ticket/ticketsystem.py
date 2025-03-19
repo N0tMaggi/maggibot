@@ -8,17 +8,7 @@ import io
 import handlers.config as config
 import handlers.debug as DebugHandler
 
-TICKETDATAFILE = "data/tickets.json"
 
-def load_ticket_data():
-    if not os.path.exists(TICKETDATAFILE):
-        return {}
-    with open(TICKETDATAFILE, "r") as f:
-        return json.load(f)
-
-def save_ticket_data(data):
-    with open(TICKETDATAFILE, "w") as f:
-        json.dump(data, f, indent=4)
 
 
 def NoPrivateMessage(ctx):
@@ -30,8 +20,9 @@ class TicketSystem(Cog):
     def __init__(self, bot):
         self.bot = bot
         self.serverconfig = config.loadserverconfig()
-        self.tickets = load_ticket_data()
+        self.tickets = config.load_ticket_data()
         self.ticket_check_loop.start()
+        self.save_ticket_data = config.save_ticket_data
 
     def cog_unload(self):
         self.ticket_check_loop.cancel()
@@ -207,7 +198,7 @@ class TicketSystem(Cog):
         if guild_id not in self.tickets:
             self.tickets[guild_id] = {}
         self.tickets[guild_id][str(ctx.author.id)] = ticket_data
-        save_ticket_data(self.tickets)
+        self.save_ticket_data(self.tickets)
 
         embed_channel = discord.Embed(
             title="Ticket Created",
@@ -319,12 +310,12 @@ class TicketSystem(Cog):
 
         # Update ticket status to Closed before deletion
         ticket_data["status"] = "Closed"
-        save_ticket_data(self.tickets)
+        self.save_ticket_data(self.tickets)
 
         del self.tickets[guild_id][user_id]
         if not self.tickets[guild_id]:
             del self.tickets[guild_id]
-        save_ticket_data(self.tickets)
+        self.save_ticket_data(self.tickets)
         await ctx.respond("Ticket will be deleted shortly.", ephemeral=True)
         await ticket_channel.delete()
 
@@ -345,7 +336,7 @@ class TicketSystem(Cog):
         ticket_data["assigned_to"] = agent.id
         ticket_data["status"] = "In Progress"
         ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
-        save_ticket_data(self.tickets)
+        self.save_ticket_data(self.tickets)
 
         embed_assign = discord.Embed(
             title="Ticket Assigned",
@@ -430,7 +421,7 @@ class TicketSystem(Cog):
                         embed_escalation.add_field(name="Last Activity", value=ticket_data["last_activity"], inline=True)
                         await log_channel.send(embed=embed_escalation)
                         ticket_data["status"] = "Escalated"
-                        save_ticket_data(self.tickets)
+                        self.save_ticket_data(self.tickets)
 
     @Cog.listener()
     async def on_member_remove(self, member: discord.Member):
@@ -473,7 +464,7 @@ class TicketSystem(Cog):
                 del self.tickets[guild_id][user_id]
                 if not self.tickets[guild_id]:
                     del self.tickets[guild_id]
-                save_ticket_data(self.tickets)
+                self.save_ticket_data(self.tickets)
 
     @Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -498,7 +489,7 @@ class TicketSystem(Cog):
                             except Exception as e:
                                 DebugHandler.LogError(f"Failed to add reaction to DM message: {e}")
                             ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
-                            save_ticket_data(self.tickets)
+                            self.save_ticket_data(self.tickets)
                         except Exception as e:
                             DebugHandler.LogError(f"Error forwarding DM message: {e}")
                     break

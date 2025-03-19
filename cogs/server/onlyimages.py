@@ -3,26 +3,10 @@ from discord.ext import commands
 import json
 import os
 from datetime import datetime
+from handlers.config import load_onlyimages, save_onlyimages
 
-ONLY_IMAGES_FILE = "data/onlyimages.json"
 
-def load_onlyimages():
-    if not os.path.exists(ONLY_IMAGES_FILE):
-        return {}
-    try:
-        with open(ONLY_IMAGES_FILE, "r") as f:
-            data = json.load(f)
-            # Convert old list format to new dictionary format
-            if isinstance(data, list):
-                return {channel_id: True for channel_id in data}
-            return data
-    except (json.JSONDecodeError, FileNotFoundError):
-        return {}
 
-def save_onlyimages(channels):
-    os.makedirs(os.path.dirname(ONLY_IMAGES_FILE), exist_ok=True)
-    with open(ONLY_IMAGES_FILE, "w") as f:
-        json.dump(channels, f, indent=4)
 
 class OnlyImages(commands.Cog):
     def __init__(self, bot: commands.Bot):

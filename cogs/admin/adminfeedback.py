@@ -5,34 +5,7 @@ import os
 import datetime
 import uuid 
 import handlers.debug as DH
-ADMINFEEDBACKFILE = "data/adminfeedback.json"
-
-def load_admin_feedback():
-    try:
-        if not os.path.exists(ADMINFEEDBACKFILE):
-            data = {"configs": {}, "feedbacks": {}}
-            with open(ADMINFEEDBACKFILE, "w") as f:
-                json.dump(data, f, indent=4)
-            return data
-        else:
-            with open(ADMINFEEDBACKFILE, "r") as f:
-                data = json.load(f)
-                if "configs" not in data:
-                    data["configs"] = {}
-                if "feedbacks" not in data:
-                    data["feedbacks"] = {}
-                return data
-    except Exception as e:
-        DH.LogError(f"❌ Error loading admin feedback: {e}")
-        return {"configs": {}, "feedbacks": {}}
-
-def save_admin_feedback(data):
-    try:
-        with open(ADMINFEEDBACKFILE, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        DH.LogError(f"❌ Error saving admin feedback: {e}")
-
+from handlers.config import load_admin_feedback, save_admin_feedback
 class AdminFeedback(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

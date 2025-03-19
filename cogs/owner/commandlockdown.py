@@ -5,33 +5,10 @@ import os
 import datetime
 from handlers.env import get_owner
 from handlers.debug import LogSystem, LogError, LogModeration, LogDebug
+from handlers.config import load_lockdown_config, save_lockdown_config
 
-lockdown_config_file = "config/lockdown.json"
 
-def load_lockdown_config():
-    try:
-        with open(lockdown_config_file, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        LogDebug("Lockdown config created")
-        with open(lockdown_config_file, "w") as f:
-            json.dump({"lockdown": False}, f)
-        return {"lockdown": False}
-    except json.JSONDecodeError as e:
-        LogError(f"Corrupted lockdown config: {str(e)}")
-        os.remove(lockdown_config_file)
-        with open(lockdown_config_file, "w") as f:
-            json.dump({"lockdown": False}, f)
-        return {"lockdown": False}
 
-def save_lockdown_config(lockdown_status):
-    try:
-        with open(lockdown_config_file, "w") as f:
-            json.dump({"lockdown": lockdown_status}, f)
-        LogSystem(f"Lockdown status updated to {lockdown_status}")
-    except Exception as e:
-        LogError(f"Failed to save lockdown config: {str(e)}")
-        raise
 
 class LockdownCheckFailure(commands.CheckFailure):
     pass

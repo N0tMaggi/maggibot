@@ -3,19 +3,10 @@ from discord.ext import commands
 from discord.commands import slash_command
 import json
 import asyncio
+from handlers.config import load_tags, save_tags
 
-tagsconfigfile = "data/tags.json"
 
-def load_tags():
-    try:
-        with open(tagsconfigfile, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
 
-def save_tags(tags):
-    with open(tagsconfigfile, "w") as f:
-        json.dump(tags, f, indent=4)
 
 class Tags(commands.Cog):
     def __init__(self, bot):
