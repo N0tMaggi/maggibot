@@ -1,143 +1,191 @@
+# -*- coding: utf-8 -*-
+# Main Bot Execution File
+
+import sys
+import os
+import time
+import json
+import logging
+import datetime
+import requests
 import discord
 from discord.ext import commands
-import os
 from discord.commands import slash_command
-import datetime
-import json
-import requests
-import dotenv
-from dotenv import load_dotenv
-import time
-import handlers.debug as DebugHandler
-import logging
 from colorama import Fore, Style, init
+from dotenv import load_dotenv
 
+# Local imports
+import handlers.debug as DebugHandler
+from handlers.config import get_config_files, get_data_files
 
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Initialization
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 init(autoreset=True)
-
-# Load the .env file
 load_dotenv()
 
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Constants & Configuration
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 DEBUG = os.getenv('DEBUG_MODE')
-
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
+TOKEN = os.getenv('TOKEN')
 currenttime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 intents = discord.Intents.all()
-TOKEN = os.getenv('TOKEN')
-
 bot = discord.Bot(intents=intents)
 
-def is_admin(ctx):
-    return ctx.author.guild_permissions.administrator
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Core Functions
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def clear_screen():
+    """Clear console screen"""
+    os.system('cls' if os.name == 'nt' else 'clear')
 
+def handle_installation():
+    """Handle command line installation arguments"""
+    if len(sys.argv) > 1:
+        if sys.argv[1].lower() == "install":
+            install_for_first_use()
+            sys.exit(0)
+        else:
+            print(Fore.RED + "Invalid command. Available commands:")
+            print(Fore.YELLOW + "python main.py install" + Fore.WHITE + " - Setup required files")
+            sys.exit(1)
+
+def install_for_first_use():
+    """Initial setup wizard for first-time users"""
+    print(Fore.GREEN + Style.BRIGHT + "-"*65)
+    print(Fore.YELLOW + Style.BRIGHT + "Initial Setup Wizard")
+    print(Fore.GREEN + Style.BRIGHT + "-"*65)
+    
+    all_files = get_config_files() + get_data_files()
+    
+    for file_path in all_files:
+        print(Fore.CYAN + f"Checking: {file_path}", end=" ")
+        
+        try:
+            if not os.path.exists(file_path):
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "w") as f:
+                    json.dump({}, f)
+                print(Fore.GREEN + "[CREATED]")
+            else:
+                with open(file_path, "r") as f:
+                    content = json.load(f)
+                    if content != {}:
+                        raise ValueError("Non-empty JSON")
+        except (json.JSONDecodeError, ValueError):
+            os.remove(file_path)
+            with open(file_path, "w") as f:
+                json.dump({}, f)
+            print(Fore.YELLOW + "[RESET]")
+        except Exception as e:
+            print(Fore.RED + f"[ERROR] {str(e)}")
+        else:
+            print(Fore.BLUE + "[OK]")
+    
+    print(Fore.GREEN + Style.BRIGHT + "-"*65)
+    print(Fore.YELLOW + Style.BRIGHT + "Setup completed successfully!")
+    print(Fore.GREEN + Style.BRIGHT + "-"*65)
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# System Checks
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def is_connected_to_internet():
+    """Check internet connectivity"""
     try:
-        requests.get("https://google.com")
-        return True, "Connected to the internet"
-    except:
-        return False, "Not connected to the internet"
+        requests.get("https://google.com", timeout=5)
+        return True, "-> Internet connection:" + Fore.GREEN + " Active" + Fore.RESET
+    except requests.ConnectionError:
+        return False, "-> Internet connection:"+ Fore.RED + " Unavailable" + Fore.RESET
 
-def check_json_files(directory):
+def validate_json_files(directory):
+    """Validate all JSON files in directory"""
     for filename in os.listdir(directory):
         if filename.endswith('.json'):
             file_path = os.path.join(directory, filename)
             try:
-                with open(file_path, 'r') as file:
-                    json.load(file)
+                with open(file_path, 'r') as f:
+                    json.load(f)
             except json.JSONDecodeError as e:
-                print(f"Invalid JSON in file {filename}: {e}")
+                print(Fore.RED + f"Invalid JSON in {filename}: {str(e)}")
                 return False
     return True
 
-def delete_traceback_files():
-    for filename in os.listdir('./logs/traceback'):
-        if filename.startswith('traceback_'):
-            try:
-                os.remove(os.path.join('./logs/traceback', filename))
-                DebugHandler.LogSystem(f" Deleted traceback file {filename}")
-                print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-                print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
-            except Exception as e:
-                DebugHandler.LogError(f" Error deleting log file {filename}: {e}")
-                raise Exception (f"Error deleting log file {filename}: {e}")
-    print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-    
-def DEBUG_MODE_PRINT_ENV():
-    if DEBUG == 'TRUE':
-        DebugHandler.LogDebug("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-        DebugHandler.LogDebug(f"DEBUG: {DEBUG}")
-        DebugHandler.LogDebug(f"OWNER_ID: {os.getenv('OWNER_ID')}")
-        DebugHandler.LogDebug(f"Error Log Channel ID: {os.getenv('ERROR_LOG_CHANNEL_ID')}")
-        DebugHandler.LogDebug(f"Command log Channel ID: {os.getenv('COMMAND_LOG_CHANNEL_ID')}")
-        DebugHandler.LogDebug("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-        time.sleep(5)
-        return True
-    return False
-
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Bot Events
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    print("-------------------------------------------")
-    print(f'Connected to {len(bot.guilds)} servers: ')
-    for guild in bot.guilds:
-        print(f'- {guild.name} (ID: {guild.id})')
-    print("-------------------------------------------")
-    print(f'Connected to the internet: {is_connected_to_internet()[0]}')
-    print("-------------------------------------------")
-    print(f'JSON files are valid: {check_json_files("data")}')
-    print("-------------------------------------------")
-    print(f'Current time: {currenttime}')
-    print("-------------------------------------------")
+    """Bot startup handler"""
+    status_checks = [
+        is_connected_to_internet()[1],
+        f"\n-> JSON validation: {Fore.GREEN + 'Passed' if validate_json_files('data') else Fore.RED + 'Failed'} \n",
+        Fore.RESET + "->" + Fore.MAGENTA + f" System time: {currenttime}\n"
+    ]
+    print(Fore.WHITE + "\n".join(status_checks))
+    print(Fore.WHITE + f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print(Fore.CYAN + "-"*45)
+
     await bot.change_presence(activity=discord.Game(name="with your mom"))
 
-def load_cogs(bot, directory='cogs'):
-    cog_count = 0
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Extension Loader
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def load_extensions(bot, directory='cogs'):
+    """Load all bot extensions from directory"""
+    loaded_count = 0
+    
     for root, _, files in os.walk(directory):
-        for filename in files:
-            if filename.endswith('.py'):
-                module_name = os.path.join(root, filename)[:-3].replace(os.sep, '.')
+        for file in files:
+            if file.endswith('.py'):
+                ext_path = os.path.join(root, file)[:-3].replace(os.sep, '.')
                 try:
-                    bot.load_extension(module_name)
-                    print(f'Loaded COG: {module_name}')
-                    cog_count += 1
+                    bot.load_extension(ext_path)
+                    print(Fore.GREEN + f"✓ "+ Fore.WHITE + f" {ext_path}")
+                    loaded_count += 1
                 except Exception as e:
-                    print(f'Failed to load {module_name}: {e}')
-    print(f'------------------------------------')
-    print(f'Loaded {cog_count} Cogs')
-    print(f'------------------------------------')
+                    print(Fore.RED + f"✗ {ext_path}: {str(e)}")
+    
+    print("\n")
+    print(Fore.GREEN + f"Successfully loaded {loaded_count} extensions\n")
+    print(Fore.CYAN + "-"*45)
 
-try:
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Main Execution
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def main():
+    """Main application entry point"""
+    handle_installation()
+    
+    # Pre-flight checks
     if not is_connected_to_internet()[0]:
-        print('Not connected to the Internet')
-        os._exit(1)
+        print(Fore.RED + "Critical error: No internet connection!")
+        sys.exit(1)
     
-    if DEBUG_MODE_PRINT_ENV():
-        pass
+    if not validate_json_files('data'):
+        print(Fore.RED + "Critical error: Invalid configuration files!")
+        sys.exit(1)
     
-    if not check_json_files('data'):
-        print(Fore.RED + Style.BRIGHT + f"Not all JSON files are valid")
-        os._exit(1)
-    else:
-        print(Fore.GREEN + Style.BRIGHT + f"All JSON files are valid!")
-    
-
     clear_screen()
-    delete_traceback_files()
-    time.sleep(1)
-    print('------------STARTING THE BOT------------')
-    print("""
+    
+    # Startup display
+    print(Fore.GREEN + Style.BRIGHT + "\n" + "="*45)
+    print(Fore.RESET + r"""
     ╔╦╗┌─┐┌─┐┌─┐┬╔═╗┬ ┬┌─┐┌┬┐┌─┐┌┬┐
     ║║║├─┤│ ┬│ ┬│╚═╗└┬┘└─┐ │ ├┤ │││
     ╩ ╩┴ ┴└─┘└─┘┴╚═╝ ┴ └─┘ ┴ └─┘┴ ┴
     """)
-    print(f'------------------------------------')
-    load_cogs(bot)
+    print(Fore.GREEN + "="*45 + "\n")
+    
+    load_extensions(bot)
     bot.run(TOKEN)
 
-except Exception as e:
-    raise Exception(f"An error occurred while starting the bot: {e}")
-except KeyboardInterrupt:
-    print("\n Keyboard Interrupt detected..... Stopping the bot...")
-    bot.close()
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(Fore.YELLOW + "\nSafe shutdown initiated...")
+        bot.close()
+    except Exception as e:
+        print(Fore.RED + f"\nCritical failure: {str(e)}")
+        sys.exit(1)

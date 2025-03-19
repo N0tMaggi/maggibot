@@ -6,6 +6,37 @@ from dotenv import load_dotenv
 load_dotenv()
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Generic File Handlers
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def load_data(filename, default=None, transform_fn=None):
+    """Generic function to load data from JSON files"""
+    try:
+        if not os.path.exists(filename):
+            return default() if callable(default) else default
+            
+        with open(filename, "r") as f:
+            data = json.load(f)
+            return transform_fn(data) if transform_fn else data
+            
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        DebugHandler.LogError(f"Error loading {filename}: {str(e)}")
+        return default() if callable(default) else default
+
+def save_data(filename, data, mkdir=False):
+    """Generic function to save data to JSON files"""
+    try:
+        if mkdir:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            
+        with open(filename, "w") as f:
+            json.dump(data, f, indent=4)
+        return True
+        
+    except Exception as e:
+        DebugHandler.LogError(f"Error saving {filename}: {str(e)}")
+        raise
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # File Path Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Configs
@@ -16,15 +47,63 @@ VOICEGATE_CONFIG_FILE = "config/voicegateconfig.json"
 ONLY_IMAGES_FILE = "config/onlyimages.json"
 RANDOM_MATH_FILE = "config/randommathchannel.json"
 
-
-
-#Data
+# Data
 MAC_FILE = "data/mac.json"
 STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 TICKET_DATA_FILE = "data/tickets.json"
 COOKIES_FILE = "data/cookies.json"
 TAGS_CONFIG_FILE = "data/tags.json"
+
+# Categorised File List
+JSON_FILES = [
+    SERVER_CONFIG_FILE,
+    ADMIN_FEEDBACK_FILE,
+    LOCKDOWN_CONFIG_FILE,
+    VOICEGATE_CONFIG_FILE,
+    ONLY_IMAGES_FILE,
+    RANDOM_MATH_FILE,
+    MAC_FILE,
+    STATS_FILE,
+    XP_MULTIPLIER_FILE,
+    TICKET_DATA_FILE,
+    COOKIES_FILE,
+    TAGS_CONFIG_FILE
+]
+
+CONFIG_FILES = [
+    SERVER_CONFIG_FILE,
+    ADMIN_FEEDBACK_FILE,
+    LOCKDOWN_CONFIG_FILE,
+    VOICEGATE_CONFIG_FILE,
+    ONLY_IMAGES_FILE,
+    RANDOM_MATH_FILE
+]
+
+DATA_FILES = [
+    MAC_FILE,
+    STATS_FILE,
+    XP_MULTIPLIER_FILE,
+    TICKET_DATA_FILE,
+    COOKIES_FILE,
+    TAGS_CONFIG_FILE
+]
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# File Categorization Functions
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def get_json_files():
+    """Return all JSON files used by the system"""
+    return JSON_FILES
+
+def get_config_files():
+    """Return all configuration files"""
+    return CONFIG_FILES
+
+def get_data_files():
+    """Return all data storage files"""
+    return DATA_FILES
+
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # XP System Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -36,266 +115,118 @@ VOICE_XP_COUNT = float(os.getenv('VOICE_XP_COUNT', 0.2))
 # Server Configuration Handlers
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def loadserverconfig():
-    try:
-        with open(SERVER_CONFIG_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        DebugHandler.LogError(f"Error in loadserverconfig: {str(e)}")
-        return {}
+    return load_data(SERVER_CONFIG_FILE, default=dict)
 
 def saveserverconfig(serverconfig):
-    try:
-        with open(SERVER_CONFIG_FILE, "w") as f:
-            json.dump(serverconfig, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in saveserverconfig: {str(e)}")
-        raise
+    save_data(SERVER_CONFIG_FILE, serverconfig)
 
 def get_log_channel(guild):
-    try:
-        serverconfig = loadserverconfig()
-        return guild.get_channel(serverconfig.get(str(guild.id), {}).get("log_channel"))
-    except Exception as e:
-        DebugHandler.LogError(f"Error in get_log_channel: {str(e)}")
-        return None
+    serverconfig = loadserverconfig()
+    return guild.get_channel(serverconfig.get(str(guild.id), {}).get("log_channel"))
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Statistics Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_stats():
-    try:
-        if not os.path.exists(STATS_FILE):
-            return {}
-        with open(STATS_FILE, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in load_stats: {str(e)}")
-        return {}
+    return load_data(STATS_FILE, default=dict)
 
 def save_stats(stats):
-    try:
-        with open(STATS_FILE, "w") as f:
-            json.dump(stats, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in save_stats: {str(e)}")
-        raise
+    save_data(STATS_FILE, stats)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # XP Multiplier Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_multiplier_config():
-    try:
-        if not os.path.exists(XP_MULTIPLIER_FILE):
-            return {"channels": [], "multipliers": {}}
-        with open(XP_MULTIPLIER_FILE, "r") as f:
-            data = json.load(f)
-            return {
-                "channels": data.get("channels", []),
-                "multipliers": data.get("multipliers", {})
-            }
-    except Exception as e:
-        DebugHandler.LogError(f"Error in load_multiplier_config: {str(e)}")
-        return {"channels": [], "multipliers": {}}
+    default = {"channels": [], "multipliers": {}}
+    return load_data(XP_MULTIPLIER_FILE, default=default)
 
 def save_multiplier_config(config):
-    try:
-        with open(XP_MULTIPLIER_FILE, "w") as f:
-            json.dump(config, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in save_multiplier_config: {str(e)}")
-        raise
+    save_data(XP_MULTIPLIER_FILE, config)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Admin feedback configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def load_admin_feedback():
-    try:
-        if not os.path.exists(ADMIN_FEEDBACK_FILE):
-            return {}
-        with open(ADMIN_FEEDBACK_FILE, "r") as f:
-            data = json.load(f)
-            if "configs" not in data:
-                data["configs"] = {}
-            if "feedbacks" not in data:
-                data["feedbacks"] = {}
-            return data
-    except Exception as e:
-        DebugHandler.LogError(f"Error in load_admin_feedback: {str(e)}")
-        return {}
+    default = {"configs": {}, "feedbacks": {}}
+    return load_data(ADMIN_FEEDBACK_FILE, default=default)
 
 def save_admin_feedback(data):
-    try:
-        with open(ADMIN_FEEDBACK_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in save_admin_feedback: {str(e)}")
-        raise
-
+    save_data(ADMIN_FEEDBACK_FILE, data)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# ticket configuration
+# Ticket configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def load_ticket_data():
-    try:
-        if not os.path.exists(TICKET_DATA_FILE):
-            return {}
-        with open(TICKET_DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in load_ticket_data: {str(e)}")
-        return {}
+    return load_data(TICKET_DATA_FILE, default=dict)
 
 def save_ticket_data(data):
-    try:
-        with open(TICKET_DATA_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in save_ticket_data: {str(e)}")
-        raise
-
+    save_data(TICKET_DATA_FILE, data)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Lockdown Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def load_lockdown_config():
-    try:
-        with open(LOCKDOWN_CONFIG_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        DebugHandler.LogDebug("Lockdown config created")
-        with open(LOCKDOWN_CONFIG_FILE, "w") as f:
-            json.dump({"lockdown": False}, f)
-        return {"lockdown": False}
-    except json.JSONDecodeError as e:
-        DebugHandler.LogError(f"Corrupted lockdown config: {str(e)}")
-        os.remove(LOCKDOWN_CONFIG_FILE)
-        with open(LOCKDOWN_CONFIG_FILE, "w") as f:
-            json.dump({"lockdown": False}, f)
-        return {"lockdown": False}
+    data = load_data(LOCKDOWN_CONFIG_FILE, default={"lockdown": False})
+    if not isinstance(data, dict) or "lockdown" not in data:
+        data = {"lockdown": False}
+        save_data(LOCKDOWN_CONFIG_FILE, data)
+    return data
 
 def save_lockdown_config(lockdown_status):
-    try:
-        with open(LOCKDOWN_CONFIG_FILE, "w") as f:
-            json.dump({"lockdown": lockdown_status}, f)
-        DebugHandler.LogSystem(f"Lockdown status updated to {lockdown_status}")
-    except Exception as e:
-        DebugHandler.LogError(f"Failed to save lockdown config: {str(e)}")
-        raise
+    save_data(LOCKDOWN_CONFIG_FILE, {"lockdown": lockdown_status})
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# Lockdown Configuration
+# Voicegate Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def loadvoicegateconfig():
-    try:
-        if not os.path.exists(VOICEGATE_CONFIG_FILE):
-            return {}
-        with open(VOICEGATE_CONFIG_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        DebugHandler.LogError(f"Error in loadvoicegateconfig: {str(e)}")
-        return {}
+    return load_data(VOICEGATE_CONFIG_FILE, default=dict)
 
 def savevoicegateconfig(config):
-    try:
-        with open(VOICEGATE_CONFIG_FILE, "w") as f:
-            json.dump(config, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in savevoicegateconfig: {str(e)}")
-        raise
+    save_data(VOICEGATE_CONFIG_FILE, config)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # OnlyImages Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def load_onlyimages():
-    if not os.path.exists(ONLY_IMAGES_FILE):
-        return {}
-    try:
-        with open(ONLY_IMAGES_FILE, "r") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return {channel_id: True for channel_id in data}
-            return data
-    except (json.JSONDecodeError, FileNotFoundError):
-        return {}
+    def transform(data):
+        return {channel_id: True for channel_id in data} if isinstance(data, list) else data
+    return load_data(ONLY_IMAGES_FILE, default=dict, transform_fn=transform)
 
 def save_onlyimages(channels):
-    os.makedirs(os.path.dirname(ONLY_IMAGES_FILE), exist_ok=True)
-    with open(ONLY_IMAGES_FILE, "w") as f:
-        json.dump(channels, f, indent=4)
-
+    save_data(ONLY_IMAGES_FILE, channels, mkdir=True)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Random Math + Cookies Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def load_randommath():
+    return load_data(RANDOM_MATH_FILE, default=dict)
 
-def load_randommath_file(filename, default):
-    if not os.path.exists(filename):
-        return default
-    with open(filename, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return default
+def save_randommath(data):
+    save_data(RANDOM_MATH_FILE, data)
 
-def save_randommath_file(filename, data):
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=4)
+def load_cookies():
+    return load_data(COOKIES_FILE, default=dict)
 
-def load_cookies_file(filename, default):
-    if not os.path.exists(filename):
-        return default
-    with open(filename, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return default
-
-def save_cookies_file(filename, data):
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=4)
-
+def save_cookies(data):
+    save_data(COOKIES_FILE, data)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Tags Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 def load_tags():
-    try:
-        with open(TAGS_CONFIG_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+    return load_data(TAGS_CONFIG_FILE, default=dict)
 
 def save_tags(tags):
-    with open(TAGS_CONFIG_FILE, "w") as f:
-        json.dump(tags, f, indent=4)
+    save_data(TAGS_CONFIG_FILE, tags)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # MAC Ban System Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def mac_load_bans():
-    try:
-        if not os.path.exists(MAC_FILE):
-            return {}
-        with open(MAC_FILE, "r") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return {str(ban["id"]): ban for ban in data}
-            return {str(k): v for k, v in data.items()}
-    except Exception as e:
-        DebugHandler.LogError(f"Error in mac_load_bans: {str(e)}")
-        return {}
+    data = load_data(MAC_FILE, default=dict)
+    if isinstance(data, list):
+        return {str(ban["id"]): ban for ban in data}
+    return {str(k): v for k, v in data.items()}
 
 def mac_save_bans(bans):
-    try:
-        os.makedirs(os.path.dirname(MAC_FILE), exist_ok=True)
-        with open(MAC_FILE, "w") as f:
-            json.dump(bans, f, indent=4)
-    except Exception as e:
-        DebugHandler.LogError(f"Error in mac_save_bans: {str(e)}")
-        raise
+    save_data(MAC_FILE, bans, mkdir=True)

@@ -4,13 +4,13 @@ import random
 import json
 import os
 import asyncio
-from handlers.config import load_randommath_file, save_randommath_file, load_cookies_file, save_cookies_file, RANDOM_MATH_FILE, COOKIES_FILE
+from handlers.config import load_randommath, save_randommath, load_cookies, save_cookies
 
 class RandomMath(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.math_channels = load_randommath_file(RANDOM_MATH_FILE, {})
-        self.cookies = load_cookies_file(COOKIES_FILE, {})
+        self.math_channels = load_randommath()
+        self.cookies = load_cookies()
         self.active_challenges = {}
 
     @commands.slash_command(description="Enable random math questions in this channel.")
@@ -21,7 +21,7 @@ class RandomMath(commands.Cog):
             return
         
         self.math_channels[str(ctx.channel.id)] = chance
-        save_randommath_file(RANDOM_MATH_FILE, self.math_channels)
+        save_randommath(self.math_channels)
         
         embed = discord.Embed(
             title="Random Math Enabled",
@@ -36,7 +36,7 @@ class RandomMath(commands.Cog):
     async def disablerandommath(self, ctx: discord.ApplicationContext):
         if str(ctx.channel.id) in self.math_channels:
             del self.math_channels[str(ctx.channel.id)]
-            save_randommath_file(RANDOM_MATH_FILE, self.math_channels)
+            save_randommath(self.math_channels)
             embed = discord.Embed(
                 title="Random Math Disabled",
                 description="Math challenges have been disabled in this channel.",
@@ -131,7 +131,7 @@ class RandomMath(commands.Cog):
                 
                 if round(user_answer, 2) == answer:
                     self.cookies[str(msg.author.id)] = self.cookies.get(str(msg.author.id), 0) + 1
-                    save_cookies_file(COOKIES_FILE, self.cookies)
+                    save_cookies(self.cookies)
                     embed = discord.Embed(
                         title="Correct Answer!",
                         description=f"{msg.author.mention}, you earned a **🍪 cookie**!",
