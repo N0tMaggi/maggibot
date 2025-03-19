@@ -2,3 +2,5 @@
 .env
 logs/log.txt
 *.log
+config/
+data/
