@@ -151,6 +151,23 @@ def load_extensions(bot, directory='cogs'):
     print(Fore.CYAN + "-"*45)
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Delete Traceback
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+def delete_traceback_files():
+    for filename in os.listdir('./logs/traceback'):
+        if filename.startswith('traceback_'):
+            try:
+                os.remove(os.path.join('./logs/traceback', filename))
+                DebugHandler.LogSystem(f" Deleted traceback file {filename}")
+                print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+                print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
+            except Exception as e:
+                DebugHandler.LogError(f" Error deleting log file {filename}: {e}")
+                raise Exception (f"Error deleting log file {filename}: {e}")
+    print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Main Execution
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def main():
@@ -167,6 +184,7 @@ def main():
         sys.exit(1)
     
     clear_screen()
+    delete_traceback_files()
     
     # Startup display
     print(Fore.GREEN + Style.BRIGHT + "\n" + "="*45)
