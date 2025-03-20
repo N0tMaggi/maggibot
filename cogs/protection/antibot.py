@@ -4,9 +4,7 @@ import json
 import datetime
 import handlers.debug as DebugHandler
 import handlers.config as config
-
-
-
+from extensions.protectionextension import create_protection_embed
 class Antibot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -18,110 +16,70 @@ class Antibot(commands.Cog):
         serverconfig[str(member.guild.id)] = serverconfig.get(str(member.guild.id), {})
 
         if not serverconfig[str(member.guild.id)].get("protection"):
-            DebugHandler.LogDebug(f"Protection is not enabled for {member.guild.name}")  
+            DebugHandler.LogDebug(f"Protection disabled in {member.guild.name} (ID: {member.guild.id})")
             return
 
-        if member.bot:
-            DebugHandler.LogDebug(f"Bot detected: {member.name}")  
+        if not member.bot:
+            DebugHandler.LogDebug(f"Non-bot member joined: {member} (ID: {member.id})")
+            return
 
+        DebugHandler.LogDebug(f"Bot detected: {member} (ID: {member.id})")
+        inviter = None
+
+        try:
+            async for entry in member.guild.audit_logs(limit=10, action=discord.AuditLogAction.bot_add):
+                if entry.target.id == member.id:
+                    inviter = entry.user
+                    DebugHandler.LogDebug(f"Found inviter: {inviter} for bot {member}")
+                    break
+        except Exception as e:
+            DebugHandler.LogError(f"Audit log error in {member.guild.name}: {str(e)}")
+            inviter = None
+
+        log_channel_id = serverconfig[str(member.guild.id)].get("protectionlogchannel")
+        if not log_channel_id:
+            DebugHandler.LogDebug(f"No log channel set for {member.guild.name}")
+            return
+
+        try:
+            log_channel = await member.guild.fetch_channel(log_channel_id)
+        except Exception as e:
+            DebugHandler.LogError(f"Failed to fetch log channel in {member.guild.name}: {str(e)}")
+            return
+
+        if member.public_flags.verified_bot:
+            DebugHandler.LogDebug(f"Verified bot allowed: {member}")
+            embed = await create_protection_embed(member, inviter, is_verified=True)
+            await log_channel.send(embed=embed)
+            return
+
+        if serverconfig[str(member.guild.id)].get("protection"):
             try:
-                audit_logs = await member.guild.audit_logs(limit=5, action=discord.AuditLogAction.bot_add).flatten()
-                inviter = None
-                for log in audit_logs:
-                    if log.target.id == member.id:
-                        inviter = log.user
-                        DebugHandler.LogDebug(f"Bot {member.name} was invited by {inviter.name}")  
-                        break
-                if inviter is None:
-                    DebugHandler.LogError(f"Could not find the inviter for bot {member.name} in {member.guild.name}")  
+                await member.kick(reason="Unverified bot protection")
+                DebugHandler.LogDebug(f"Successfully kicked unverified bot: {member}")
+                embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=True)
+            except discord.Forbidden:
+                DebugHandler.LogError(f"Missing permissions to kick {member} in {member.guild.name}")
+                embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=False)
+                embed.color = discord.Color.orange()
+                embed.title = "⚠️ Protection Action Failed"
             except Exception as e:
-                DebugHandler.LogError(f"Error while fetching audit logs: {e}")  
-                raise Exception("Error while fetching audit logs" + str(e))
-
-            if member.public_flags.verified_bot:
-                DebugHandler.LogDebug(f"Verified bot detected: {member.name}")  
-                if serverconfig[str(member.guild.id)].get("protectionlogchannel"):
-                    try:
-                        protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
-                        print(f"Found protection log channel: {protection_log_channel.name}")  
-                        reaction_embed = discord.Embed(
-                            title="🤖 Bot Joined! 🎉",
-                            description=f"{member.mention} has joined the server as a **verified bot** and has been allowed to stay. ✅",
-                            color=discord.Color.green()
-                        )
-                        reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
-                        reaction_embed.add_field(name="Bot Name", value=member.name)
-                        reaction_embed.add_field(name="Bot ID", value=member.id)
-                        reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
-                        reaction_embed.add_field(name="Bot Mention", value=member.mention)
-                        reaction_embed.timestamp = datetime.datetime.utcnow()
-                        reaction_embed.set_thumbnail(url=member.guild.icon.url)
-                        await protection_log_channel.send(embed=reaction_embed)
-                        DebugHandler.LogDebug("Message sent to protection log channel for verified bot.")  
-                    except Exception as e:
-                        DebugHandler.LogError(f"Error while sending message to log channel: {e}") 
-                        raise Exception("Error while sending message to log channel" + str(e))
-            else:
-                DebugHandler.LogDebug(f"Unverified bot detected: {member.name}")  
-                if serverconfig[str(member.guild.id)].get("protectionlogchannel"):
-                    if serverconfig[str(member.guild.id)].get("protection"):
-                        print(f"Protection is enabled, kicking unverified bot: {member.name}")  
-                        try:
-                            await member.kick(reason="Unverified bot 🚫")
-                            DebugHandler.LogDebug(f"Kicked bot: {member.name}")  
-                        except Exception as e:
-                            DebugHandler.LogError(f"Error while kicking bot: {e}")  
-                            protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
-                            reaction_embed = discord.Embed(
-                                title="⚠️ Unverified Bot NOT Kicked! ❌",
-                                description=f"{member.mention} joined as an **unverified bot** and could not be kicked due to an error. 🛡️",
-                                color=discord.Color.red()
-                            )
-                            raise Exception("Error while kicking bot" + str(e))
-
-                        try:
-                            protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
-                            reaction_embed = discord.Embed(
-                                title="⚠️ Unverified Bot Kicked! ❌",
-                                description=f"{member.mention} joined as an **unverified bot** and has been kicked for security reasons. 🛡️",
-                                color=discord.Color.red()
-                            )
-                            reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
-                            reaction_embed.add_field(name="Bot Name", value=member.name)
-                            reaction_embed.add_field(name="Bot ID", value=member.id)
-                            reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
-                            reaction_embed.add_field(name="Bot Mention", value=member.mention)
-                            reaction_embed.timestamp = datetime.datetime.utcnow()
-                            reaction_embed.set_thumbnail(url=member.guild.icon.url)
-                            await protection_log_channel.send(embed=reaction_embed)
-                            DebugHandler.LogDebug("Message sent to protection log channel for unverified bot.")  
-                        except Exception as e:
-                            DebugHandler.LogError(f"Error while sending message to log channel: {e}")  
-                            raise Exception("Error while sending message to log channel" + str(e))
-                    else:
-                        try:
-                            protection_log_channel = await member.guild.fetch_channel(serverconfig[str(member.guild.id)]["protectionlogchannel"])
-                            reaction_embed = discord.Embed(
-                                title="🔴 Unverified Bot Allowed to Stay 🚷",
-                                description=f"{member.mention} joined as an **unverified bot** but has been allowed to stay. 🟢",
-                                color=discord.Color.green()
-                            )
-                            reaction_embed.set_footer(text=f"Invited by: {inviter.name}", icon_url=inviter.avatar.url if inviter else "")
-                            reaction_embed.add_field(name="Bot Name", value=member.name)
-                            reaction_embed.add_field(name="Bot ID", value=member.id)
-                            reaction_embed.add_field(name="Bot Discriminator", value=member.discriminator)
-                            reaction_embed.add_field(name="Bot Mention", value=member.mention)
-                            reaction_embed.timestamp = datetime.datetime.utcnow()
-                            reaction_embed.set_thumbnail(url=member.guild.icon.url)
-                            await protection_log_channel.send(embed=reaction_embed)
-                            DebugHandler.LogDebug("Message sent to protection log channel for unverified bot allowed to stay.")  
-                        except Exception as e:
-                            DebugHandler.LogError(f"Error while sending message to log channel: {e}")  
-                else:
-                    DebugHandler.LogDebug(f"Protection log channel not set for guild {member.guild.name}")  
+                DebugHandler.LogError(f"Error kicking bot: {str(e)}")
+                embed = discord.Embed(
+                    title="⚠️ Critical Protection Error",
+                    description=f"Unexpected error handling bot: {str(e)}",
+                    color=discord.Color.dark_red()
+                )
         else:
-            DebugHandler.LogDebug(f"Member is not a bot: {member.name}")  
+            DebugHandler.LogDebug(f"Protection disabled - allowing unverified bot: {member}")
+            embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=False)
+            embed.color = discord.Color.orange()
+            embed.title = "⚠️ Unverified Bot Allowed"
 
+        try:
+            await log_channel.send(embed=embed)
+        except Exception as e:
+            DebugHandler.LogError(f"Failed to send log message: {str(e)}")
 
 def setup(bot):
     bot.add_cog(Antibot(bot))

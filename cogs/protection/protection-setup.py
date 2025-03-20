@@ -1,71 +1,107 @@
 import discord
 from discord.ext import commands
-import json
 import datetime
 import handlers.debug as DebugHandler
 import handlers.config as config
-import time
-
-mention_count = {}
-
-
+from extensions.protectionextension import create_protection_config_embed
 
 class Protection(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-    
-    def is_authorized(ctx):
-        if ctx.author.guild_permissions.administrator:
-            return True
-        else:
-            raise commands.CommandError(f"User {ctx.author} is not authorized to use this command")
+
+
 
     @commands.slash_command(name="setup-protectionlog", description="Set the protection log channel")
-    @commands.check(is_authorized)
+    @commands.has_permissions(administrator=True)
     async def setprotectionlogchannel(self, ctx, channel: discord.TextChannel):
-        serverconfig = config.loadserverconfig()
-        serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
-        serverconfig[str(ctx.guild.id)]["protectionlogchannel"] = channel.id
-        config.saveserverconfig(serverconfig)
+        try:
+            serverconfig = config.loadserverconfig()
+            server_id = str(ctx.guild.id)
 
-        reaction_embed = discord.Embed(
-            title="Protection Log Channel",
-            description=f"Protection log channel has been set to {channel.mention}",
-            color=discord.Color.green()
-        )
-        reaction_embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-        reaction_embed.timestamp = datetime.datetime.utcnow()
+            serverconfig.setdefault(server_id, {})
+            serverconfig[server_id]["protectionlogchannel"] = channel.id
+            config.saveserverconfig(serverconfig)
 
-        await ctx.respond(embed=reaction_embed)
+            DebugHandler.LogDebug(f"Protection log set to {channel.id} in {ctx.guild.name}")
+
+            fields = [
+                ("📁 Log Channel", f"{channel.mention}\nID: `{channel.id}`", True),
+                ("🔧 Configuration Type", "Protection System", True),
+                ("🌐 Server Region", str(ctx.guild.region).title(), True)
+            ]
+
+            embed = await create_protection_config_embed(
+                ctx=ctx,
+                title="🔧 Protection Log Configured ✅",
+                description=f"Successfully set up security logging in {channel.mention}",
+                color=discord.Color.green(),
+                fields=fields
+            )
+            
+            await ctx.respond(embed=embed)
+
+        except commands.BotMissingPermissions as e:
+            embed = discord.Embed(
+                title="⚠️ Missing Permissions",
+                description=f"Could not set log channel:\n{e}",
+                color=discord.Color.orange()
+            )
+            await ctx.respond(embed=embed, ephemeral=True)
+        except Exception as e:
+            DebugHandler.LogError(f"Error setting protection log: {str(e)}")
+            embed = discord.Embed(
+                title="❌ Configuration Error",
+                description="Failed to update protection settings",
+                color=discord.Color.red()
+            )
+            await ctx.respond(embed=embed, ephemeral=True)
 
     @commands.slash_command(name="setup-protection", description="Enable or disable the protection system")
-    @commands.check(is_authorized)
+    @commands.has_permissions(administrator=True)
     async def antiraid(self, ctx, enabled: bool):
-        serverconfig = config.loadserverconfig()
-        serverconfig[str(ctx.guild.id)] = serverconfig.get(str(ctx.guild.id), {})
-        serverconfig[str(ctx.guild.id)]["protection"] = enabled
-        config.saveserverconfig(serverconfig)
+        try:
+            serverconfig = config.loadserverconfig()
+            server_id = str(ctx.guild.id)
+            previous_state = serverconfig.get(server_id, {}).get("protection", False)
+            
+            serverconfig.setdefault(server_id, {})
+            serverconfig[server_id]["protection"] = enabled
+            config.saveserverconfig(serverconfig)
 
-        reaction_embed = discord.Embed(
-            title="🔒 Protection System",
-            description=f"Maggi Protection system has been {'✅ Enabled' if enabled else '❌ Disabled'}",
-            color=discord.Color.green() if enabled else discord.Color.red()
-        )
+            DebugHandler.LogDebug(f"Protection {'enabled' if enabled else 'disabled'} in {ctx.guild.name}")
 
-        reaction_embed.add_field(name="Status", value="Enabled" if enabled else "Disabled", inline=True)
-        reaction_embed.add_field(name="Requested By", value=f"{ctx.author.mention}", inline=True)
-        reaction_embed.add_field(name="Server", value=ctx.guild.name, inline=True)
+            status_icon = "✅" if enabled else "❌"
+            fields = [
+                ("🛡️ Previous State", "Active" if previous_state else "Inactive", True),
+                ("⚡ New State", "Active" if enabled else "Inactive", True),
+                ("📅 Effective Since", f"<t:{int(datetime.datetime.now().timestamp())}:R>", True)
+            ]
 
-        reaction_embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-        reaction_embed.timestamp = datetime.datetime.utcnow()
+            embed = await create_protection_config_embed(
+                ctx=ctx,
+                title=f"{status_icon} Protection System {'Enabled' if enabled else 'Disabled'}",
+                description="Security system configuration updated",
+                color=discord.Color.blue() if enabled else discord.Color.dark_gray(),
+                fields=fields
+            )
+            
+            modules_status = [
+                f"{'✅' if enabled else '❌'} Anti-Raid Protection",
+                f"{'✅' if enabled else '❌'} Mass Mention Detection",
+                f"{'✅' if enabled else '❌'} Bot Verification System"
+            ]
+            embed.add_field(name="🔐 Active Modules", value="\n".join(modules_status), inline=False)
+            
+            await ctx.respond(embed=embed)
 
-        if ctx.guild.icon:
-            reaction_embed.set_thumbnail(url=ctx.guild.icon.url)
+        except Exception as e:
+            DebugHandler.LogError(f"Error toggling protection: {str(e)}")
+            embed = discord.Embed(
+                title="❌ Operation Failed",
+                description="Could not update protection settings",
+                color=discord.Color.red()
+            )
+            await ctx.respond(embed=embed, ephemeral=True)
 
-        await ctx.respond(embed=reaction_embed)
-
-
-
-    
 def setup(bot):
     bot.add_cog(Protection(bot))
