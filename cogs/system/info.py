@@ -160,61 +160,7 @@ class InfoSystem(commands.Cog):
             LogError(f"Status command failed: {str(e)}")
             raise
 
-    @commands.slash_command(name="error-normal", description="⚡ Trigger a controlled test error")
-    async def error_normal(self, ctx: discord.ApplicationContext):
-        """Generate a test error (Owner only)"""
-        await ctx.defer(ephemeral=True)
-        
-        if ctx.author.id != int(self.owner_id):
-            embed = self.create_embed(
-                "⛔ Unauthorized Access",
-                "```diff\n- Critical Security Alert: Unauthorized error trigger attempt!```",
-                "error"
-            )
-            await ctx.followup.send(embed=embed)
-            LogError(f"Unauthorized error trigger by {ctx.author.id}")
-            return
 
-        try:
-            LogError("⚠️ Test error triggered (normal)")
-            raise Exception("🚨 Controlled test error triggered successfully!")
-            
-        except Exception as e:
-            embed = self.create_embed(
-                "⚠️ Test Error Generated",
-                f"```diff\n- {str(e)}\n+ Error handling working correctly!```",
-                "error"
-            )
-            await ctx.followup.send(embed=embed)
-            raise
-
-    @commands.slash_command(name="error-fatal", description="💥 Trigger a critical test error")
-    async def error_fatal(self, ctx: discord.ApplicationContext):
-        """Generate a fatal test error (Owner only)"""
-        await ctx.defer(ephemeral=True)
-
-        if ctx.author.id != int(self.owner_id):
-            embed = self.create_embed(
-                "⛔ Security Violation",
-                "```diff\n- ALERT: Unauthorized critical error trigger attempt!```",
-                "error"
-            )
-            await ctx.followup.send(embed=embed)
-            LogError(f"Unauthorized fatal error attempt by {ctx.author.id}")
-            return
-
-        try:
-            LogError("💥 Fatal test error triggered")
-            raise Exception("🔥 CRITICAL TEST ERROR - SYSTEM SIMULATION")
-            
-        except Exception as e:
-            embed = self.create_embed(
-                "💥 Fatal Error Simulation",
-                f"```diff\n- {str(e)}\n+ Error containment successful!```",
-                "error"
-            )
-            await ctx.followup.send(embed=embed)
-            raise
 
 def setup(bot: commands.Bot):
     bot.add_cog(InfoSystem(bot))

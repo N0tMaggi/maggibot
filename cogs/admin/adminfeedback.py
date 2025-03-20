@@ -11,54 +11,6 @@ class AdminFeedback(commands.Cog):
         self.bot = bot
         self.admin_feedback = load_admin_feedback()
 
-    @commands.slash_command(name="setup-adminfeedback", description="🔧 Set up admin feedback")
-    @commands.has_permissions(administrator=True)
-    async def setup_admin_feedback(self, ctx, team_role: discord.Role):
-        try:
-            self.admin_feedback["configs"][str(ctx.guild.id)] = {"team_role": team_role.id}
-            save_admin_feedback(self.admin_feedback)
-            embed = discord.Embed(
-                title="✅ Admin feedback set up!",
-                description="The admin feedback system has been successfully configured.",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="👥 Team Role", value=team_role.mention, inline=False)
-            embed.set_footer(text="Use /feedback to send feedback to an admin.")
-            await ctx.respond(embed=embed)
-        except Exception as e:
-            DH.LogError(f"❌ Error setting up admin feedback: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while setting up.",
-                color=discord.Color.red()
-            ))
-
-    @commands.slash_command(name="setup-deleteadminfeedback", description="🗑 Remove the admin feedback system")
-    @commands.has_permissions(administrator=True)
-    async def setup_delete_admin_feedback(self, ctx):
-        try:
-            if str(ctx.guild.id) in self.admin_feedback["configs"]:
-                del self.admin_feedback["configs"][str(ctx.guild.id)]
-                save_admin_feedback(self.admin_feedback)
-                embed = discord.Embed(
-                    title="🗑 Admin feedback deleted!",
-                    description="The admin feedback configuration has been removed.",
-                    color=discord.Color.green()
-                )
-            else:
-                embed = discord.Embed(
-                    title="⚠️ No configuration found!",
-                    description="There is no stored admin feedback configuration for this server.",
-                    color=discord.Color.orange()
-                )
-            await ctx.respond(embed=embed)
-        except Exception as e:
-            DH.LogError(f"❌ Error deleting admin feedback configuration: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while deleting.",
-                color=discord.Color.red()
-            ))
 
     @commands.slash_command(name="feedback", description="📩 Send feedback to an admin")
     async def feedback(self, ctx, admin_user: discord.Member, *, feedback: str):
