@@ -7,6 +7,7 @@ from cogs.owner.commandlockdown import LockdownCheckFailure
 import sys
 from colorama import Fore, Style, init
 import handlers.debug as DebugHandler
+from handlers.env import get_owner
 import uuid 
 
 init(autoreset=True)
@@ -16,19 +17,31 @@ error_log_channel_id = os.getenv("ERROR_LOG_CHANNEL_ID")
 class ErrorHandling(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.owner_id = get_owner()
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
+        # Check if error message contains "fatal" or "critical"
+        error_message = str(error).lower()
+        if "fatal" in error_message or "critical" in error_message:
+            await self.fatal_error("FATAL ERROR encountered in command error", error)
+            return
+
         if isinstance(error, LockdownCheckFailure):
             return
         try:
             await self.handle_error(ctx, error, "❌ Command Error")
         except Exception as e:
-            self.fatal_error("Error handling command error", e)
+            await self.fatal_error("Error handling command error", e)
             traceback.print_exc()
 
     @commands.Cog.listener()
     async def on_application_command_error(self, ctx, error):
+        error_message = str(error).lower()
+        if "fatal" in error_message or "critical" in error_message:
+            await self.fatal_error("FATAL ERROR encountered in application command error", error)
+            return
+
         original_error = getattr(error, "original", error)
         if isinstance(original_error, LockdownCheckFailure):
             return
@@ -45,6 +58,44 @@ class ErrorHandling(commands.Cog):
             await self.handle_error_without_log(ctx, error, "❌ Command Error ❌ ")
         else:
             await self.handle_error(ctx, error, "❌ Unhandled Slash Command Error ❌")
+
+    @commands.Cog.listener()
+    async def on_error(self, event, *args, **kwargs):
+        error = sys.exc_info()[1]
+        DebugHandler.LogError(f"Unhandled error in event '{event}': {error}")
+        traceback_text = traceback.format_exc()
+        error_uid = str(uuid.uuid4())
+        
+        embed = discord.Embed(
+            title="Unhandled Global Exception",
+            description=f"An unhandled error occurred in event `{event}`.",
+            color=discord.Color.brand_red(),
+            timestamp=datetime.utcnow()
+        )
+        embed.add_field(name="Error Details", value=f"```\n{error.__class__.__name__}: {error}\n```", inline=False)
+        embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)
+        
+        if len(traceback_text) > 1024:
+            traceback_file = await self.create_traceback_file(traceback_text)
+            embed.add_field(name="🔍 Traceback", value="See attached file", inline=False)
+            try:
+                if error_log_channel_id:
+                    log_channel = self.bot.get_channel(int(error_log_channel_id))
+                    if log_channel:
+                        await log_channel.send(embed=embed, file=traceback_file)
+            except Exception as e:
+                print(Fore.RED + Style.BRIGHT + f"Error logging global error: {e}")
+                traceback.print_exc()
+        else:
+            embed.add_field(name="🔍 Traceback", value=traceback_text, inline=False)
+            try:
+                if error_log_channel_id:
+                    log_channel = self.bot.get_channel(int(error_log_channel_id))
+                    if log_channel:
+                        await log_channel.send(embed=embed)
+            except Exception as e:
+                print(Fore.RED + Style.BRIGHT + f"Error logging global error: {e}")
+                traceback.print_exc()
 
     async def handle_error(self, ctx, error, error_type):
         DebugHandler.LogError(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
@@ -193,7 +244,7 @@ class ErrorHandling(commands.Cog):
         file_path = os.path.join("logs/traceback", file_name)  
         os.makedirs("logs/traceback", exist_ok=True)
 
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(traceback_text)
 
         return discord.File(file_path, filename=file_name)
@@ -233,6 +284,14 @@ class ErrorHandling(commands.Cog):
         print(Fore.RED + Style.BRIGHT + "Shutting down bot due to critical error.")
         print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         sys.exit()
+
+    def create_embed(self, title, description, style):
+        return discord.Embed(
+            title=title,
+            description=description,
+            color=discord.Color.brand_red(),
+            timestamp=datetime.utcnow()
+        )
 
 def setup(bot: commands.Bot):
     bot.add_cog(ErrorHandling(bot))
