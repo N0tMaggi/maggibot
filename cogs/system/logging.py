@@ -34,7 +34,7 @@ class Logging(commands.Cog):
             timestamp=datetime.utcnow()
         )
 
-        avatar_url = ctx.author.avatar.url if ctx.author.avatar else "https://www.example.com/default_avatar.png"
+        avatar_url = ctx.author.avatar.url if ctx.author.avatar else ""
         embed.set_thumbnail(url=avatar_url)
 
         embed.add_field(name="User", value=f"{ctx.author} ({ctx.author.id})" if ctx.author else "Unavailable", inline=True)
