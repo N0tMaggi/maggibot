@@ -24,7 +24,7 @@ class ErrorHandling(commands.Cog):
         # Check if error message contains "fatal" or "critical"
         error_message = str(error).lower()
         if "fatal" in error_message or "critical" in error_message:
-            await self.fatal_error("FATAL ERROR encountered in command error", error)
+            await self.fatal_error("FATAL ERROR encountered in: " + ctx.command.name, error, ctx)
             return
 
         if isinstance(error, LockdownCheckFailure):
