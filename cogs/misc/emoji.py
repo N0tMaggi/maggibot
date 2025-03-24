@@ -18,6 +18,42 @@ class EmojiUpload(commands.Cog):
         progress = round(percentage * length)
         return f"[{filled * progress}{empty * (length - progress)}] {round(percentage * 100)}%"
 
+    async def process_emoji_file(self, rf, file_info, guild, ctx, temp_dir):
+        try:
+            # Extrahiere die Datei direkt in den Speicher
+            file_data = rf.read(file_info)
+            
+            # Überprüfe die Mindestdateigröße
+            if len(file_data) < 100:  # 100 Bytes Minimum
+                return False, "File too small"
+
+            # Dateinamen und Erweiterung verarbeiten
+            filename = file_info.filename.lower()
+            is_animated = filename.endswith('.gif')
+            
+            # Dateierweiterung validieren
+            if not (filename.endswith('.gif') or filename.endswith('.png')):
+                return False, "Invalid file type"
+
+            # Erstelle einen sicheren Emoji-Namen
+            base_name = os.path.basename(filename)
+            emoji_name = os.path.splitext(base_name)[0][:30]
+            emoji_name = ''.join(c for c in emoji_name if c.isalnum() or c in ('_', '-')).strip()
+            if not emoji_name:
+                return False, "Invalid name"
+
+            # Erstelle das Emoji
+            await guild.create_custom_emoji(
+                name=emoji_name,
+                image=file_data,
+                reason=f"Uploaded by {ctx.author}",
+                animated=is_animated
+            )
+            return True, "Success"
+
+        except Exception as e:
+            return False, str(e)
+
     @commands.slash_command(
         name="asset-emoji-upload", 
         description="Upload emojis from a RAR archive (Admin only)"
@@ -69,19 +105,18 @@ class EmojiUpload(commands.Cog):
             # Read RAR file into memory
             data = await rar_file.read()
             
-            # Process archive in memory using a BytesIO stream
+            # Process archive in memory
             with rarfile.RarFile(BytesIO(data)) as rf:
-                # Filter valid files
                 valid_files = [
                     f for f in rf.infolist() 
-                    if not f.isdir() and f.filename.lower().endswith(('.gif', '.png'))
+                    if not f.isdir() and f.file_size > 0
                 ]
 
                 if not valid_files:
                     return await ctx.interaction.edit_original_response(
                         embed=discord.Embed(
                             title="No Valid Files",
-                            description="The archive contains no PNG or GIF files!",
+                            description="The archive contains no valid files!",
                             color=discord.Color.red()
                         )
                     )
@@ -106,40 +141,24 @@ class EmojiUpload(commands.Cog):
                 )
                 await ctx.interaction.edit_original_response(embed=progress_embed)
 
-                # Create a temporary directory to extract files
-                temp_dir = tempfile.mkdtemp()
-
                 success = 0
                 skipped = 0
+                errors = []
+                temp_dir = tempfile.mkdtemp()
+
                 for idx, file_info in enumerate(valid_files[:upload_count]):
                     try:
-                        # Extract file to temporary directory
-                        rf.extract(file_info, path=temp_dir)
-                        extracted_path = os.path.join(temp_dir, file_info.filename)
-                        # Read file data from the extracted file
-                        with open(extracted_path, 'rb') as f:
-                            emoji_data = f.read()
-
-                        # Validate size (max 256 KB)
-                        if len(emoji_data) > 256 * 1024:
+                        # Verarbeite jede Datei
+                        result, message = await self.process_emoji_file(rf, file_info, guild, ctx, temp_dir)
+                        
+                        if result:
+                            success += 1
+                        else:
                             skipped += 1
-                            continue
+                            errors.append(f"`{file_info.filename}`: {message}")
 
-                        # Create a sanitized name (max 31 characters)
-                        base_name = os.path.basename(file_info.filename)
-                        emoji_name = os.path.splitext(base_name)[0][:31]
-                        emoji_name = ''.join(c for c in emoji_name if c.isalnum() or c in ('_', '-'))
-
-                        # Upload emoji to the guild
-                        await guild.create_custom_emoji(
-                            name=emoji_name,
-                            image=emoji_data,
-                            reason=f"Uploaded by {ctx.author}"
-                        )
-                        success += 1
-
-                        # Update progress every 5 files or on the final file
-                        if (idx + 1) % 5 == 0 or (idx + 1) == upload_count:
+                        # Update progress
+                        if (idx + 1) % 2 == 0 or (idx + 1) == upload_count:
                             progress = (idx + 1) / upload_count
                             embed = discord.Embed(
                                 title=f"Progress ({idx + 1}/{upload_count})",
@@ -148,23 +167,26 @@ class EmojiUpload(commands.Cog):
                                             f"Skipped: **{skipped}**",
                                 color=discord.Color.green()
                             )
+                            if errors[-5:]:
+                                embed.add_field(
+                                    name="Recent Errors",
+                                    value="\n".join(errors[-3:]),
+                                    inline=False
+                                )
                             await ctx.interaction.edit_original_response(embed=embed)
                         
-                        # Small delay to help avoid rate limits
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(1)  # Rate Limit Schutz
 
                     except Exception as e:
                         skipped += 1
-                        print(f"Error processing {file_info.filename}: {e}")
-
-                # Clean up temporary directory
-                shutil.rmtree(temp_dir)
+                        errors.append(f"`{file_info.filename}`: {str(e)}")
+                        continue
 
                 # Final result embed
                 result_embed = discord.Embed(
                     title="Upload Complete",
                     description=f"Added **{success}** new emojis!",
-                    color=discord.Color.green()
+                    color=discord.Color.green() if success > 0 else discord.Color.red()
                 )
                 result_embed.add_field(
                     name="Statistics",
@@ -173,7 +195,18 @@ class EmojiUpload(commands.Cog):
                           f"• New Total: {current_emojis + success}/{max_emojis}",
                     inline=False
                 )
+                
+                if errors:
+                    result_embed.add_field(
+                        name="Error Summary",
+                        value="\n".join(errors[-5:]) + f"\n...and {len(errors)-5} more" if len(errors) > 5 else "\n".join(errors),
+                        inline=False
+                    )
+
                 await ctx.interaction.edit_original_response(embed=result_embed)
+
+                # Cleanup
+                shutil.rmtree(temp_dir)
 
         except rarfile.BadRarFile:
             await ctx.interaction.edit_original_response(
@@ -191,6 +224,7 @@ class EmojiUpload(commands.Cog):
                     color=discord.Color.red()
                 )
             )
+
 
     @commands.slash_command(
         name="emoji-stats", 
