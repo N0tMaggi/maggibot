@@ -230,3 +230,5 @@ def mac_load_bans():
 
 def mac_save_bans(bans):
     save_data(MAC_FILE, bans, mkdir=True)
+
+

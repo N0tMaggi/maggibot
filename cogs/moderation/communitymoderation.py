@@ -115,7 +115,8 @@ class ModCommunityBan(commands.Cog):
                     "color_type": 'mod_action',
                     "author": interaction.user
                 }
-                await send_mod_log(interaction.guild.id, log_data)
+                await send_mod_log(interaction.guild.id, log_data, bot=self.cog.bot)
+                LogModeration(f"Community ban completed for {self.target.id} by {interaction.user.id}")
 
                 await interaction.response.send_message(f"✅ {interaction.user.mention} confirmed ban!", ephemeral=False)
 

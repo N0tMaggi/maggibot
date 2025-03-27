@@ -113,3 +113,17 @@ def get_mac_channel():
     except Exception as e:
         LogDebug(f"get_mac_channel error: {str(e)}")
         raise
+
+def get_pangea_api():
+    try:
+        return os.getenv('PANGEA_API_KEY')
+    except Exception as e:
+        LogDebug(f"get_pangea_api error: {str(e)}")
+        raise
+
+def get_pangea_domain():
+    try:
+        return os.getenv('PANGEA_DOMAIN')
+    except Exception as e:
+        LogDebug(f"get_pangea_api error: {str(e)}")
+        raise

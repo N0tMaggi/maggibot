@@ -5,6 +5,7 @@ import datetime
 import handlers.debug as DebugHandler
 import handlers.config as config
 from extensions.protectionextension import create_protection_embed
+
 class Antibot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
