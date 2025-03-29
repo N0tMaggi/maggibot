@@ -4,3 +4,4 @@ logs/log.txt
 *.log
 config/
 data/
+logs/traceback/
