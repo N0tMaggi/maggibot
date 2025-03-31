@@ -5,6 +5,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from handlers.debug import LogSystem, LogError, LogDebug, LogNetwork
+from handlers.config import load_stats, save_stats, load_multiplier_config, save_multiplier_config
 
 load_dotenv()
 MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
@@ -12,36 +13,6 @@ ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.5))
 
 STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
-
-def load_stats():
-    if not os.path.exists(STATS_FILE):
-        return {}
-    try:
-        with open(STATS_FILE, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        return {}
-
-def save_stats(stats):
-    with open(STATS_FILE, "w") as f:
-        json.dump(stats, f, indent=4)
-
-def load_multiplier_config():
-    if not os.path.exists(XP_MULTIPLIER_FILE):
-        return {"channels": [], "multipliers": {}}
-    try:
-        with open(XP_MULTIPLIER_FILE, "r") as f:
-            data = json.load(f)
-            return {
-                "channels": data.get("channels", []),
-                "multipliers": data.get("multipliers", {})
-            }
-    except (json.JSONDecodeError, FileNotFoundError):
-        return {"channels": [], "multipliers": {}}
-
-def save_multiplier_config(config):
-    with open(XP_MULTIPLIER_FILE, "w") as f:
-        json.dump(config, f, indent=4)
 
 class XPSetup(commands.Cog):
     def __init__(self, bot: commands.Bot):

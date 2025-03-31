@@ -30,19 +30,22 @@ async def send_mod_log(guild_id, embed_data, bot):
         log_channel_id = cfg.get_log_channel(guild_id)
         
         if log_channel_id:
+            log_channel_id = int(log_channel_id)
             guild = bot.get_guild(guild_id)
+            
             if guild:
                 log_channel = guild.get_channel(log_channel_id)
+                
                 if log_channel and isinstance(log_channel, discord.TextChannel):
                     embed = create_mod_embed(**embed_data)
                     await log_channel.send(embed=embed)
                     LogModeration(f"Log sent to channel {log_channel.id}")
                 else:
-                    LogError(f"Channel ID {log_channel_id} is not a valid text channel")
+                    LogError(f"Invalid text channel ID: {log_channel_id}")
             else:
-                LogError(f"Guild with ID {guild_id} not found")
+                LogError(f"Guild {guild_id} not found by bot")
         else:
-            LogDebug(f"No log channel set for guild {guild_id}")
+            LogDebug(f"No log channel for guild {guild_id}")
     except Exception as e:
         LogError(f"Failed to send mod log: {str(e)}")
 

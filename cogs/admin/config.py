@@ -22,44 +22,6 @@ class Server(Cog):
 
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# ShowConfig
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-    @commands.slash_command(name="setup-showconfig", description="Show the current server configuration")
-    @commands.has_permissions(administrator=True)
-    async def settings_showconfig(self, ctx: discord.ApplicationContext):
-        try:
-            guild_id = str(ctx.guild.id)
-            self.serverconfig = config.loadserverconfig()
-            config_data = self.serverconfig.get(guild_id, None)
-
-            embed = discord.Embed(
-                title="🔧 Server Configuration",
-                description=f"**Current settings for {ctx.guild.name}**",
-                color=0x9B59B6,
-                timestamp=datetime.datetime.utcnow()
-            )
-            embed.set_author(
-                name=f"{ctx.guild.name} System Settings",
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else self.bot.user.avatar.url
-            )
-            if config_data:
-                config_list = "\n".join([f"• **{key}:** `{value}`" for key, value in config_data.items()])
-                embed.add_field(name="📜 Active Settings", value=config_list, inline=False)
-            else:
-                embed.add_field(name="❌ No Configuration Found", value="This server hasn't set up any custom settings yet!", inline=False)
-            embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else self.bot.user.avatar.url
-            )
-            await ctx.respond(embed=embed, ephemeral=True)
-            
-        except Exception as e:
-            LogError(f"An error occurred while showing the server configuration: {e}")
-            raise Exception(f"An error occurred while showing the server configuration: {e}")
-
-
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # LogChannel
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 

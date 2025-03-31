@@ -20,16 +20,19 @@ class AutoRole(Cog):
 
             role_id = self.serverconfig[guild_id]["autoroleid"]
             role = member.guild.get_role(role_id)
-            if role:
+
+            if member and role:
                 await member.add_roles(role)
                 DebugHandler.LogDebug(f"Added autorole to {member.name} ({member.id}) in guild {guild_id}")
             else:
-                DebugHandler.LogError(f"Role {role_id} not found in guild {guild_id}")
+                if not member:
+                    DebugHandler.LogError(f"Member {member.id} no longer exists or is unavailable in guild {guild_id}")
+                if not role:
+                    DebugHandler.LogError(f"Role {role_id} not found in guild {guild_id}")
+
         except Exception as e:
             DebugHandler.LogError(f"Error in on_member_join autorole listener: {str(e)}")
             raise e 
-
-
 
 def setup(bot):
     bot.add_cog(AutoRole(bot))

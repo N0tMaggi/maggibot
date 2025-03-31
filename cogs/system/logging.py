@@ -22,11 +22,11 @@ class Logging(commands.Cog):
             DebugHandler.LogError(f"Failed to fetch log channel: {str(e)}")
             return None
 
-    def format_activity(self, member: discord.Member) -> str:
-        if not member.activity:
+    def format_activity(self, user: discord.User) -> str:  
+        if not user.activity:
             return "N/A"
         
-        activity = member.activity
+        activity = user.activity
         activity_type = str(activity.type).split('.')[-1].title()
         
         if isinstance(activity, discord.Spotify):
@@ -77,11 +77,14 @@ class Logging(commands.Cog):
         context_info = []
         if ctx.guild:
             context_info.append(f"• Server: {ctx.guild.name} ({ctx.guild.id})")
-            if isinstance(ctx.author, discord.Member):
-                context_info.append(f"• Joined: {ctx.author.joined_at.strftime('%Y-%m-%d %H:%M:%S')}")
-                context_info.append(f"• Top Role: {ctx.author.top_role.mention}")
+            if isinstance(user, discord.Member): 
+                context_info.append(f"• Joined: {user.joined_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                context_info.append(f"• Top Role: {user.top_role.mention}")
 
-        context_info.append(f"• Channel: {ctx.channel.mention if ctx.channel else 'DM'} ({ctx.channel.id if ctx.channel else 'N/A'})")
+        channel_mention = "Direct Message" if isinstance(ctx.channel, discord.DMChannel) else ctx.channel.mention
+        channel_id = ctx.channel.id if ctx.channel else 'N/A'
+
+        context_info.append(f"• Channel: {channel_mention} ({channel_id})")
         context_info.append(f"• Shard: {ctx.guild.shard_id if ctx.guild else 0}")
 
         embed.add_field(
@@ -95,7 +98,6 @@ class Logging(commands.Cog):
                 text=f"Command ID: {ctx.command.qualified_name} | Cooldown: {ctx.command.cooldown}",
                 icon_url=self.bot.user.display_avatar.url
             )
-
 
         if hasattr(user, 'activity') and user.activity:
             embed.add_field(
@@ -126,6 +128,7 @@ class Logging(commands.Cog):
             
         except Exception as e:
             DebugHandler.LogError(f"Failed to log command: {str(e)}")
-            raise Exception (f"Failed to log command: {str(e)}") from e
+            raise Exception(f"Failed to log command: {str(e)}") from e
+
 def setup(bot):
     bot.add_cog(Logging(bot))
