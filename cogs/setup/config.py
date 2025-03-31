@@ -85,7 +85,7 @@ class ConfigView(discord.ui.View):
         await interaction.message.delete()
         await interaction.response.defer()
 
-class Settings(commands.Cog):
+class ConfigSettings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -132,11 +132,11 @@ class Settings(commands.Cog):
                 view.select_menu.disabled = True
                 view.close_button.disabled = False  # Keep close button enabled
 
-            await ctx.respond(embed=initial_embed, view=view, ephemeral=True)
+            await ctx.respond(embed=initial_embed, view=view, ephemeral=False)
 
         except Exception as e:
             LogError(f"An error occurred while showing the server configuration: {e}")
             raise Exception(f"An error occurred while showing the server configuration: {e}")
 
 def setup(bot):
-    bot.add_cog(Settings(bot))
+    bot.add_cog(ConfigSettings(bot))
