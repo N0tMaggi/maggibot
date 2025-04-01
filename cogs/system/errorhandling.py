@@ -126,14 +126,17 @@ class ErrorHandling(commands.Cog):
 
         try:
             if isinstance(ctx, discord.ApplicationContext):
-                if not ctx.response.is_done():
-                    await ctx.response.send_message(embed=embed, ephemeral=True)
-                else:
-                    await ctx.followup.send(embed=embed, ephemeral=True)
+                try:
+                    if not ctx.response.is_done():
+                        await ctx.response.send_message(embed=embed, ephemeral=True)
+                    else:
+                        await ctx.followup.send(embed=embed, ephemeral=True)
+                except (discord.NotFound, discord.HTTPException) as e:
+                    DebugHandler.LogError(f"Interaction expired for error response: {str(e)}")
             else:
                 await ctx.send(embed=embed)
         except Exception as e:
-            await self.fatal_error(f"Failed to respond: {e}", e)
+            await self.fatal_error(f"Failed to send error response: {str(e)}", e)
             return
 
         if len(traceback_text) > 1024:

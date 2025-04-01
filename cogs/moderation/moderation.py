@@ -97,7 +97,7 @@ class Moderation(commands.Cog):
                 'error', ctx.author), ephemeral=True)
     
     @commands.slash_command(name="purge-onlymessages", description="🧹 Purge only messages in a channel without deleting images")
-    @commands.cooldown(1, 240, commands.BucketType.user)
+    @commands.cooldown(1, 30, commands.BucketType.user)
     @commands.has_permissions(manage_messages=True)
     async def purge_onlymessages(self, ctx: discord.ApplicationContext, limit: int = 1000):
         try:
