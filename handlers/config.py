@@ -138,7 +138,11 @@ def save_stats(stats):
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_multiplier_config():
     default = {"channels": [], "multipliers": {}}
-    return load_data(XP_MULTIPLIER_FILE, default=default)
+    loaded = load_data(XP_MULTIPLIER_FILE, default=default)
+    for key in default:
+        if key not in loaded:
+            loaded[key] = default[key]
+    return loaded
 
 def save_multiplier_config(config):
     save_data(XP_MULTIPLIER_FILE, config)
