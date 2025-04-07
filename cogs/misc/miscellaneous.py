@@ -12,24 +12,6 @@ class Miscellaneous(commands.Cog):
         def __init__(self, bot):
             self.bot = bot
 
-
-        @commands.slash_command(name= "ismypconfire", description="Is my PC on fire? 🔥")
-        async def ismypconfire(self, ctx):
-            responses = [
-                "🔥 Your PC is now classified as a nuclear reactor. RUN! 🏃💨",
-                "💻 Your PC is fine... for now. But I hear the fans screaming. 👀",
-                "🚒 Firefighters are on the way! Hope you have backups! 😨",
-                "🥵 Your PC is sweating harder than a gaming laptop in summer!",
-                "❄️ Nope, your PC is chilling. Maybe too much? Try overclocking! 😆",
-                "🧯 Everything is fine! But keep an extinguisher nearby... just in case. 👀",
-                "💀 Your PC died from overheating. It’s now in a better place. R.I.P. 😭",
-                "🔥🔥🔥 SYSTEM OVERHEATING! RELEASING MAGIC SMOKE! 🔥🔥🔥"
-            ]
-
-            await ctx.respond(random.choice(responses))
-
-
-
         @commands.slash_command(name="serverinfo", description="Get detailed information about the server")
         async def serverinfo(self, ctx: discord.ApplicationContext):
             await ctx.defer() 
