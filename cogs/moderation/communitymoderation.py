@@ -2,8 +2,6 @@ import discord
 from discord.ext import commands
 from discord.commands import slash_command
 import datetime
-import handlers.config as cfg
-from extensions.modextensions import send_mod_log
 from handlers.debug import LogError, LogModeration
 
 class ModCommunityBan(commands.Cog):
@@ -14,119 +12,119 @@ class ModCommunityBan(commands.Cog):
             'error': 0xE74C3C,
             'mod_action': 0x992D22
         }
-        self.persistent_views_added = False
 
     def create_embed(self, title, description, color_type='mod_action', author=None):
+        spacer = "\u200b" * 20  
+        divider = "─" * 30 
+        
         embed = discord.Embed(
             title=title,
-            description=description,
+            description=f"{description}\n\n{divider}",
             color=self.embed_colors.get(color_type, 0x2b2d31),
             timestamp=datetime.datetime.utcnow()
         )
+        
         if author:
-            embed.set_author(name=str(author), icon_url=author.avatar.url)
-        embed.set_footer(text="Community ModSystem", icon_url=self.bot.user.avatar.url)
+            embed.set_author(name=str(author), icon_url=author.display_avatar.url)
+            
+        
+        embed.set_footer(text="Community ModSystem", icon_url=self.bot.user.display_avatar.url)
         return embed
 
-
-
-    @slash_command(name="mod-community-ban", description="Initiate a community ban vote")
-    @commands.has_permissions(ban_members=True)
-    async def community_ban(self, ctx, 
-                          user: discord.Member,
-                          reason: str = "Community consensus"):
+    @slash_command(name="mod-community-ban", description="Start community ban vote (Admin only)")
+    @commands.has_permissions(administrator=True)
+    async def community_ban(self, ctx, user: discord.Member, reason: str = "Community decision"):
         try:
             if user == ctx.author:
-                embed = self.create_embed(
-                    "❌ Self-Ban Attempt",
-                    "Self-initiated community bans are forbidden!",
-                    'error',
-                    ctx.author
+                return await ctx.respond(
+                    embed=self.create_embed(
+                        "❌ Invalid Target",
+                        "You cannot start a ban vote against yourself",
+                        'error',
+                        ctx.author
+                    ), ephemeral=True
                 )
-                await ctx.respond(embed=embed, ephemeral=True)
-                LogModeration(f"Self-ban attempt blocked for {ctx.author.id}")
-                return
+
+            description = (
+                f"**Target:** {user.mention}\n"
+                f"**Initiated by:** {ctx.author.mention}\n\n"
+                "───────────────────────────────\n" 
+                f"**Reason:** {reason}\n"
+                "───────────────────────────────\n\n" 
+                "⚠️ **Action Required:**\n"
+                "Any User can click the button below to confirm this ban\n"
+                "**Only 1 confirmation needed**"
+            )
 
             embed = self.create_embed(
-                "🔨 Community Ban Initiated",
-                f"{ctx.author.mention} initiated ban for {user.mention}\n**Reason:** {reason}",
+                "⚠️ Community Ban Vote",
+                description,
                 'mod_action',
                 ctx.author
             )
-            embed.add_field(name="Voting", value="Click below to confirm ban", inline=False)
-            embed.set_thumbnail(url=user.avatar.url)
-            
-            view = self.BanVoteView(self, user, reason)
+            embed.set_thumbnail(url=user.display_avatar.url)
+
+            view = self.BanVoteView(user, reason, ctx.author)
             await ctx.respond(embed=embed, view=view)
             LogModeration(f"Community ban started for {user.id} in {ctx.guild.id}")
 
         except Exception as e:
             LogError(f"Community ban init error: {str(e)}")
-            await ctx.respond("🚨 Failed to initialize community ban!", ephemeral=True)
+            await ctx.respond("🚨 Failed to start ban vote", ephemeral=True)
 
     class BanVoteView(discord.ui.View):
-        def __init__(self, cog, target, reason):
+        def __init__(self, target, reason, initiator):
             super().__init__(timeout=None)
-            self.cog = cog
             self.target = target
             self.reason = reason
+            self.initiator = initiator
             self.confirmed = False
 
-        @discord.ui.button(label="Confirm Ban", style=discord.ButtonStyle.danger, 
-                         emoji="🔨", custom_id="persist:community_ban")
-        async def confirm_callback(self, button, interaction):
+        @discord.ui.button(label="Execute Ban", style=discord.ButtonStyle.danger, emoji="⚠️", custom_id="community_ban:execute")
+        async def execute_ban(self, button: discord.ui.Button, interaction: discord.Interaction):
+            if self.confirmed:
+                return await interaction.response.send_message("⚠️ Ban already executed", ephemeral=True)
+
             try:
-                if self.confirmed:
-                    await interaction.response.send_message("⏳ Ban already executed!", ephemeral=True)
-                    return
-
-                if interaction.user == self.target:
-                    await interaction.response.send_message("❌ Cannot self-ban!", ephemeral=True)
-                    return
-
-                # Updated line: Use guild.ban instead of self.target.ban
-                await interaction.guild.ban(self.target, reason=f"Community ban by {interaction.user}: {self.reason}")
                 self.confirmed = True
                 button.disabled = True
+                button.label = "Ban Executed"
+                button.style = discord.ButtonStyle.grey
 
-                new_embed = self.cog.create_embed(
+                await interaction.guild.ban(self.target, reason=f"Community ban: {self.reason}")
+                
+                spacer = "\u200b" * 10
+                new_embed = self.initiator.create_embed(
                     "✅ Ban Executed",
-                    f"{self.target.mention} banned by community\n**Confirmed by:** {interaction.user.mention}",
+                    f"{spacer}\n**Target:** {self.target.mention}\n\n"
+                    f"**Confirmed by:** {interaction.user.mention}\n\n"
+                    f"**Reason:** {self.reason}",
                     'success',
                     interaction.user
                 )
-                new_embed.add_field(name="Original Reason", value=self.reason)
-                new_embed.set_thumbnail(url=self.target.avatar.url)
+                new_embed.set_thumbnail(url=self.target.display_avatar.url)
+                
                 await interaction.message.edit(embed=new_embed, view=self)
+                await interaction.response.send_message(f"✅ Ban confirmed by {interaction.user.mention}!", ephemeral=False)
 
                 try:
-                    dm_embed = self.cog.create_embed(
+                    dm_embed = self.initiator.create_embed(
                         "🔨 Community Ban",
-                        f"Banned from {interaction.guild.name}\n**Reason:** {self.reason}",
+                        f"You were banned from **{interaction.guild.name}**\n\n"
+                        f"**Reason:** {self.reason}\n\n"
+                        "───────────────────────────────\n"
+                        "This action was community-confirmed",
                         'error'
                     )
                     await self.target.send(embed=dm_embed)
-                except discord.Forbidden:
-                    LogError(f"Failed DM to {self.target.id}")
+                except:
+                    pass
 
-                log_data = {
-                    "title": "🔨 Community Ban Finalized",
-                    "description": f"**Target:** {self.target.mention}\n**By:** {interaction.user.mention}\n**Reason:** {self.reason}",
-                    "color_type": 'mod_action',
-                    "author": interaction.user
-                }
-                await send_mod_log(interaction.guild.id, log_data, bot=self.cog.bot)
-                LogModeration(f"Community ban completed for {self.target.id} by {interaction.user.id}")
+                LogModeration(f"Community ban executed for {self.target.id} by {interaction.user.id}")
 
-                await interaction.response.send_message(f"✅ {interaction.user.mention} confirmed ban!", ephemeral=False)
-
-            except discord.Forbidden:
-                await interaction.response.send_message("❌ Missing permissions!", ephemeral=True)
-                LogError(f"Ban failed for {self.target.id}")
             except Exception as e:
-                await interaction.response.send_message("⚠️ Critical ban error!", ephemeral=True)
-                LogError(f"Community ban error: {str(e)}")
+                LogError(f"Ban execution failed: {str(e)}")
+                await interaction.response.send_message("🚨 Failed to execute ban", ephemeral=True)
 
 def setup(bot: discord.Bot):
-    cog = ModCommunityBan(bot)
-    bot.add_cog(cog)
+    bot.add_cog(ModCommunityBan(bot))
