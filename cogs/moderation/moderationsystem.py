@@ -47,7 +47,7 @@ class ModerationView(View):
     async def handle_action(self, interaction: discord.Interaction, action_type: str):
         if not self.ctx:
             return await interaction.response.send_message("Context not found", ephemeral=True)
-            
+        
         required_perms = {
             "ban": "ban_members",
             "kick": "kick_members",
@@ -64,8 +64,9 @@ class ModerationView(View):
                     interaction.user
                 ), ephemeral=True
             )
-
+        
         try:
+            # First response: Ask for duration
             if action_type == "timeout":
                 await interaction.response.send_message(
                     embed=create_mod_embed(
@@ -75,15 +76,20 @@ class ModerationView(View):
                         interaction.user
                     ), ephemeral=True
                 )
-                msg = await self.bot.wait_for(
-                    'message',
-                    check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
-                    timeout=60
-                )
-                duration = parse_duration(msg.content)
-                await msg.delete()
                 
-            await interaction.response.send_message(
+                try:
+                    msg = await self.bot.wait_for(
+                        'message',
+                        check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
+                        timeout=60
+                    )
+                    duration = parse_duration(msg.content)
+                    await msg.delete()
+                except asyncio.TimeoutError:
+                    return await interaction.followup.send("Duration input timed out", ephemeral=True)
+    
+            # Second response: Ask for reason using followup
+            await interaction.followup.send(
                 embed=create_mod_embed(
                     "📝 Enter Reason",
                     "Please type the reason for this action in the chat",
@@ -91,17 +97,19 @@ class ModerationView(View):
                     interaction.user
                 ), ephemeral=True
             )
-            msg = await self.bot.wait_for(
-                'message',
-                check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
-                timeout=60
-            )
-            reason = msg.content
-            await msg.delete()
-        except asyncio.TimeoutError:
-            return await interaction.followup.send("Action timed out", ephemeral=True)
-
-        try:
+            
+            try:
+                msg = await self.bot.wait_for(
+                    'message',
+                    check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
+                    timeout=60
+                )
+                reason = msg.content
+                await msg.delete()
+            except asyncio.TimeoutError:
+                return await interaction.followup.send("Reason input timed out", ephemeral=True)
+    
+            # Execute action
             if action_type == "ban":
                 if self.user.guild_permissions.administrator:
                     return await interaction.followup.send(
@@ -118,12 +126,12 @@ class ModerationView(View):
                 action_text = "kicked"
             elif action_type == "timeout":
                 await self.user.timeout(duration, reason=reason)
-                action_text = "timed out"
+                action_text = f"timed out for {msg.content}"
             elif action_type == "warn":
                 action_text = "warned"
                 LogModeration(f"Warned {self.user.id} by {self.moderator.id}: {reason}")
-
-            await self.ctx.send_followup(
+    
+            await interaction.followup.send(
                 embed=create_mod_embed(
                     f"✅ {action_type.title()} Successful",
                     f"{self.user.mention} has been {action_text}",
@@ -132,6 +140,7 @@ class ModerationView(View):
                 ), ephemeral=True
             )
             
+            # Logging
             log_data = {
                 "title": f"Moderation Action",
                 "description": (
@@ -144,6 +153,7 @@ class ModerationView(View):
                 "author": self.moderator
             }
             await send_mod_log(self.ctx.guild.id, log_data, self.bot)
+            
         except Exception as e:
             LogError(f"Moderation action failed: {str(e)}")
             await interaction.followup.send(
