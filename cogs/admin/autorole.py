@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ext.commands import Cog
 import datetime
 import handlers.config as config
-import handlers.debug as DebugHandler
+from handlers.debug import LogDebug, LogError
 
 class AutoRole(Cog):
     def __init__(self, bot):
@@ -23,15 +23,15 @@ class AutoRole(Cog):
 
             if member and role:
                 await member.add_roles(role)
-                DebugHandler.LogDebug(f"Added autorole to {member.name} ({member.id}) in guild {guild_id}")
+                LogDebug(f"Added autorole to {member.name} ({member.id}) in guild {guild_id}")
             else:
                 if not member:
-                    DebugHandler.LogError(f"Member {member.id} no longer exists or is unavailable in guild {guild_id}")
+                    LogError(f"Member {member.id} no longer exists or is unavailable in guild {guild_id}")
                 if not role:
-                    DebugHandler.LogError(f"Role {role_id} not found in guild {guild_id}")
+                    LogError(f"Role {role_id} not found in guild {guild_id}")
 
         except Exception as e:
-            DebugHandler.LogError(f"Error in on_member_join autorole listener: {str(e)}")
+            LogError(f"Error in on_member_join autorole listener: {str(e)}")
             raise e 
 
 def setup(bot):

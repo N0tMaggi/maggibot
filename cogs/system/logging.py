@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 import os
-import handlers.debug as DebugHandler
+from handlers.debug import LogDebug, LogError
 from typing import Optional
 
 class Logging(commands.Cog):
@@ -19,7 +19,7 @@ class Logging(commands.Cog):
         try:
             return await self.bot.fetch_channel(self.log_channel_id)
         except Exception as e:
-            DebugHandler.LogError(f"Failed to fetch log channel: {str(e)}")
+            LogError(f"Failed to fetch log channel: {str(e)}")
             return None
 
     def format_activity(self, user: discord.User) -> str:  
@@ -121,13 +121,13 @@ class Logging(commands.Cog):
             embed = await self.create_command_embed(ctx)
             
             if not log_channel.permissions_for(ctx.guild.me).send_messages:
-                DebugHandler.LogError(f"Missing permissions to send messages in {log_channel.name}")
+                LogError(f"Missing permissions to send messages in {log_channel.name}")
                 return
 
             await log_channel.send(embed=embed)
             
         except Exception as e:
-            DebugHandler.LogError(f"Failed to log command: {str(e)}")
+            LogError(f"Failed to log command: {str(e)}")
             raise Exception(f"Failed to log command: {str(e)}") from e
 
 def setup(bot):

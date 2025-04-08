@@ -1,6 +1,6 @@
 import json
 import os
-import handlers.debug as DebugHandler
+from handlers.debug import LogError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,7 +19,7 @@ def load_data(filename, default=None, transform_fn=None):
             return transform_fn(data) if transform_fn else data
             
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        DebugHandler.LogError(f"Error loading {filename}: {str(e)}")
+        LogError(f"Error loading {filename}: {str(e)}")
         return default() if callable(default) else default
 
 def save_data(filename, data, mkdir=False):
@@ -33,7 +33,7 @@ def save_data(filename, data, mkdir=False):
         return True
         
     except Exception as e:
-        DebugHandler.LogError(f"Error saving {filename}: {str(e)}")
+        LogError(f"Error saving {filename}: {str(e)}")
         raise
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-

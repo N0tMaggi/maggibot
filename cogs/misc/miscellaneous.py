@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import datetime
-import handlers.debug as DebugHandler
+from handlers.debug import LogDebug, LogError
 import time
 import random
 import os
@@ -298,7 +298,7 @@ class Miscellaneous(commands.Cog):
                 await ctx.author.send(embed=embed)
 
             except Exception as e:
-                DebugHandler.LogError(f" An error occurred: {e}")
+                LogError(f" An error occurred: {e}")
                 raise Exception ("An error occurred while cleaning DMs." + str(e))
                 
 

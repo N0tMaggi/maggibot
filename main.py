@@ -15,7 +15,7 @@ from colorama import Fore, Style, init
 from dotenv import load_dotenv
 
 # Local imports
-import handlers.debug as DebugHandler
+from handlers.debug import LogDebug, LogError, LogSystem
 from handlers.config import get_config_files, get_data_files
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -159,11 +159,11 @@ def delete_traceback_files():
         if filename.startswith('traceback_'):
             try:
                 os.remove(os.path.join('./logs/traceback', filename))
-                DebugHandler.LogSystem(f" Deleted traceback file {filename}")
+                LogSystem(f" Deleted traceback file {filename}")
                 print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
                 print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
             except Exception as e:
-                DebugHandler.LogError(f" Error deleting log file {filename}: {e}")
+                LogError(f" Error deleting log file {filename}: {e}")
                 raise Exception (f"Error deleting log file {filename}: {e}")
     print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 

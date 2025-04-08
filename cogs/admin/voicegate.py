@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
-import handlers.debug as DH
+from handlers.debug import LogDebug, LogError
 from handlers.config import loadvoicegateconfig, savevoicegateconfig
 
 
@@ -27,7 +27,7 @@ class VoiceGate(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except Exception as e:
-                    DH.LogError(f"[VOICEGATE] Failed to unmute member {member.id} after leaving gate channel: {e}")
+                    LogError(f"[VOICEGATE] Failed to unmute member {member.id} after leaving gate channel: {e}")
                 self.pending_verifications.discard(member.id)
                 return
 
@@ -46,7 +46,7 @@ class VoiceGate(commands.Cog):
             try:
                 await member.edit(mute=True)
             except Exception as e:
-                DH.LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
+                LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
 
             rules_text = config_data.get("rules_text", "No rules provided.")
             embed_rules = discord.Embed(
@@ -61,7 +61,7 @@ class VoiceGate(commands.Cog):
                 rules_message = await dm_channel.send(embed=embed_rules)
                 await rules_message.add_reaction("✅")
             except Exception as e:
-                DH.LogError(f"[VOICEGATE] Failed to send DM to member {member.id}: {e}")
+                LogError(f"[VOICEGATE] Failed to send DM to member {member.id}: {e}")
                 return
 
             def reaction_check(reaction, user):
@@ -91,7 +91,7 @@ class VoiceGate(commands.Cog):
                     await member.move_to(None)
                     await member.send("You did not accept the rules in time. Please rejoin the voice channel to try again.")
                 except Exception as dm_e:
-                    DH.LogError(f"[VOICEGATE] Failed to send DM after timeout to member {member.id}: {dm_e}")
+                    LogError(f"[VOICEGATE] Failed to send DM after timeout to member {member.id}: {dm_e}")
         finally:
             self.pending_verifications.discard(member.id)
 

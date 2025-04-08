@@ -6,7 +6,7 @@ import traceback
 from cogs.owner.commandlockdown import LockdownCheckFailure
 import sys
 from colorama import Fore, Style, init
-import handlers.debug as DebugHandler
+from handlers.debug import LogError
 from handlers.env import get_owner
 import uuid 
 
@@ -62,7 +62,7 @@ class ErrorHandling(commands.Cog):
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
         error = sys.exc_info()[1]
-        DebugHandler.LogError(f"Unhandled error in event '{event}': {error}")
+        LogError(f"Unhandled error in event '{event}': {error}")
         traceback_text = traceback.format_exc()
         error_uid = str(uuid.uuid4())
         
@@ -98,10 +98,10 @@ class ErrorHandling(commands.Cog):
                 traceback.print_exc()
 
     async def handle_error(self, ctx, error, error_type):
-        DebugHandler.LogError(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
+        LogError(f"Handling error for command: {ctx.command.name if ctx.command else 'Unknown'}")
         
         error_uid = str(uuid.uuid4())
-        DebugHandler.LogError(f"Generated error UID: {error_uid}")
+        LogError(f"Generated error UID: {error_uid}")
 
         error_info = f"{error.__class__.__name__}: {error}"
         tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
@@ -132,7 +132,7 @@ class ErrorHandling(commands.Cog):
                     else:
                         await ctx.followup.send(embed=embed, ephemeral=True)
                 except (discord.NotFound, discord.HTTPException) as e:
-                    DebugHandler.LogError(f"Interaction expired for error response: {str(e)}")
+                    LogError(f"Interaction expired for error response: {str(e)}")
             else:
                 await ctx.send(embed=embed)
         except Exception as e:
@@ -151,7 +151,7 @@ class ErrorHandling(commands.Cog):
 
     async def handle_error_without_log(self, ctx, error, error_type):
         error_uid = str(uuid.uuid4())  
-        DebugHandler.LogError(f"Generated error UID: {error_uid}")
+        LogError(f"Generated error UID: {error_uid}")
 
         error_info = f"{error.__class__.__name__}: {error}"
 
@@ -187,7 +187,7 @@ class ErrorHandling(commands.Cog):
 
     async def handle_missing_permissions_error(self, ctx, error, error_type):
         error_uid = str(uuid.uuid4())   
-        DebugHandler.LogError(f"Generated error UID: {error_uid}")
+        LogError(f"Generated error UID: {error_uid}")
 
         missing_perms = ", ".join(error.missing_permissions)  
         error_info = f"Missing Permissions: `{missing_perms}`"
@@ -253,7 +253,7 @@ class ErrorHandling(commands.Cog):
         return discord.File(file_path, filename=file_name)
 
     async def fatal_error(self, error_message, error):
-        DebugHandler.LogError(f"FATAL ERROR: {error_message} | Details: {error}")
+        LogError(f"FATAL ERROR: {error_message} | Details: {error}")
         print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         print(Fore.RED + Style.BRIGHT + f"FATAL ERROR: {error_message}")
         print(Fore.RED + Style.BRIGHT + f"Error details: {error}")
