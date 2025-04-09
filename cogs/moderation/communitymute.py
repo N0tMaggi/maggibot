@@ -58,8 +58,8 @@ class ModCommunityMute(commands.Cog):
                 "───────────────────────────────\n\n" 
                 f"🗳️ **Vote Duration:** {vote_duration} seconds\n"
                 "⏰ **Possible Timeouts:**\n"
-                "1h | 3h | 6h | 12h | 24h\n"
-                f"🕒 **Abstimmungsende:** {vote_end_str}"
+                "1h | 3h | 6h | 12h | 24h | 1d | 3d | 7d\n"
+                f"🕒 **Vote End:** {vote_end_str}"
             )
 
             embed = self.create_embed(
@@ -92,9 +92,12 @@ class ModCommunityMute(commands.Cog):
                 '3h': set(),
                 '6h': set(),
                 '12h': set(),
-                '24h': set()
+                '24h': set(),
+                '1d': set(),
+                '3d': set(),
+                '7d': set()
             }
-            self.vote_options = ['1h', '3h', '6h', '12h', '24h']
+            self.vote_options = ['1h', '3h', '6h', '12h', '24h', '1d', '3d', '7d']
             
             for option in self.vote_options:
                 self.add_item(self.VoteButton(option, self))
@@ -116,7 +119,10 @@ class ModCommunityMute(commands.Cog):
                     '3h': 10800,
                     '6h': 21600,
                     '12h': 43200,
-                    '24h': 86400
+                    '24h': 86400,
+                    '1d': 86400,
+                    '3d': 259200,
+                    '7d': 604800
                 }[chosen]
 
                 disable_until = datetime.datetime.utcnow() + datetime.timedelta(seconds=duration_seconds)
@@ -125,7 +131,7 @@ class ModCommunityMute(commands.Cog):
                     reason=f"Community mute: {self.reason}"
                 )
 
-                vote_counts = {option: len(voters) for option, voters in self.votes.items()}
+                vote_counts = {option: len(self.votes[option]) for option in self.vote_options}
                 vote_end_now = f"<t:{int(datetime.datetime.utcnow().timestamp())}:F>"
 
                 new_embed = self.create_embed(
@@ -133,7 +139,14 @@ class ModCommunityMute(commands.Cog):
                     f"**Target:** {self.target.mention}\n\n"
                     f"**Duration:** {chosen}\n\n"
                     f"**Voter Counts:**\n"
-                    f"1h: {vote_counts['1h']}, 3h: {vote_counts['3h']}, 6h: {vote_counts['6h']}, 12h: {vote_counts['12h']}, 24h: {vote_counts['24h']}\n\n"
+                    f"1h: {vote_counts['1h']}, "
+                    f"3h: {vote_counts['3h']}, "
+                    f"6h: {vote_counts['6h']}, "
+                    f"12h: {vote_counts['12h']}, "
+                    f"24h: {vote_counts['24h']}, "
+                    f"1d: {vote_counts['1d']}, "
+                    f"3d: {vote_counts['3d']}, "
+                    f"7d: {vote_counts['7d']}\n\n"
                     f"**Vote Ended at:** {vote_end_now}\n\n"
                     f"**Reason:** {self.reason}",
                     'success',

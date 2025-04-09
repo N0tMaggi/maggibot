@@ -1,13 +1,13 @@
 import discord
 from discord.ext import commands
-from discord.commands import SlashCommandGroup
 from discord.ui import View, Button, button
 import datetime
+import asyncio
+from dateutil.parser import parse as parse_duration
+
 import handlers.config as cfg
 from extensions.modextensions import create_mod_embed, send_mod_log
 from handlers.debug import LogDebug, LogError, LogModeration
-import asyncio
-from dateutil.parser import parse as parse_duration
 
 class ModerationView(View):
     def __init__(self, user: discord.Member, moderator: discord.Member):
@@ -15,6 +15,7 @@ class ModerationView(View):
         self.user = user
         self.moderator = moderator
         self.ctx = None
+        self.bot = None
 
     @button(label="Ban", style=discord.ButtonStyle.red, emoji="🔨", row=0)
     async def ban_button(self, button: Button, interaction: discord.Interaction):
@@ -42,107 +43,135 @@ class ModerationView(View):
 
     @button(label="Close", style=discord.ButtonStyle.red, emoji="✖️", row=2)
     async def close_button(self, button: Button, interaction: discord.Interaction):
-        await interaction.message.delete()
+        self.disable_all_items()
+        await interaction.response.edit_message(view=self)
+        self.stop()
 
     async def handle_action(self, interaction: discord.Interaction, action_type: str):
         if not self.ctx:
-            return await interaction.response.send_message("Context not found", ephemeral=True)
-        
+            if not interaction.response.is_done():
+                await interaction.response.send_message("Context not found", ephemeral=True)
+            else:
+                await interaction.followup.send("Context not found", ephemeral=True)
+            return
+
         required_perms = {
             "ban": "ban_members",
             "kick": "kick_members",
             "timeout": "moderate_members",
             "warn": "moderate_members"
         }.get(action_type)
-        
-        if not interaction.user.guild_permissions.__getattribute__(required_perms):
-            return await interaction.response.send_message(
-                embed=create_mod_embed(
-                    "❌ Permission Denied",
-                    f"You need `{required_perms.replace('_', ' ').title()}` permission",
-                    'error',
-                    interaction.user
-                ), ephemeral=True
+
+        if not getattr(interaction.user.guild_permissions, required_perms):
+            embed = create_mod_embed(
+                "❌ Permission Denied",
+                f"You need `{required_perms.replace('_', ' ').title()}` permission",
+                'error',
+                interaction.user
             )
-        
-        try:
-            # First response: Ask for duration
-            if action_type == "timeout":
-                await interaction.response.send_message(
-                    embed=create_mod_embed(
-                        "⏱️ Timeout Duration",
-                        "Enter duration (e.g., '1h 30m')",
-                        'info',
-                        interaction.user
-                    ), ephemeral=True
-                )
-                
-                try:
-                    msg = await self.bot.wait_for(
-                        'message',
-                        check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
-                        timeout=60
-                    )
-                    duration = parse_duration(msg.content)
-                    await msg.delete()
-                except asyncio.TimeoutError:
-                    return await interaction.followup.send("Duration input timed out", ephemeral=True)
-    
-            # Second response: Ask for reason using followup
-            await interaction.followup.send(
-                embed=create_mod_embed(
-                    "📝 Enter Reason",
-                    "Please type the reason for this action in the chat",
-                    'info',
-                    interaction.user
-                ), ephemeral=True
+            if not interaction.response.is_done():
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+            else:
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        duration = None
+        duration_text = None
+        if action_type == "timeout":
+            timeout_embed = create_mod_embed(
+                "⏱️ Timeout Duration",
+                "Enter duration (e.g., '1h 30m')",
+                'info',
+                interaction.user
             )
-            
+            if not interaction.response.is_done():
+                await interaction.response.send_message(embed=timeout_embed, ephemeral=True)
+            else:
+                await interaction.followup.send(embed=timeout_embed, ephemeral=True)
             try:
                 msg = await self.bot.wait_for(
                     'message',
                     check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
                     timeout=60
                 )
-                reason = msg.content
+                duration = parse_duration(msg.content)
+                duration_text = msg.content  
                 await msg.delete()
             except asyncio.TimeoutError:
-                return await interaction.followup.send("Reason input timed out", ephemeral=True)
-    
-            # Execute action
+                await interaction.followup.send("Duration input timed out", ephemeral=True)
+                return
+
+        reason_embed = create_mod_embed(
+            "📝 Enter Reason",
+            "Please type the reason for this action in the chat",
+            'info',
+            interaction.user
+        )
+        if not interaction.response.is_done():
+            await interaction.response.send_message(embed=reason_embed, ephemeral=True)
+        else:
+            await interaction.followup.send(embed=reason_embed, ephemeral=True)
+        try:
+            msg = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author == interaction.user and m.channel == self.ctx.channel,
+                timeout=60
+            )
+            reason = msg.content
+            await msg.delete()
+        except asyncio.TimeoutError:
+            await interaction.followup.send("Reason input timed out", ephemeral=True)
+            return
+
+        if action_type == "ban":
+            action_text = "banned"
+        elif action_type == "kick":
+            action_text = "kicked"
+        elif action_type == "timeout":
+            action_text = f"timed out for {duration_text}"
+        elif action_type == "warn":
+            action_text = "warned"
+        else:
+            action_text = action_type
+
+        try:
+            dm_description = f"You have been {action_text} for the following reason: {reason}."
+            dm_embed = create_mod_embed("Moderation Notice", dm_description, "info", self.moderator)
+            await self.user.send(embed=dm_embed)
+        except Exception as e:
+            LogError(f"Failed to send DM to user {self.user.id}: {e}")
+
+        try:
             if action_type == "ban":
                 if self.user.guild_permissions.administrator:
-                    return await interaction.followup.send(
-                        embed=create_mod_embed(
-                            "❌ Safety Lock",
-                            "Cannot ban server administrators",
-                            'error'
-                        ), ephemeral=True
+                    safety_embed = create_mod_embed(
+                        "❌ Safety Lock",
+                        "Cannot ban server administrators",
+                        'error'
                     )
+                    await interaction.followup.send(embed=safety_embed, ephemeral=True)
+                    return
                 await self.user.ban(reason=f"{self.moderator}: {reason}")
-                action_text = "banned"
             elif action_type == "kick":
                 await self.user.kick(reason=f"{self.moderator}: {reason}")
-                action_text = "kicked"
             elif action_type == "timeout":
                 await self.user.timeout(duration, reason=reason)
-                action_text = f"timed out for {msg.content}"
             elif action_type == "warn":
-                action_text = "warned"
                 LogModeration(f"Warned {self.user.id} by {self.moderator.id}: {reason}")
-    
-            await interaction.followup.send(
-                embed=create_mod_embed(
-                    f"✅ {action_type.title()} Successful",
-                    f"{self.user.mention} has been {action_text}",
-                    'success',
-                    self.moderator
-                ), ephemeral=True
+
+            success_embed = create_mod_embed(
+                f"✅ {action_type.title()} Successful",
+                f"{self.user.mention} has been {action_text}",
+                'success',
+                self.moderator
             )
-            
-            # Logging
+            if not interaction.response.is_done():
+                await interaction.response.send_message(embed=success_embed, ephemeral=True)
+            else:
+                await interaction.followup.send(embed=success_embed, ephemeral=True)
+
             log_data = {
-                "title": f"Moderation Action",
+                "title": "Moderation Action",
                 "description": (
                     f"**User:** {self.user.mention}\n"
                     f"**Moderator:** {self.moderator.mention}\n"
@@ -153,26 +182,30 @@ class ModerationView(View):
                 "author": self.moderator
             }
             await send_mod_log(self.ctx.guild.id, log_data, self.bot)
-            
+
         except Exception as e:
             LogError(f"Moderation action failed: {str(e)}")
-            await interaction.followup.send(
-                embed=create_mod_embed(
-                    "⚠️ Error",
-                    f"Action failed: {str(e)}",
-                    'error',
-                    interaction.user
-                ), ephemeral=True
+            error_embed = create_mod_embed(
+                "⚠️ Error",
+                f"Action failed: {str(e)}",
+                'error',
+                interaction.user
             )
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(embed=error_embed, ephemeral=True)
+                else:
+                    await interaction.followup.send(embed=error_embed, ephemeral=True)
+            except discord.errors.NotFound:
+                LogError("Webhook not found while sending error message.")
 
     async def show_history(self, interaction: discord.Interaction):
-        embed = create_mod_embed(
+        history_embed = create_mod_embed(
             "📚 Moderation History",
-            f"**User:** {self.user.mention}\n"
-            "No recent actions found",
+            f"**User:** {self.user.mention}\nNo recent actions found",
             'info'
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=history_embed, ephemeral=True)
 
     async def refresh_info(self, interaction: discord.Interaction):
         new_embed = await self.generate_user_embed()
@@ -205,8 +238,8 @@ class ModerationView(View):
         
         roles = [role.mention for role in self.user.roles[1:]]
         embed.add_field(name=f"Roles ({len(roles)})", 
-                      value=", ".join(roles) if roles else "None", 
-                      inline=False)
+                        value=", ".join(roles) if roles else "None", 
+                        inline=False)
         
         perms = []
         if self.user.guild_permissions.administrator:
@@ -218,14 +251,13 @@ class ModerationView(View):
             if self.user.guild_permissions.moderate_members: perms.append("Timeout Members")
         
         embed.add_field(name="Key Permissions", 
-                      value=", ".join(perms) if perms else "No special permissions",
-                      inline=False)
+                        value=", ".join(perms) if perms else "No special permissions",
+                        inline=False)
         return embed
 
 class UserModerationCog(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-
 
     @commands.slash_command(name="mod-user", description="View user info and moderation options")
     @commands.has_permissions(moderate_members=True)
@@ -240,14 +272,13 @@ class UserModerationCog(commands.Cog):
             LogModeration(f"User info requested for {user.id} by {ctx.author.id}")
         except Exception as e:
             LogError(f"User info command error: {str(e)}")
-            await ctx.respond(
-                embed=create_mod_embed(
-                    "⚠️ Error",
-                    f"Failed to retrieve user information: {str(e)}",
-                    'error',
-                    ctx.author
-                ), ephemeral=True
+            error_embed = create_mod_embed(
+                "⚠️ Error",
+                f"Failed to retrieve user information: {str(e)}",
+                'error',
+                ctx.author
             )
+            await ctx.respond(embed=error_embed, ephemeral=True)
 
 def setup(bot: discord.Bot):
     bot.add_cog(UserModerationCog(bot))
