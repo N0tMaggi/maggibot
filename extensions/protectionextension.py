@@ -4,7 +4,7 @@ import handlers.config as cfg
 from handlers.debug import LogDebug, LogError, LogModeration
 
 
-async def create_protection_embed(self, ctx, member, inviter, is_verified=True, action_taken=True):
+async def create_antibot_protection_embed(self, ctx, member, inviter, is_verified=True, action_taken=True):
     color = discord.Color.green() if is_verified else discord.Color.red()
     status = "Verified" if is_verified else "Unverified"
     action = "Allowed" if is_verified else "Kicked" if action_taken else "Not Kicked"

@@ -4,7 +4,7 @@ import json
 import datetime
 from handlers.debug import LogDebug, LogError
 import handlers.config as config
-from extensions.protectionextension import create_protection_embed
+from extensions.protectionextension import create_antibot_protection_embed
 
 class Antibot(commands.Cog):
     def __init__(self, bot):
@@ -50,7 +50,7 @@ class Antibot(commands.Cog):
 
         if member.public_flags.verified_bot:
             LogDebug(f"Verified bot allowed: {member}")
-            embed = await create_protection_embed(member, inviter, is_verified=True)
+            embed = await create_antibot_protection_embed(member, inviter, is_verified=True)
             await log_channel.send(embed=embed)
             return
 
@@ -58,10 +58,10 @@ class Antibot(commands.Cog):
             try:
                 await member.kick(reason="Unverified bot protection")
                 LogDebug(f"Successfully kicked unverified bot: {member}")
-                embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=True)
+                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=True)
             except discord.Forbidden:
                 LogError(f"Missing permissions to kick {member} in {member.guild.name}")
-                embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=False)
+                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
                 embed.color = discord.Color.orange()
                 embed.title = "⚠️ Protection Action Failed"
             except Exception as e:
@@ -73,7 +73,7 @@ class Antibot(commands.Cog):
                 )
         else:
             LogDebug(f"Protection disabled - allowing unverified bot: {member}")
-            embed = await create_protection_embed(member, inviter, is_verified=False, action_taken=False)
+            embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
             embed.color = discord.Color.orange()
             embed.title = "⚠️ Unverified Bot Allowed"
 
