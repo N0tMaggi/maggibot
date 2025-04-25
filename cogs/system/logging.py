@@ -120,7 +120,7 @@ class Logging(commands.Cog):
 
             embed = await self.create_command_embed(ctx)
             
-            if not log_channel.permissions_for(ctx.guild.me).send_messages:
+            if log_channel and not log_channel.permissions_for(log_channel.guild.me).send_messages:
                 LogError(f"Missing permissions to send messages in {log_channel.name}")
                 return
 

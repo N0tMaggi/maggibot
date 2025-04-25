@@ -9,7 +9,7 @@ from handlers.debug import LogDebug, LogError
 class Tags(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.tags = load_tags()  # Now expects {guild_id: {tag_name: content}}
+        self.tags = load_tags() 
 
     @slash_command(name="tag", description="Send a server-specific tag")
     async def tag(self, ctx, tag: str, user: discord.Member = None):
