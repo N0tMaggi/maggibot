@@ -64,7 +64,7 @@ class ModCommunityBan(commands.Cog):
             )
             embed.set_thumbnail(url=user.display_avatar.url)
 
-            view = self.BanVoteView(user, reason, ctx.author)
+            view = self.BanVoteView(self, user, reason, ctx.author)  # [[3]][[4]]
             await ctx.respond(embed=embed, view=view)
             LogModeration(f"Community ban started for {user.id} in {ctx.guild.id}")
 
@@ -73,8 +73,9 @@ class ModCommunityBan(commands.Cog):
             await ctx.respond("🚨 Failed to start ban vote", ephemeral=True)
 
     class BanVoteView(discord.ui.View):
-        def __init__(self, target, reason, initiator):
+        def __init__(self, cog, target, reason, initiator):
             super().__init__(timeout=None)
+            self.cog = cog 
             self.target = target
             self.reason = reason
             self.initiator = initiator
@@ -94,7 +95,7 @@ class ModCommunityBan(commands.Cog):
                 await interaction.guild.ban(self.target, reason=f"Community ban: {self.reason}")
                 
                 spacer = "\u200b" * 10
-                new_embed = self.initiator.create_embed(
+                new_embed = self.cog.create_embed(  # [[3]][[5]]
                     "✅ Ban Executed",
                     f"{spacer}\n**Target:** {self.target.mention}\n\n"
                     f"**Confirmed by:** {interaction.user.mention}\n\n"
@@ -108,7 +109,7 @@ class ModCommunityBan(commands.Cog):
                 await interaction.response.send_message(f"✅ Ban confirmed by {interaction.user.mention}!", ephemeral=False)
 
                 try:
-                    dm_embed = self.initiator.create_embed(
+                    dm_embed = self.cog.create_embed(  # [[3]][[5]]
                         "🔨 Community Ban",
                         f"You were banned from **{interaction.guild.name}**\n\n"
                         f"**Reason:** {self.reason}\n\n"

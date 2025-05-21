@@ -21,8 +21,14 @@ class Leaderboards(commands.Cog):
 
             if stats:
                 xp = stats.get("xp", 0.0)
+                level = stats.get("level", int(xp // 20))
                 server_stats = stats.get("servers", {})
                 
+                embed.add_field(
+                    name="🌟 Level",
+                    value=f"```yaml\nLevel: {level}```",
+                    inline=False
+                )
                 embed.add_field(
                     name="🌟 Total XP", 
                     value=f"```yaml\n{xp:.2f} XP```", 
@@ -71,13 +77,14 @@ class Leaderboards(commands.Cog):
                 for rank, (user_id, data) in enumerate(leaderboard, 1):
                     member = ctx.guild.get_member(int(user_id))
                     xp = data.get("xp", 0)
+                    level = data.get("level", int(xp // 20))
                     total_messages = sum(s['messages'] for s in data['servers'].values())
                     total_media = sum(s['media'] for s in data['servers'].values())
                     total_voice = sum(s.get('voiceminutes', 0) for s in data['servers'].values())
                     
                     embed.add_field(
                         name=f"{self.get_rank_emoji(rank)} {getattr(member, 'name', f'User {user_id}')}", 
-                        value=f"```yaml\nXP: {xp:.2f}\n"
+                        value=f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
                               f"Messages: {total_messages}\n"
                               f"Media: {total_media}\n"
                               f"Voice: {total_voice}m```", 
@@ -117,19 +124,20 @@ class Leaderboards(commands.Cog):
                         guild_data.get("messages", 0),
                         guild_data.get("media", 0),
                         guild_data.get("voiceminutes", 0),
-                        user_data.get("xp", 0)
+                        user_data.get("xp", 0),
+                        user_data.get("level", int(user_data.get("xp", 0) // 20))
                     ))
 
             if server_stats:
                 sorted_stats = sorted(server_stats, key=lambda x: x[4], reverse=True)[:10]
                 
-                for rank, (user_id, messages, media, voice, xp) in enumerate(sorted_stats, 1):
+                for rank, (user_id, messages, media, voice, xp, level) in enumerate(sorted_stats, 1):
                     member = ctx.guild.get_member(int(user_id))
                     display_name = getattr(member, "display_name", f"User {user_id}")
                     
                     embed.add_field(
                         name=f"{self.get_rank_emoji(rank)} {display_name}",
-                        value=f"```yaml\nXP: {xp:.2f}\n"
+                        value=f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
                               f"Messages: {messages}\n" 
                               f"Media: {media}\n"
                               f"Voice: {voice}m```",
