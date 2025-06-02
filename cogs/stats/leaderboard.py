@@ -41,8 +41,8 @@ class Leaderboards(commands.Cog):
                     server_info.append(
                         f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n"
                         f"**{guild}**\n"
-                        f"📨 Messages: {data['messages']}\n"
-                        f"📎 Media: {data['media']}\n"
+                        f"📨 Messages: {data.get('messages', 0)}\n"
+                        f"📎 Media: {data.get('media', 0)}\n"
                         f"🎧 Voice Minutes: {data.get('voiceminutes', 0)}"
                     )
 

@@ -35,6 +35,15 @@ def create_embed(title: str, description: str, color: discord.Color) -> discord.
     embed.set_footer(text="TikTok Downloader • ag7-dev.de API")
     return embed
 
+def safe_embed_field_value(value: str, max_length: int = 1024) -> str:
+    """Ensures that a Discord embed field value does not exceed the maximum allowed length."""
+    if value is None:
+        return ""
+    value = str(value)
+    if len(value) > max_length:
+        return value[:max_length - 3] + "..."
+    return value
+
 class Tiktok(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
@@ -169,20 +178,42 @@ class Tiktok(commands.Cog):
             # Create result embed
             info_embed = create_embed(
                 title="🎬 TikTok Media Information",
-                description=result.get("description", "No description available"),
+                description=safe_embed_field_value(result.get("description", "No description available")),
                 color=discord.Color.green()
             )
-            info_embed.add_field(name="🔗 Source URL", value=f"[Original Link]({link})", inline=False)
+            # Truncate the link if it's too long for the field
+            display_link = "[Original Link]({})".format(link)
+            info_embed.add_field(
+                name="🔗 Source URL",
+                value=safe_embed_field_value(display_link),
+                inline=False
+            )
 
             if author := result.get("author"):
                 author_name = author.get("nickname", author.get("username", "Unknown"))
                 if profile_url := author.get("url"):
-                    info_embed.add_field(name="👤 Author", value=f"[{author_name}]({profile_url})", inline=True)
+                    info_embed.add_field(
+                        name="👤 Author",
+                        value=safe_embed_field_value(f"[{author_name}]({profile_url})"),
+                        inline=True
+                    )
                 else:
-                    info_embed.add_field(name="👤 Author", value=author_name, inline=True)
+                    info_embed.add_field(
+                        name="👤 Author",
+                        value=safe_embed_field_value(author_name),
+                        inline=True
+                    )
 
-            info_embed.add_field(name="📁 Media Type", value=result.get("type", "N/A").capitalize(), inline=True)
-            info_embed.add_field(name="📦 Attachments", value=str(len(attachments)), inline=True)
+            info_embed.add_field(
+                name="📁 Media Type",
+                value=safe_embed_field_value(result.get("type", "N/A").capitalize()),
+                inline=True
+            )
+            info_embed.add_field(
+                name="📦 Attachments",
+                value=safe_embed_field_value(str(len(attachments))),
+                inline=True
+            )
 
             # Final response
             success_embed = create_embed(
@@ -196,12 +227,12 @@ class Tiktok(commands.Cog):
             if big_file_links:
                 warning_embed = create_embed(
                     title="⚠️ Size Warning",
-                    description=f"{len(big_file_links)} files exceed Discord's size limit",
+                    description=safe_embed_field_value(f"{len(big_file_links)} files exceed Discord's size limit"),
                     color=discord.Color.orange()
                 )
                 warning_embed.add_field(
                     name="Large Files", 
-                    value="\n".join(f"• [Link {idx+1}]({url})" for idx, url in enumerate(big_file_links)),
+                    value=safe_embed_field_value("\n".join(f"• [Link {idx+1}]({url})" for idx, url in enumerate(big_file_links))),
                     inline=False
                 )
                 await ctx.followup.send(embed=warning_embed)

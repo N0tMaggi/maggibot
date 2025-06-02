@@ -22,7 +22,11 @@ class WebhookProtectionCog(commands.Cog):
             for webhook in webhooks:
                 creator = webhook.user
                 guild_icon = guild.icon.url if guild.icon else None
-
+    
+                if creator and creator.bot and creator.public_flags.verified_bot:
+                    LogDebug(f"Verified bot webhook allowed: {webhook.name} by {creator}")
+                    continue
+                    
                 embed = discord.Embed(
                     title="⚠️ SECURITY ALERT: Webhook Created",
                     description=f"New webhook detected in {channel.mention}",
@@ -62,7 +66,7 @@ class WebhookProtectionCog(commands.Cog):
         log_channel = self.bot.get_channel(config.get("logchannel")) if config.get("logchannel") else None
 
         try:
-            webhook = await message.guild.fetch_webhook(message.webhook_id)
+            webhook = next((w for w in await message.channel.webhooks() if w.id == message.webhook_id), None)
             guild_icon = message.guild.icon.url if message.guild.icon else None
 
             embed = discord.Embed(
@@ -72,12 +76,12 @@ class WebhookProtectionCog(commands.Cog):
                 timestamp=discord.utils.utcnow()
             )
             embed.set_thumbnail(url=guild_icon)
-            embed.add_field(name="Webhook", value=webhook.name, inline=True)
+            embed.add_field(name="Webhook", value=webhook.name if webhook else "Unknown", inline=True)
             embed.add_field(name="Message Content", value=message.content[:1000] or "*No text*", inline=False)
-            embed.add_field(name="Sent By", value=f"{webhook.user} (`{webhook.user.id}`)" if webhook.user else "Unknown", inline=False)
+            embed.add_field(name="Sent By", value=f"{webhook.user} (`{webhook.user.id}`)" if webhook and webhook.user else "Unknown", inline=False)
             embed.set_footer(text=f"Server ID: {message.guild.id}", icon_url=self.bot.user.avatar.url)
 
-            if protection and webhook.user and webhook.user.bot:
+            if protection and webhook and webhook.user and webhook.user.bot:
                 try:
                     await webhook.delete(reason="Security: Unauthorized bot webhook")
                     embed.title = "🚨 THREAT BLOCKED: Malicious Webhook"
@@ -91,8 +95,6 @@ class WebhookProtectionCog(commands.Cog):
             if log_channel:
                 await log_channel.send(embed=embed)
 
-        except discord.NotFound:
-            LogDebug("Webhook not found (already deleted?)")
         except Exception as e:
             LogError(f"Error processing webhook message: {str(e)}")
 
