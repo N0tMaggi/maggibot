@@ -293,7 +293,7 @@ class MacBan(commands.Cog):
 
         banned_members = []
         failed_members = []
-        for ban in bans:
+        for ban in bans.values():
             user_id = ban["id"]
             member = ctx.guild.get_member(user_id)
             if member:
@@ -329,7 +329,7 @@ class MacBan(commands.Cog):
         await ctx.respond(embed=working_embed)
 
         global_bans = mac_load_bans()
-        server_bans = [ban for ban in global_bans if ban.get("serverid") == ctx.guild.id]
+        server_bans = [ban for ban in global_bans.values() if ban.get("serverid") == ctx.guild.id]
         if not server_bans:
             embed = create_mac_embed(
                 title="No Server Ban Records",
@@ -351,7 +351,7 @@ class MacBan(commands.Cog):
                 failed_users.append(f"{ban['name']} ({ban['id']})")
             await asyncio.sleep(1)
 
-        remaining_bans = [ban for ban in global_bans if ban.get("serverid") != ctx.guild.id]
+        remaining_bans = [ban for ban in global_bans.values() if ban.get("serverid") != ctx.guild.id]
         mac_save_bans(remaining_bans)
 
         embed = create_mac_embed(
@@ -372,7 +372,7 @@ class MacBan(commands.Cog):
             return
 
         global_bans = mac_load_bans()
-        server_bans = [ban for ban in global_bans if str(ban.get("serverid")) == serverid]
+        server_bans = [ban for ban in global_bans.values() if str(ban.get("serverid")) == serverid]
         if not server_bans:
             embed = create_mac_embed(
                 title="🚫 No Ban Records for Server",
@@ -415,7 +415,7 @@ class MacBan(commands.Cog):
         banned_users = []
 
         for member in ctx.guild.members:
-            for ban in global_bans:
+            for ban in global_bans.values():
                 if str(ban.get("serverid")) == str(ctx.guild.id) and str(ban.get("id")) == str(member.id):
                     banned_users.append(ban)
                     break
