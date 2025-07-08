@@ -200,7 +200,7 @@ Run maggibot using the following command:
 ## 📌 Project Roadmap
 
 - [X] **`Task 1`**: <strike>Main Structure.</strike>
-- [ ] **`Task 2`**: Installer.
+- [X] **`Task 2`**: <strike>Installer.</strike>
 - [ ] **`Task 3`**: More Protection Features.
 
 ---
