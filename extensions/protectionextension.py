@@ -4,7 +4,7 @@ import handlers.config as cfg
 from handlers.debug import LogDebug, LogError, LogModeration
 
 
-async def create_antibot_protection_embed(self, ctx, member, inviter, is_verified=True, action_taken=True):
+async def create_antibot_protection_embed(member, inviter, is_verified=True, action_taken=True):
     color = discord.Color.green() if is_verified else discord.Color.red()
     status = "Verified" if is_verified else "Unverified"
     action = "Allowed" if is_verified else "Kicked" if action_taken else "Not Kicked"
@@ -34,11 +34,14 @@ async def create_antibot_protection_embed(self, ctx, member, inviter, is_verifie
         else:
             embed.description = f"⚠️ Failed to kick unverified bot! Please check permissions."
     
-    embed.set_footer(text=f"Protection System • Action: {action}", icon_url=self.bot.user.display_avatar.url)
+    embed.set_footer(
+        text=f"Protection System • Action: {action}",
+        icon_url=member.guild.me.display_avatar.url
+    )
     
     return embed
 
-async def create_alert_embed(self, message, mention_count):
+async def create_alert_embed(message, mention_count):
     embed = discord.Embed(
         title=f"🚨 Mass Mention Detected ({mention_count} mentions)",
         color=discord.Color.red(),
@@ -72,7 +75,7 @@ async def create_alert_embed(self, message, mention_count):
 
 
 
-async def create_protection_config_embed(self, ctx, title, description, color, fields=None):
+async def create_protection_config_embed(ctx, title, description, color, fields=None):
     embed = discord.Embed(
         title=title,
         description=description,
