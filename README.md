@@ -39,13 +39,26 @@
 
 ## 📍 Overview
 
-<code>❯ SOON</code>
+**Maggibot** is a modular Discord bot written in Python using
+[`discord.py`](https://github.com/Rapptz/discord.py). It is designed to be
+extended through cogs and provides a wide range of moderation and community
+management tools. The bot relies on a small set of configuration and data files
+(see [`handlers/config.py`](handlers/config.py)) and can be customised via an
+environment file based on `.env.example`.
 
 ---
 
 ## 👾 Features
 
-<code>❯ SOON</code>
+- **Administration** – tools like autoroles, configuration commands and voice
+  gate management.
+- **Moderation** – classic moderation actions (kick, ban, mute) plus community
+  voting utilities.
+- **Protection** – modules for anti-spam, anti-raid, anti-ghost ping and webhook
+  defence.
+- **Statistics** – XP and leaderboard system with adjustable multipliers.
+- **Ticket system** – simple ticket creation workflow for support channels.
+- **Fun and utilities** – quotes, tags, TikTok downloader and more.
 
 ---
 
@@ -163,28 +176,10 @@ Before getting started with maggibot, ensure your runtime environment meets the 
 
 ### ⚙️ Installation
 
-Install maggibot using one of the following methods:
-
-**Build from source:**
-
-1. Clone the maggibot repository:
-```sh
-❯ git clone https://github.com/ag7dev/maggibot
-```
-
-2. Navigate to the project directory:
-```sh
-❯ cd maggibot
-```
-
-3. Install the project dependencies:
-
-
-**Using `pip`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
-
-```sh
-❯ pip install -r requirements.txt
-```
+See [INSTALL.md](INSTALL.md) for a full step-by-step installation guide. In
+short, clone the repository, install the dependencies with `pip install -r
+requirements.txt`, copy `.env.example` to `.env` and run `python main.py
+install` once to create the default configuration files.
 
 
 
