@@ -24,6 +24,23 @@ class TicketSystem(Cog):
         self.ticket_check_loop.start()
         self.save_ticket_data = config.save_ticket_data
 
+    class TicketControlView(discord.ui.View):
+        def __init__(self, cog, guild_id: str, user_id: str):
+            super().__init__(timeout=None)
+            self.cog = cog
+            self.guild_id = guild_id
+            self.user_id = user_id
+
+        @discord.ui.button(label="Claim", style=discord.ButtonStyle.primary, emoji="📌")
+        async def claim(self, button: discord.ui.Button, interaction: discord.Interaction):
+            await interaction.response.defer(ephemeral=True)
+            await self.cog.button_claim_ticket(interaction, self.guild_id, self.user_id)
+
+        @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.danger, emoji="🔒")
+        async def close_ticket(self, button: discord.ui.Button, interaction: discord.Interaction):
+            await interaction.response.defer(ephemeral=True)
+            await self.cog.button_close_ticket(interaction, self.guild_id, self.user_id)
+
     def cog_unload(self):
         self.ticket_check_loop.cancel()
 
@@ -201,8 +218,9 @@ class TicketSystem(Cog):
         self.save_ticket_data(self.tickets)
 
         embed_channel = discord.Embed(
-            title="Ticket Created",
-            description=f"{ctx.author.mention}, your ticket has been opened. Support will contact you soon.",
+            title="🎟️ Support Ticket Created",
+            description=(f"{ctx.author.mention}, your ticket has been opened. "
+                          "A member of our team will be with you shortly."),
             color=0x00ff00,
             timestamp=datetime.datetime.utcnow()
         )
@@ -210,8 +228,9 @@ class TicketSystem(Cog):
         embed_channel.add_field(name="Ticket ID", value=ticket_id, inline=True)
         embed_channel.add_field(name="Status", value="Open", inline=True)
         embed_channel.add_field(name="Created At", value=now_iso, inline=False)
-        embed_channel.set_footer(text="Use /ticket-delete to close the ticket. Use /ticket-assign to assign a support agent.")
-        await ticket_channel.send(embed=embed_channel)
+        embed_channel.set_footer(text="Use the buttons below to manage this ticket.")
+        view = self.TicketControlView(self, guild_id, str(ctx.author.id))
+        await ticket_channel.send(embed=embed_channel, view=view)
 
         # Log embed for ticket creation
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
@@ -232,7 +251,10 @@ class TicketSystem(Cog):
         # DM embed for ticket creation
         embed_dm = discord.Embed(
             title="Ticket Opened",
-            description=f"Your ticket in **{ctx.guild.name}** has been successfully opened.",
+            description=(
+                f"Your ticket in **{ctx.guild.name}** has been successfully opened.\n"
+                "You can reply here or in the server channel."
+            ),
             color=0x00ff00,
             timestamp=datetime.datetime.utcnow()
         )
@@ -381,6 +403,97 @@ class TicketSystem(Cog):
             await ctx.respond("Thank you for your feedback!", ephemeral=True)
         else:
             await ctx.respond("Feedback could not be sent. Please contact support.", ephemeral=True)
+
+    async def button_claim_ticket(self, interaction: discord.Interaction, guild_id: str, user_id: str):
+        if guild_id not in self.tickets or user_id not in self.tickets[guild_id]:
+            await interaction.followup.send("Ticket no longer exists.", ephemeral=True)
+            return
+
+        ticket_data = self.tickets[guild_id][user_id]
+        channel = interaction.guild.get_channel(ticket_data["channel_id"])
+        if channel is None:
+            await interaction.followup.send("Ticket channel not found.", ephemeral=True)
+            return
+
+        ticket_data["assigned_to"] = interaction.user.id
+        ticket_data["status"] = "In Progress"
+        ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
+        self.save_ticket_data(self.tickets)
+
+        embed = discord.Embed(
+            title="Ticket Claimed",
+            description=f"{interaction.user.mention} has claimed this ticket.",
+            color=0x3498db,
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
+        await channel.send(embed=embed)
+        await interaction.followup.send("Ticket claimed.", ephemeral=True)
+
+    async def button_close_ticket(self, interaction: discord.Interaction, guild_id: str, user_id: str):
+        if guild_id not in self.tickets or user_id not in self.tickets[guild_id]:
+            await interaction.followup.send("Ticket not found.", ephemeral=True)
+            return
+
+        ticket_data = self.tickets[guild_id][user_id]
+        if str(interaction.user.id) != user_id and not interaction.user.guild_permissions.administrator:
+            await interaction.followup.send("You cannot close this ticket.", ephemeral=True)
+            return
+
+        ticket_channel = interaction.guild.get_channel(ticket_data["channel_id"])
+        if ticket_channel is None:
+            await interaction.followup.send("Ticket channel not found.", ephemeral=True)
+            return
+
+        transcript_lines = []
+        async for message in ticket_channel.history(limit=None, oldest_first=True):
+            timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            author = f"{message.author.name}#{message.author.discriminator}"
+            content = message.content
+            transcript_lines.append(f"[{timestamp}] {author}: {content}")
+            if message.attachments:
+                for attachment in message.attachments:
+                    transcript_lines.append(f"[{timestamp}] {author} attached: {attachment.url}")
+        transcript_text = "\n".join(transcript_lines)
+        transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{ticket_channel.id}.txt")
+
+        log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
+        log_channel = interaction.guild.get_channel(log_channel_id)
+        if log_channel:
+            embed_log = discord.Embed(
+                title="Ticket Closed",
+                description=f"Ticket for <@{user_id}> has been closed. Transcript attached.",
+                color=0xff0000,
+                timestamp=datetime.datetime.utcnow()
+            )
+            embed_log.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
+            embed_log.add_field(name="Closed By", value=interaction.user.mention, inline=True)
+            await log_channel.send(embed=embed_log, file=transcript_file)
+
+        try:
+            dm_embed = discord.Embed(
+                title="Ticket Closed",
+                description=f"Your ticket in **{interaction.guild.name}** has been closed.\nPlease provide feedback using `/ticket-feedback`.",
+                color=0xff0000,
+                timestamp=datetime.datetime.utcnow()
+            )
+            dm_embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
+            user = interaction.guild.get_member(int(user_id))
+            if user:
+                await user.send(embed=dm_embed)
+        except Exception as e:
+            LogError(f"Failed to send DM to {user_id}: {e}")
+
+        ticket_data["status"] = "Closed"
+        self.save_ticket_data(self.tickets)
+
+        del self.tickets[guild_id][user_id]
+        if not self.tickets[guild_id]:
+            del self.tickets[guild_id]
+        self.save_ticket_data(self.tickets)
+
+        await ticket_channel.delete()
+        await interaction.followup.send("Ticket closed and deleted.", ephemeral=True)
 
     @tasks.loop(minutes=10)
     async def ticket_check_loop(self):
