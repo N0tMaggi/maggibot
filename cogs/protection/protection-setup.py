@@ -3,9 +3,9 @@ from discord.ext import commands
 from discord.commands import slash_command
 from discord.ui import View, Button, button, channel_select, role_select
 from discord import ui
-import datetime
 import handlers.config as config
 from handlers.debug import LogDebug
+from extensions.protectionextension import create_protection_status_embed
 
 class ProtectionConfigView(View):
     def __init__(self, bot, guild_id):
@@ -27,13 +27,13 @@ class ProtectionConfigView(View):
         guild_config = self.config.setdefault(str(self.guild_id), {})
         guild_config["logchannel"] = new_channel_id
         config.saveserverconfig(self.config)  # [[5]]
-        
-        embed = interaction.message.embeds[0]
-        embed.description = (
-            f"Protection: {'Enabled' if self.current_protection else 'Disabled'}\n"
-            f"Log Channel: {select.values[0].mention}"
+        self.current_log_channel = new_channel_id
+        embed = await create_protection_status_embed(
+            interaction,
+            self.current_protection,
+            self.current_log_channel,
         )
-        await interaction.response.edit_message(embed=embed)
+        await interaction.response.edit_message(embed=embed, view=self)
         LogDebug(f"Log channel set to {new_channel_id} by {interaction.user.id}")
 
     @button(label="Enable Protection", style=discord.ButtonStyle.green)
@@ -48,13 +48,13 @@ class ProtectionConfigView(View):
         guild_config = self.config.setdefault(str(self.guild_id), {})
         guild_config["protection"] = new_state
         config.saveserverconfig(self.config)  # [[5]]
-        
-        embed = interaction.message.embeds[0]
-        embed.description = (
-            f"Protection: {'Enabled' if new_state else 'Disabled'}\n"
-            f"Log Channel: <#{self.current_log_channel}>" if self.current_log_channel else "No log channel set"
+        self.current_protection = new_state
+        embed = await create_protection_status_embed(
+            interaction,
+            self.current_protection,
+            self.current_log_channel,
         )
-        await interaction.response.edit_message(embed=embed)
+        await interaction.response.edit_message(embed=embed, view=self)
         LogDebug(f"Protection set to {new_state} by {interaction.user.id}")
 
     async def on_timeout(self):
@@ -78,16 +78,11 @@ class ProtectionSettings(commands.Cog):
         current_protection = config_data.get("protection", False)
         current_log_channel = config_data.get("logchannel", None)
 
-        embed = discord.Embed(
-            title="🛡️ Protection Configuration",
-            description=(
-                f"Protection: {'Enabled' if current_protection else 'Disabled'}\n"
-                f"Log Channel: <#{current_log_channel}>" if current_log_channel else "No log channel set"
-            ),
-            color=0x2ECC71 if current_protection else 0xE74C3C,
-            timestamp=datetime.datetime.utcnow()
+        embed = await create_protection_status_embed(
+            ctx,
+            current_protection,
+            current_log_channel,
         )
-        embed.set_footer(text="Protection affects security features like anti-spam and moderation")
 
         view = ProtectionConfigView(self.bot, ctx.guild.id)
         view.message = await ctx.respond(embed=embed, view=view, ephemeral=True)

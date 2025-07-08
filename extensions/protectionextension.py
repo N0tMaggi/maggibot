@@ -96,3 +96,17 @@ async def create_protection_config_embed(ctx, title, description, color, fields=
     embed.set_footer(text=f"Server ID: {ctx.guild.id} | Protection System")
     
     return embed
+
+
+async def create_protection_status_embed(ctx, enabled: bool, log_channel_id: int | None):
+    """Return a standardized embed showing current protection settings."""
+    title = "🛡️ Protection Configuration"
+    description = "Current server protection settings."
+    color = discord.Color.green() if enabled else discord.Color.red()
+    status = "Enabled ✅" if enabled else "Disabled ❌"
+    log_channel_value = f"<#{log_channel_id}>" if log_channel_id else "Not set"
+    fields = [
+        ("Protection Status", status, False),
+        ("Log Channel", log_channel_value, False),
+    ]
+    return await create_protection_config_embed(ctx, title, description, color, fields)
