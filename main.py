@@ -126,7 +126,6 @@ async def on_ready():
     print(Fore.WHITE + f"Logged in as {bot.user} (ID: {bot.user.id})")
     print(Fore.CYAN + "-"*45)
 
-    await bot.change_presence(activity=discord.Game(name="with your mom"))
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Extension Loader
