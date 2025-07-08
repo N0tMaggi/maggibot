@@ -60,7 +60,10 @@ class ProtectionConfigView(View):
     async def on_timeout(self):
         for item in self.children:
             item.disabled = True
-        await self.message.edit(view=self)
+        try:
+            await self.message.edit(view=self)
+        except discord.NotFound:
+            LogDebug("Protection setup message no longer exists on timeout")
 
 class ProtectionSettings(commands.Cog):
     def __init__(self, bot):
