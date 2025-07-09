@@ -13,6 +13,15 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Setup virtual environment
+if not exist "venv\" (
+    echo Creating virtual environment...
+    python -m venv venv
+)
+
+call venv\Scripts\activate
+pip install -r requirements.txt >nul 2>&1
+
 :restart
 cls
 echo =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -29,8 +38,7 @@ echo =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 echo [%time%] Bot exited with code %exit_code%
 echo Restarting in 5 seconds...
 echo =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-timeout /t 0 /nobreak >nul
+timeout /t 5 /nobreak >nul
 
 title Maggibot WATCHDOG - Running
-color 0A
-goto restart
+color 0Agoto restart
