@@ -1,7 +1,7 @@
 aiohttp
 colorthief
 colorama
-discord.py==2.5.2
+py-cord==2.6.1
 Pillow
 python-dateutil
 python-dotenv
