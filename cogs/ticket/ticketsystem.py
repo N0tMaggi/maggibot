@@ -492,8 +492,8 @@ class TicketSystem(Cog):
             del self.tickets[guild_id]
         self.save_ticket_data(self.tickets)
 
-        await ticket_channel.delete()
         await interaction.followup.send("Ticket closed and deleted.", ephemeral=True)
+        await ticket_channel.delete()
 
     @tasks.loop(minutes=10)
     async def ticket_check_loop(self):
