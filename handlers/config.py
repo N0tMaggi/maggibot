@@ -229,8 +229,21 @@ def save_tags(tags):
 def mac_load_bans():
     data = load_data(MAC_FILE, default=dict)
     if isinstance(data, list):
-        return {str(ban["id"]): ban for ban in data}
-    return {str(k): v for k, v in data.items()}
+        bans = {str(ban["id"]): ban for ban in data}
+    else:
+        bans = {str(k): v for k, v in data.items()}
+
+    # Ensure each ban entry explicitly contains the user ID for
+    # compatibility with older save formats where the ID was only the key.
+    for user_id, ban in bans.items():
+        if "id" not in ban:
+            try:
+                ban["id"] = int(user_id)
+            except ValueError:
+                # If the key isn't an int just store it as string
+                ban["id"] = user_id
+
+    return bans
 
 def mac_save_bans(bans):
     save_data(MAC_FILE, bans, mkdir=True)

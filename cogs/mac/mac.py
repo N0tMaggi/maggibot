@@ -69,6 +69,7 @@ class MacBan(commands.Cog):
             return await ctx.respond(embed=embed)
 
         ban_record = {
+            "id": user.id,
             "name": user.name,
             "bandate": datetime.datetime.utcnow().isoformat(),
             "reason": reason,
