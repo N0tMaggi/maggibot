@@ -238,10 +238,18 @@ class Tiktok(commands.Cog):
                 await ctx.followup.send(embed=warning_embed)
 
             if attachments:
-                await ctx.followup.send(content="📁 Downloaded Attachments:", embed=info_embed, files=attachments)
+                for i in range(0, len(attachments), 10):
+                    chunk = attachments[i:i + 10]
+                    if i == 0:
+                        await ctx.followup.send(
+                            content="📁 Downloaded Attachments:",
+                            embed=info_embed,
+                            files=chunk,
+                        )
+                    else:
+                        await ctx.followup.send(files=chunk)
             else:
                 await ctx.followup.send(embed=info_embed)
-
         except Exception as e:
             error_embed = create_embed(
                 title="❌ Critical Error",
@@ -251,5 +259,4 @@ class Tiktok(commands.Cog):
             await ctx.followup.send(embed=error_embed)
             LogError(f"TikTok command failed: {str(e)}")
 
-def setup(bot: discord.Bot):
-    bot.add_cog(Tiktok(bot))
+def setup(bot: discord.Bot):    bot.add_cog(Tiktok(bot))
