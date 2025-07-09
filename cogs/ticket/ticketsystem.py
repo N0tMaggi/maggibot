@@ -63,7 +63,7 @@ class TicketSystem(Cog):
         ctx: discord.ApplicationContext,
         role: discord.Role,
         logchannel: discord.TextChannel,
-        categorie: discord.CategoryChannel
+        forum: discord.ForumChannel
     ):
         try:
             guild_id = str(ctx.guild.id)
@@ -74,7 +74,7 @@ class TicketSystem(Cog):
 
             self.serverconfig[guild_id]["ticketrole"] = role.id
             self.serverconfig[guild_id]["ticketlogchannel"] = logchannel.id
-            self.serverconfig[guild_id]["ticketcategorie"] = categorie.id
+            self.serverconfig[guild_id]["ticketforum"] = forum.id
             LogDebug(f"Updated server config for guild {guild_id}: {self.serverconfig[guild_id]}")
 
             config.saveserverconfig(self.serverconfig)
@@ -91,7 +91,7 @@ class TicketSystem(Cog):
             embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
             embed.add_field(name="Ticket Role", value=role.mention, inline=True)
             embed.add_field(name="Ticket Log Channel", value=logchannel.mention, inline=True)
-            embed.add_field(name="Ticket Category", value=categorie.name, inline=True)
+            embed.add_field(name="Ticket Forum", value=forum.name, inline=True)
             embed.add_field(name="Guild ID", value=ctx.guild.id, inline=False)
 
             await ctx.respond(embed=embed)
@@ -126,7 +126,7 @@ class TicketSystem(Cog):
 
             self.serverconfig[guild_id].pop("ticketrole", None)
             self.serverconfig[guild_id].pop("ticketlogchannel", None)
-            self.serverconfig[guild_id].pop("ticketcategorie", None)
+            self.serverconfig[guild_id].pop("ticketforum", None)
             LogDebug(f"Removed Ticket System entries for guild {guild_id}: {self.serverconfig[guild_id]}")
 
             config.saveserverconfig(self.serverconfig)
@@ -158,7 +158,7 @@ class TicketSystem(Cog):
         if guild_id not in self.serverconfig or \
            "ticketrole" not in self.serverconfig[guild_id] or \
            "ticketlogchannel" not in self.serverconfig[guild_id] or \
-           "ticketcategorie" not in self.serverconfig[guild_id]:
+           "ticketforum" not in self.serverconfig[guild_id]:
             await ctx.respond("Ticket system is not set up on this server.", ephemeral=True)
             return
 
@@ -172,10 +172,10 @@ class TicketSystem(Cog):
             await ctx.respond("You already have an open ticket.", ephemeral=True)
             return
 
-        category_id = self.serverconfig[guild_id]["ticketcategorie"]
-        category = ctx.guild.get_channel(category_id)
-        if category is None or not isinstance(category, discord.CategoryChannel):
-            await ctx.respond("Ticket category is invalid or not found.", ephemeral=True)
+        forum_id = self.serverconfig[guild_id]["ticketforum"]
+        forum_channel = ctx.guild.get_channel(forum_id)
+        if forum_channel is None or not isinstance(forum_channel, discord.ForumChannel):
+            await ctx.respond("Ticket forum is invalid or not found.", ephemeral=True)
             return
 
         ticket_role_id = self.serverconfig[guild_id]["ticketrole"]
@@ -184,27 +184,21 @@ class TicketSystem(Cog):
             await ctx.respond("Ticket role is invalid or not found.", ephemeral=True)
             return
 
-        overwrites = {
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            ticket_role: discord.PermissionOverwrite(read_messages=True),
-            self.bot.user: discord.PermissionOverwrite(read_messages=True)
-        }
         channel_name = f"ticket-{ctx.author.name}-{ctx.author.discriminator}"
         try:
-            ticket_channel = await ctx.guild.create_text_channel(
+            ticket_thread = await forum_channel.create_thread(
                 name=channel_name,
-                category=category,
-                overwrites=overwrites
+                content=ticket_role.mention
             )
         except Exception as e:
-            LogError(f"Failed to create ticket channel: {e}")
-            await ctx.respond("Failed to create ticket channel.", ephemeral=True)
+            LogError(f"Failed to create ticket thread: {e}")
+            await ctx.respond("Failed to create ticket thread.", ephemeral=True)
             return
 
         ticket_id = self.generate_ticket_id(ctx.author.id)
         now_iso = datetime.datetime.utcnow().isoformat()
         ticket_data = {
-            "channel_id": ticket_channel.id,
+            "channel_id": ticket_thread.id,
             "ticket_id": ticket_id,
             "status": "Open",
             "created_at": now_iso,
@@ -230,7 +224,7 @@ class TicketSystem(Cog):
         embed_channel.add_field(name="Created At", value=now_iso, inline=False)
         embed_channel.set_footer(text="Use the buttons below to manage this ticket.")
         view = self.TicketControlView(self, guild_id, str(ctx.author.id))
-        await ticket_channel.send(embed=embed_channel, view=view)
+        await ticket_thread.send(embed=embed_channel, view=view)
 
         # Log embed for ticket creation
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
@@ -238,14 +232,14 @@ class TicketSystem(Cog):
         if log_channel:
             embed_log = discord.Embed(
                 title="Ticket Created",
-                description=f"Ticket created by {ctx.author.mention} in {ticket_channel.mention}.",
+                description=f"Ticket created by {ctx.author.mention} in {ticket_thread.mention}.",
                 color=0x00ff00,
                 timestamp=datetime.datetime.utcnow()
             )
             embed_log.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
             embed_log.add_field(name="Ticket ID", value=ticket_id, inline=True)
             embed_log.add_field(name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
-            embed_log.add_field(name="Channel", value=ticket_channel.mention, inline=True)
+            embed_log.add_field(name="Channel", value=ticket_thread.mention, inline=True)
             await log_channel.send(embed=embed_log)
 
         # DM embed for ticket creation
@@ -260,7 +254,7 @@ class TicketSystem(Cog):
         )
         embed_dm.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
         embed_dm.add_field(name="Ticket ID", value=ticket_id, inline=True)
-        embed_dm.add_field(name="Ticket Channel", value=ticket_channel.mention, inline=True)
+        embed_dm.add_field(name="Ticket Thread", value=ticket_thread.mention, inline=True)
         try:
             await ctx.author.send(embed=embed_dm)
         except Exception as e:
@@ -282,16 +276,16 @@ class TicketSystem(Cog):
         ticket_data = self.tickets[guild_id][user_id]
         ticket_channel_id = ticket_data["channel_id"]
         if ctx.channel.id != ticket_channel_id and not ctx.author.guild_permissions.administrator:
-            await ctx.respond("You can only delete your ticket in the ticket channel.", ephemeral=True)
+            await ctx.respond("You can only delete your ticket in the ticket thread.", ephemeral=True)
             return
 
-        ticket_channel = ctx.guild.get_channel(ticket_channel_id)
-        if ticket_channel is None:
-            await ctx.respond("Ticket channel not found.", ephemeral=True)
+        ticket_thread = ctx.guild.get_thread(ticket_channel_id)
+        if ticket_thread is None:
+            await ctx.respond("Ticket thread not found.", ephemeral=True)
             return
 
         transcript_lines = []
-        async for message in ticket_channel.history(limit=None, oldest_first=True):
+        async for message in ticket_thread.history(limit=None, oldest_first=True):
             timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
             author = f"{message.author.name}#{message.author.discriminator}"
             content = message.content
@@ -300,7 +294,7 @@ class TicketSystem(Cog):
                 for attachment in message.attachments:
                     transcript_lines.append(f"[{timestamp}] {author} attached: {attachment.url}")
         transcript_text = "\n".join(transcript_lines)
-        transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{ticket_channel.id}.txt")
+        transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{ticket_thread.id}.txt")
 
         # Log embed for ticket deletion
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
@@ -339,7 +333,7 @@ class TicketSystem(Cog):
             del self.tickets[guild_id]
         self.save_ticket_data(self.tickets)
         await ctx.respond("Ticket will be deleted shortly.", ephemeral=True)
-        await ticket_channel.delete()
+        await ticket_thread.delete()
 
     @commands.slash_command(name="ticket-assign", description="Assign or transfer a ticket to a support agent")
     async def ticket_assign(self, ctx: discord.ApplicationContext, agent: discord.Member):
@@ -350,9 +344,9 @@ class TicketSystem(Cog):
             return
         
         ticket_data = self.tickets[guild_id][user_id]
-        ticket_channel = ctx.guild.get_channel(ticket_data["channel_id"])
-        if ticket_channel is None:
-            await ctx.respond("Ticket channel not found.", ephemeral=True)
+        ticket_thread = ctx.guild.get_thread(ticket_data["channel_id"])
+        if ticket_thread is None:
+            await ctx.respond("Ticket thread not found.", ephemeral=True)
             return
 
         ticket_data["assigned_to"] = agent.id
@@ -369,7 +363,7 @@ class TicketSystem(Cog):
         embed_assign.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
         embed_assign.add_field(name="Assigned To", value=agent.mention, inline=True)
         embed_assign.set_footer(text="Ticket status updated to In Progress.")
-        await ticket_channel.send(embed=embed_assign)
+        await ticket_thread.send(embed=embed_assign)
         await ctx.respond("Ticket assignment updated.", ephemeral=True)
 
     @commands.slash_command(name="ticket-feedback", description="Provide feedback for a closed ticket")
@@ -410,9 +404,9 @@ class TicketSystem(Cog):
             return
 
         ticket_data = self.tickets[guild_id][user_id]
-        channel = interaction.guild.get_channel(ticket_data["channel_id"])
-        if channel is None:
-            await interaction.followup.send("Ticket channel not found.", ephemeral=True)
+        ticket_thread = interaction.guild.get_thread(ticket_data["channel_id"])
+        if ticket_thread is None:
+            await interaction.followup.send("Ticket thread not found.", ephemeral=True)
             return
 
         ticket_data["assigned_to"] = interaction.user.id
@@ -427,7 +421,7 @@ class TicketSystem(Cog):
             timestamp=datetime.datetime.utcnow()
         )
         embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
-        await channel.send(embed=embed)
+        await ticket_thread.send(embed=embed)
         await interaction.followup.send("Ticket claimed.", ephemeral=True)
 
     async def button_close_ticket(self, interaction: discord.Interaction, guild_id: str, user_id: str):
@@ -440,13 +434,13 @@ class TicketSystem(Cog):
             await interaction.followup.send("You cannot close this ticket.", ephemeral=True)
             return
 
-        ticket_channel = interaction.guild.get_channel(ticket_data["channel_id"])
-        if ticket_channel is None:
-            await interaction.followup.send("Ticket channel not found.", ephemeral=True)
+        ticket_thread = interaction.guild.get_thread(ticket_data["channel_id"])
+        if ticket_thread is None:
+            await interaction.followup.send("Ticket thread not found.", ephemeral=True)
             return
 
         transcript_lines = []
-        async for message in ticket_channel.history(limit=None, oldest_first=True):
+        async for message in ticket_thread.history(limit=None, oldest_first=True):
             timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
             author = f"{message.author.name}#{message.author.discriminator}"
             content = message.content
@@ -455,7 +449,7 @@ class TicketSystem(Cog):
                 for attachment in message.attachments:
                     transcript_lines.append(f"[{timestamp}] {author} attached: {attachment.url}")
         transcript_text = "\n".join(transcript_lines)
-        transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{ticket_channel.id}.txt")
+        transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{ticket_thread.id}.txt")
 
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
         log_channel = interaction.guild.get_channel(log_channel_id)
@@ -493,7 +487,7 @@ class TicketSystem(Cog):
         self.save_ticket_data(self.tickets)
 
         await interaction.followup.send("Ticket closed and deleted.", ephemeral=True)
-        await ticket_channel.delete()
+        await ticket_thread.delete()
 
     @tasks.loop(minutes=10)
     async def ticket_check_loop(self):
@@ -505,8 +499,8 @@ class TicketSystem(Cog):
             if guild is None:
                 continue
             for user_id, ticket_data in list(tickets.items()):
-                ticket_channel = guild.get_channel(ticket_data["channel_id"])
-                if ticket_channel is None:
+                ticket_thread = guild.get_thread(ticket_data["channel_id"])
+                if ticket_thread is None:
                     continue
                 last_activity = datetime.datetime.fromisoformat(ticket_data["last_activity"])
                 inactivity = now - last_activity
@@ -519,7 +513,7 @@ class TicketSystem(Cog):
                     )
                     embed_reminder.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
                     embed_reminder.add_field(name="Status", value=ticket_data["status"], inline=True)
-                    await ticket_channel.send(embed=embed_reminder)
+                    await ticket_thread.send(embed=embed_reminder)
                 elif ticket_data["status"] == "Open" and inactivity >= escalation_threshold:
                     log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
                     log_channel = guild.get_channel(log_channel_id)
@@ -543,8 +537,8 @@ class TicketSystem(Cog):
         user_id = str(member.id)
         if guild_id in self.tickets and user_id in self.tickets[guild_id]:
             ticket_data = self.tickets[guild_id][user_id]
-            ticket_channel = guild.get_channel(ticket_data["channel_id"])
-            if ticket_channel:
+            ticket_thread = guild.get_thread(ticket_data["channel_id"])
+            if ticket_thread:
                 log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
                 log_channel = guild.get_channel(log_channel_id)
                 if log_channel:
@@ -571,9 +565,9 @@ class TicketSystem(Cog):
                 except Exception as e:
                     LogError(f"Failed to send DM to {member.id}: {e}")
                 try:
-                    await ticket_channel.delete()
+                    await ticket_thread.delete()
                 except Exception as e:
-                    LogError(f"Failed to delete ticket channel for {member.id}: {e}")
+                    LogError(f"Failed to delete ticket thread for {member.id}: {e}")
                 del self.tickets[guild_id][user_id]
                 if not self.tickets[guild_id]:
                     del self.tickets[guild_id]
@@ -590,13 +584,13 @@ class TicketSystem(Cog):
             for guild_id, tickets in self.tickets.items():
                 if str(user.id) in tickets:
                     ticket_data = tickets[str(user.id)]
-                    channel = self.bot.get_channel(ticket_data["channel_id"])
-                    if channel:
+                    thread = self.bot.get_channel(ticket_data["channel_id"])
+                    if thread:
                         try:
                             content = f"**{user.name}#{user.discriminator}:** {message.content}" if message.content else f"**{user.name}#{user.discriminator}**"
-                            await channel.send(content)
+                            await thread.send(content)
                             for attachment in message.attachments:
-                                await channel.send(attachment.url)
+                                await thread.send(attachment.url)
                             try:
                                 await message.add_reaction("✅")
                             except Exception as e:
@@ -624,7 +618,7 @@ class TicketSystem(Cog):
                                 try:
                                     await message.add_reaction("✅")
                                 except Exception as e:
-                                    LogError(f"Failed to add reaction to ticket channel message: {e}")
+                                    LogError(f"Failed to add reaction to ticket thread message: {e}")
                             except Exception as e:
                                 LogError(f"Error forwarding message to user DM: {e}")
                                 try:
