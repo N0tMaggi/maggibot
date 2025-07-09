@@ -41,4 +41,5 @@ echo =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 timeout /t 5 /nobreak >nul
 
 title Maggibot WATCHDOG - Running
-color 0Agoto restart
+color 0A
+goto restart
