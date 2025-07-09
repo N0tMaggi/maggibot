@@ -184,7 +184,7 @@ class InfoSystem(commands.Cog):
             name="⚙️ Technical Specifications",
             value=f"```yaml\n"
                   f"Python: {platform.python_version()}\n"
-                  f"discord.py: {discord.__version__}\n"
+                  f"Pycord: {discord.__version__}\n"
                   f"OS: {platform.system()} {platform.release()}```",
             inline=False
         )

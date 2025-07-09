@@ -40,7 +40,7 @@
 ## 📍 Overview
 
 **Maggibot** is a modular Discord bot written in Python using
-[`discord.py`](https://github.com/Rapptz/discord.py). It is designed to be
+[`py-cord`](https://github.com/Pycord-Development/pycord). It is designed to be
 extended through cogs and provides a wide range of moderation and community
 management tools. The bot relies on a small set of configuration and data files
 (see [`handlers/config.py`](handlers/config.py)) and can be customised via an
