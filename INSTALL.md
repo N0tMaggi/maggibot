@@ -14,8 +14,11 @@ This document describes how to install and run **Maggibot** locally.
    git clone https://github.com/ag7dev/maggibot
    cd maggibot
    ```
-2. **Install dependencies**
+2. **Create a virtual environment and install dependencies**
    ```bash
+   python -m venv venv
+   venv\Scripts\activate    # on Windows
+   source venv/bin/activate # on Linux/macOS
    pip install -r requirements.txt
    ```
 3. **Create your configuration**
@@ -26,6 +29,8 @@ This document describes how to install and run **Maggibot** locally.
      ```
 4. **Start the bot**
    ```bash
+   start.bat  # Windows
+   # or
    python main.py
    ```
 

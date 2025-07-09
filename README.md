@@ -177,24 +177,14 @@ Before getting started with maggibot, ensure your runtime environment meets the 
 ### ⚙️ Installation
 
 See [INSTALL.md](INSTALL.md) for a full step-by-step installation guide. In
-short, clone the repository, install the dependencies with `pip install -r
-requirements.txt`, copy `.env.example` to `.env` and run `python main.py
-install` once to create the default configuration files.
-
+clone the repository, create a virtual environment with `python -m venv venv`, activate it and install the dependencies with `pip install -r requirements.txt`, copy `.env.example` to `.env` and run `python main.py install` once to create the default configuration files.
 
 
 
 ### 🤖 Usage
-Run maggibot using the following command:
-**Using `pip`** &nbsp; [<img align="center" src="https://img.shields.io/badge/Pip-3776AB.svg?style={badge_style}&logo=pypi&logoColor=white" />](https://pypi.org/project/pip/)
+Run Maggibot with the helper script:
 
-```sh
-❯ python main.py
-```
-
-
-
-
+Run `start.bat` on Windows or `python main.py` from an activated virtual environment.
 
 ---
 ## 📌 Project Roadmap
