@@ -23,7 +23,6 @@ class TicketSystem(Cog):
         self.bot = bot
         self.serverconfig = config.loadserverconfig()
         self.tickets = config.load_ticket_data()
-        self.ticket_check_loop.start()
         self.save_ticket_data = config.save_ticket_data
 
     class TicketOpenView(discord.ui.View):
@@ -859,8 +858,12 @@ class TicketSystem(Cog):
                             inline=True,
                         )
                         await log_channel.send(embed=embed_escalation)
-                        ticket_data["status"] = "Escalated"
-                        self.save_ticket_data(self.tickets)
+                ticket_data["status"] = "Escalated"
+                self.save_ticket_data(self.tickets)
+
+    @ticket_check_loop.before_loop
+    async def before_ticket_check(self):
+        await self.bot.wait_until_ready()
 
     @Cog.listener()
     async def on_member_remove(self, member: discord.Member):
@@ -985,4 +988,9 @@ class TicketSystem(Cog):
 def setup(bot):
     cog = TicketSystem(bot)
     bot.add_cog(cog)
-    bot.add_view(cog.TicketOpenView(cog))
+    async def startup():
+        await bot.wait_until_ready()
+        bot.add_view(cog.TicketOpenView(cog))
+        cog.ticket_check_loop.start()
+
+    bot.loop.create_task(startup())
