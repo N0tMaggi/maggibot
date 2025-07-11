@@ -88,14 +88,35 @@ class CentralSetup(commands.Cog):
             await ctx.respond('Delete admin feedback not available.', ephemeral=True)
 
     # Ticket System
-    @setup.command(name='ticketsystem', description='Setup the Ticket System for the server')
+    @setup.command(name='ticketsystem-setup', description='Setup the Ticket System for the server')
     @commands.has_permissions(administrator=True)
-    async def setup_ticketsystem(self, ctx: discord.ApplicationContext, role: discord.Role, logchannel: discord.TextChannel, categorie: discord.CategoryChannel):
+    async def setup_ticketsystem(self, ctx: discord.ApplicationContext, role: discord.Role, logchannel: discord.TextChannel, forum: discord.ForumChannel):
         cog = self.bot.get_cog('TicketSystem')
         if cog:
-            await cog.setup_ticketsystem(ctx, role, logchannel, categorie)
+            await cog.setup_ticketsystem(ctx, role, logchannel, forum)
         else:
             await ctx.respond('Ticket system setup not available.', ephemeral=True)
+
+    @setup.command(name='ticketsystem', description='Manage the ticket system')
+    @commands.has_permissions(administrator=True)
+    async def setup_ticketsystem_central(self, ctx: discord.ApplicationContext):
+        cog = self.bot.get_cog('TicketSystem')
+        if not cog:
+            await ctx.respond('Ticket system not available.', ephemeral=True)
+            return
+
+        serverconfig = cog.serverconfig.get(str(ctx.guild.id), {})
+        embed = discord.Embed(
+            title='Ticket System Configuration',
+            color=0x9B59B6,
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed.add_field(name='Ticket Role', value=f"<@&{serverconfig.get('ticketrole','N/A')}>", inline=False)
+        embed.add_field(name='Log Channel', value=f"<#{serverconfig.get('ticketlogchannel','N/A')}>", inline=False)
+        forum = serverconfig.get('ticketforum')
+        embed.add_field(name='Forum', value=f"{ctx.guild.get_channel(forum).name if forum else 'N/A'}", inline=False)
+        embed.set_footer(text='Use /setup ticketsystem-setup to change settings or /setup-sendticket to post a panel.')
+        await ctx.respond(embed=embed, ephemeral=True)
 
     @setup.command(name='deleteticketconfig', description='Delete the Ticket System configuration entries for the server')
     @commands.has_permissions(administrator=True)
