@@ -45,6 +45,12 @@ class TicketSystem(Cog):
             except Exception as e:
                 LogError(f"Failed to create forum tags: {e}")
 
+    def get_tag_by_name(self, forum: discord.ForumChannel, name: str):
+        for tag in forum.available_tags:
+            if tag.name.lower() == name.lower():
+                return tag
+        return None
+
     async def configure_ticket_system(self, guild: discord.Guild, role: discord.Role, logchannel: discord.TextChannel, forum: discord.ForumChannel):
         guild_id = str(guild.id)
         if guild_id not in self.serverconfig:
@@ -332,8 +338,11 @@ class TicketSystem(Cog):
 
         channel_name = f"ticket-{ctx.author.name}-{ctx.author.discriminator}"
         try:
+            new_tag = self.get_tag_by_name(forum_channel, "new-ticket")
             ticket_thread = await forum_channel.create_thread(
-                name=channel_name, content=ticket_role.mention
+                name=channel_name,
+                content=ticket_role.mention,
+                applied_tags=[new_tag] if new_tag else None,
             )
         except Exception as e:
             LogError(f"Failed to create ticket thread: {e}")
@@ -403,7 +412,7 @@ class TicketSystem(Cog):
             title="Ticket Opened",
             description=(
                 f"Your ticket in **{ctx.guild.name}** has been successfully opened.\n"
-                "You can reply here or in the server channel."
+                "Our support team will reply soon. Keep the Ticket ID below for reference."
             ),
             color=0x00FF00,
             timestamp=datetime.datetime.utcnow(),
@@ -415,6 +424,7 @@ class TicketSystem(Cog):
         embed_dm.add_field(
             name="Ticket Thread", value=ticket_thread.mention, inline=True
         )
+        embed_dm.set_footer(text="Thank you for contacting support!")
         try:
             await ctx.author.send(embed=embed_dm)
         except Exception as e:
@@ -423,7 +433,7 @@ class TicketSystem(Cog):
         await ctx.respond("Ticket created successfully!", ephemeral=True)
 
     @commands.slash_command(
-        name="ticket-delete", description="Close and delete your ticket"
+        name="ticket-delete", description="Close your ticket"
     )
     async def ticket_delete(self, ctx: discord.ApplicationContext):
         if not NoPrivateMessage(ctx):
@@ -499,7 +509,7 @@ class TicketSystem(Cog):
         except Exception as e:
             LogError(f"Failed to send DM to {ctx.author.id}: {e}")
 
-        # Update ticket status to Closed before deletion
+        # Update ticket status to Closed before locking
         ticket_data["status"] = "Closed"
         self.save_ticket_data(self.tickets)
 
@@ -507,8 +517,14 @@ class TicketSystem(Cog):
         if not self.tickets[guild_id]:
             del self.tickets[guild_id]
         self.save_ticket_data(self.tickets)
-        await ctx.respond("Ticket will be deleted shortly.", ephemeral=True)
-        await ticket_thread.delete()
+
+        closed_tag = self.get_tag_by_name(ticket_thread.parent, "closed")
+        edit_kwargs = {"locked": True}
+        if closed_tag:
+            edit_kwargs["applied_tags"] = [closed_tag]
+        await ticket_thread.edit(**edit_kwargs)
+
+        await ctx.respond("Ticket closed.", ephemeral=True)
 
     @commands.slash_command(
         name="ticket-assign",
@@ -633,7 +649,12 @@ class TicketSystem(Cog):
 
         channel_name = f"ticket-{user.name}-{user.discriminator}"
         try:
-            ticket_thread = await forum_channel.create_thread(name=channel_name, content=ticket_role.mention, applied_tags=[forum_channel.get_tag(tag.id) for tag in forum_channel.available_tags if tag.name.lower()=="new-ticket"] if forum_channel.requires_tag else None)
+            new_tag = self.get_tag_by_name(forum_channel, "new-ticket")
+            ticket_thread = await forum_channel.create_thread(
+                name=channel_name,
+                content=ticket_role.mention,
+                applied_tags=[new_tag] if new_tag else None,
+            )
         except Exception as e:
             LogError(f"Failed to create ticket thread: {e}")
             await ctx.followup.send("Failed to create ticket thread.", ephemeral=True)
@@ -687,13 +708,17 @@ class TicketSystem(Cog):
         try:
             embed_dm = discord.Embed(
                 title="Ticket Opened",
-                description=(f"Your ticket in **{ctx.guild.name}** has been successfully opened.\nYou can reply here or in the server channel."),
+                description=(
+                    f"Your ticket in **{ctx.guild.name}** has been successfully opened.\n"
+                    "Our support team will reply soon. Keep the Ticket ID below for reference."
+                ),
                 color=0x00FF00,
                 timestamp=datetime.datetime.utcnow(),
             )
             embed_dm.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
             embed_dm.add_field(name="Ticket ID", value=ticket_id, inline=True)
             embed_dm.add_field(name="Ticket Thread", value=ticket_thread.mention, inline=True)
+            embed_dm.set_footer(text="Thank you for contacting support!")
             await user.send(embed=embed_dm)
         except Exception as e:
             LogError(f"Failed to send DM to {user.id}: {e}")
@@ -797,8 +822,13 @@ class TicketSystem(Cog):
             del self.tickets[guild_id]
         self.save_ticket_data(self.tickets)
 
-        await interaction.followup.send("Ticket closed and deleted.", ephemeral=True)
-        await ticket_thread.delete()
+        closed_tag = self.get_tag_by_name(ticket_thread.parent, "closed")
+        edit_kwargs = {"locked": True}
+        if closed_tag:
+            edit_kwargs["applied_tags"] = [closed_tag]
+        await ticket_thread.edit(**edit_kwargs)
+
+        await interaction.followup.send("Ticket closed.", ephemeral=True)
 
     @tasks.loop(minutes=10)
     async def ticket_check_loop(self):
