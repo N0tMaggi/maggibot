@@ -25,6 +25,41 @@ class TicketSystem(Cog):
         self.tickets = config.load_ticket_data()
         self.ticket_check_loop.start()
         self.save_ticket_data = config.save_ticket_data
+        self.bot.loop.create_task(self._register_persistent_view())
+
+    async def _register_persistent_view(self):
+        await self.bot.wait_until_ready()
+        self.bot.add_view(self.TicketOpenView(self))
+
+    class TicketOpenView(discord.ui.View):
+        def __init__(self, cog):
+            super().__init__(timeout=None)
+            self.cog = cog
+
+        @discord.ui.button(label="Open Ticket", style=discord.ButtonStyle.success, emoji="🎫", custom_id="ticket_open_button")
+        async def open_ticket(self, button: discord.ui.Button, interaction: discord.Interaction):
+            await interaction.response.defer(ephemeral=True)
+            await self.cog.button_create_ticket(interaction)
+
+    async def ensure_forum_tags(self, forum: discord.ForumChannel):
+        required = ["claimed", "new-ticket", "closed"]
+        existing = [t.name.lower() for t in forum.available_tags]
+        new_tags = [discord.ForumTag(name=name, emoji="🏷️") for name in required if name not in existing]
+        if new_tags:
+            try:
+                await forum.edit(available_tags=forum.available_tags + new_tags)
+            except Exception as e:
+                LogError(f"Failed to create forum tags: {e}")
+
+    async def configure_ticket_system(self, guild: discord.Guild, role: discord.Role, logchannel: discord.TextChannel, forum: discord.ForumChannel):
+        guild_id = str(guild.id)
+        if guild_id not in self.serverconfig:
+            self.serverconfig[guild_id] = {}
+        self.serverconfig[guild_id]["ticketrole"] = role.id
+        self.serverconfig[guild_id]["ticketlogchannel"] = logchannel.id
+        self.serverconfig[guild_id]["ticketforum"] = forum.id
+        config.saveserverconfig(self.serverconfig)
+        await self.ensure_forum_tags(forum)
 
     class TicketControlView(discord.ui.View):
         def __init__(self, cog, guild_id: str, user_id: str):
@@ -69,12 +104,12 @@ class TicketSystem(Cog):
             "<!DOCTYPE html>",
             "<html><head><meta charset='UTF-8'>",
             "<style>",
-            "body{font-family:Arial, sans-serif;background:#f5f5f5;padding:10px;}",
-            ".message{margin-bottom:15px;padding:10px;background:#fff;border-radius:4px;}",
-            ".timestamp{color:#888;margin-right:5px;font-size:0.9em;}",
+            "body{font-family:Arial, sans-serif;background:#2b2d31;color:#ddd;padding:10px;}",
+            ".message{margin-bottom:15px;padding:10px;background:#36393f;border-radius:4px;}",
+            ".timestamp{color:#999;margin-right:5px;font-size:0.9em;}",
             ".author{font-weight:bold;margin-right:5px;}",
-            ".attachments a{display:block;color:#0366d6;}",
-            ".embed{border-left:4px solid #ccc;margin-top:5px;padding-left:6px;}",
+            ".attachments a{display:block;color:#58a6ff;}",
+            ".embed{border-left:4px solid #666;margin-top:5px;padding-left:6px;}",
             "</style></head><body>",
             f"<h2>Transcript for {html.escape(thread.name)}</h2>",
         ]
@@ -138,20 +173,9 @@ class TicketSystem(Cog):
         forum: discord.ForumChannel,
     ):
         try:
+            await self.configure_ticket_system(ctx.guild, role, logchannel, forum)
             guild_id = str(ctx.guild.id)
-            LogDebug(f"Current server config for guild {guild_id}: {self.serverconfig}")
-
-            if guild_id not in self.serverconfig:
-                self.serverconfig[guild_id] = {}
-
-            self.serverconfig[guild_id]["ticketrole"] = role.id
-            self.serverconfig[guild_id]["ticketlogchannel"] = logchannel.id
-            self.serverconfig[guild_id]["ticketforum"] = forum.id
-            LogDebug(
-                f"Updated server config for guild {guild_id}: {self.serverconfig[guild_id]}"
-            )
-
-            config.saveserverconfig(self.serverconfig)
+            LogDebug(f"Updated server config for guild {guild_id}: {self.serverconfig[guild_id]}")
 
             embed = discord.Embed(
                 title="Ticket System Setup",
@@ -182,6 +206,27 @@ class TicketSystem(Cog):
             raise Exception(
                 f"An error occurred while setting up the Ticket System: {e}"
             )
+
+    @commands.slash_command(
+        name="setup-sendticket",
+        description="Send the ticket creation embed to a channel",
+    )
+    @commands.has_permissions(administrator=True)
+    async def setup_sendticket(
+        self, ctx: discord.ApplicationContext, channel: discord.TextChannel
+    ):
+        try:
+            view = self.TicketOpenView(self)
+            embed = discord.Embed(
+                title="Create a Ticket",
+                description="Press the button below to open a support ticket.",
+                color=0x3498DB,
+            )
+            await channel.send(embed=embed, view=view)
+            await ctx.respond("Ticket panel sent.", ephemeral=True)
+        except Exception as e:
+            LogError(f"Failed to send ticket panel: {e}")
+            await ctx.respond("Failed to send panel.", ephemeral=True)
 
     @commands.slash_command(
         name="setup-deleteticketconfig",
@@ -557,6 +602,110 @@ class TicketSystem(Cog):
                 "Feedback could not be sent. Please contact support.", ephemeral=True
             )
 
+    async def button_create_ticket(self, interaction: discord.Interaction):
+        ctx = interaction
+        guild_id = str(ctx.guild.id)
+        if (
+            guild_id not in self.serverconfig
+            or "ticketrole" not in self.serverconfig[guild_id]
+            or "ticketlogchannel" not in self.serverconfig[guild_id]
+            or "ticketforum" not in self.serverconfig[guild_id]
+        ):
+            await ctx.followup.send("Ticket system is not set up on this server.", ephemeral=True)
+            return
+
+        user = ctx.user
+        try:
+            await self.check_if_able_dm(user)
+        except commands.Forbidden:
+            await ctx.followup.send("I cannot DM you, please check your DM settings.", ephemeral=True)
+            return
+
+        if guild_id in self.tickets and str(user.id) in self.tickets[guild_id]:
+            await ctx.followup.send("You already have an open ticket.", ephemeral=True)
+            return
+
+        forum_id = self.serverconfig[guild_id]["ticketforum"]
+        forum_channel = ctx.guild.get_channel(forum_id)
+        if forum_channel is None or not isinstance(forum_channel, discord.ForumChannel):
+            await ctx.followup.send("Ticket forum is invalid or not found.", ephemeral=True)
+            return
+
+        ticket_role_id = self.serverconfig[guild_id]["ticketrole"]
+        ticket_role = ctx.guild.get_role(ticket_role_id)
+        if ticket_role is None:
+            await ctx.followup.send("Ticket role is invalid or not found.", ephemeral=True)
+            return
+
+        channel_name = f"ticket-{user.name}-{user.discriminator}"
+        try:
+            ticket_thread = await forum_channel.create_thread(name=channel_name, content=ticket_role.mention, applied_tags=[forum_channel.get_tag(tag.id) for tag in forum_channel.available_tags if tag.name.lower()=="new-ticket"] if forum_channel.requires_tag else None)
+        except Exception as e:
+            LogError(f"Failed to create ticket thread: {e}")
+            await ctx.followup.send("Failed to create ticket thread.", ephemeral=True)
+            return
+
+        ticket_id = self.generate_ticket_id(user.id)
+        now_iso = datetime.datetime.utcnow().isoformat()
+        data = {
+            "channel_id": ticket_thread.id,
+            "ticket_id": ticket_id,
+            "status": "Open",
+            "created_at": now_iso,
+            "last_activity": now_iso,
+            "assigned_to": None,
+            "feedback": None,
+        }
+        if guild_id not in self.tickets:
+            self.tickets[guild_id] = {}
+        self.tickets[guild_id][str(user.id)] = data
+        self.save_ticket_data(self.tickets)
+
+        embed_channel = discord.Embed(
+            title="🎟️ Support Ticket Created",
+            description=(f"{user.mention}, your ticket has been opened. A member of our team will be with you shortly."),
+            color=0x00FF00,
+            timestamp=datetime.datetime.utcnow(),
+        )
+        embed_channel.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+        embed_channel.add_field(name="Ticket ID", value=ticket_id, inline=True)
+        embed_channel.add_field(name="Status", value="Open", inline=True)
+        embed_channel.add_field(name="Created At", value=now_iso, inline=False)
+        embed_channel.set_footer(text="Use the buttons below to manage this ticket.")
+        view = self.TicketControlView(self, guild_id, str(user.id))
+        await ticket_thread.send(embed=embed_channel, view=view)
+
+        log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
+        log_channel = ctx.guild.get_channel(log_channel_id)
+        if log_channel:
+            embed_log = discord.Embed(
+                title="Ticket Created",
+                description=f"Ticket created by {user.mention} in {ticket_thread.mention}.",
+                color=0x00FF00,
+                timestamp=datetime.datetime.utcnow(),
+            )
+            embed_log.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+            embed_log.add_field(name="Ticket ID", value=ticket_id, inline=True)
+            embed_log.add_field(name="User", value=f"{user} ({user.id})", inline=True)
+            embed_log.add_field(name="Channel", value=ticket_thread.mention, inline=True)
+            await log_channel.send(embed=embed_log)
+
+        try:
+            embed_dm = discord.Embed(
+                title="Ticket Opened",
+                description=(f"Your ticket in **{ctx.guild.name}** has been successfully opened.\nYou can reply here or in the server channel."),
+                color=0x00FF00,
+                timestamp=datetime.datetime.utcnow(),
+            )
+            embed_dm.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+            embed_dm.add_field(name="Ticket ID", value=ticket_id, inline=True)
+            embed_dm.add_field(name="Ticket Thread", value=ticket_thread.mention, inline=True)
+            await user.send(embed=embed_dm)
+        except Exception as e:
+            LogError(f"Failed to send DM to {user.id}: {e}")
+
+        await ctx.followup.send("Ticket created successfully!", ephemeral=True)
+
     async def button_claim_ticket(
         self, interaction: discord.Interaction, guild_id: str, user_id: str
     ):
@@ -839,4 +988,5 @@ class TicketSystem(Cog):
 
 
 def setup(bot):
-    bot.add_cog(TicketSystem(bot))
+    cog = TicketSystem(bot)
+    bot.add_cog(cog)
