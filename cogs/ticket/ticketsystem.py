@@ -61,6 +61,36 @@ class TicketSystem(Cog):
         config.saveserverconfig(self.serverconfig)
         await self.ensure_forum_tags(forum)
 
+    class TicketOpenView(discord.ui.View):
+        def __init__(self, cog):
+            super().__init__(timeout=None)
+            self.cog = cog
+
+        @discord.ui.button(label="Open Ticket", style=discord.ButtonStyle.success, emoji="🎫", custom_id="ticket_open_button")
+        async def open_ticket(self, button: discord.ui.Button, interaction: discord.Interaction):
+            await interaction.response.defer(ephemeral=True)
+            await self.cog.button_create_ticket(interaction)
+
+    async def ensure_forum_tags(self, forum: discord.ForumChannel):
+        required = ["claimed", "new-ticket", "closed"]
+        existing = [t.name.lower() for t in forum.available_tags]
+        new_tags = [discord.ForumTag(name=name, emoji="🏷️") for name in required if name not in existing]
+        if new_tags:
+            try:
+                await forum.edit(available_tags=forum.available_tags + new_tags)
+            except Exception as e:
+                LogError(f"Failed to create forum tags: {e}")
+
+    async def configure_ticket_system(self, guild: discord.Guild, role: discord.Role, logchannel: discord.TextChannel, forum: discord.ForumChannel):
+        guild_id = str(guild.id)
+        if guild_id not in self.serverconfig:
+            self.serverconfig[guild_id] = {}
+        self.serverconfig[guild_id]["ticketrole"] = role.id
+        self.serverconfig[guild_id]["ticketlogchannel"] = logchannel.id
+        self.serverconfig[guild_id]["ticketforum"] = forum.id
+        config.saveserverconfig(self.serverconfig)
+        await self.ensure_forum_tags(forum)
+
     class TicketControlView(discord.ui.View):
         def __init__(self, cog, guild_id: str, user_id: str):
             super().__init__(timeout=None)
@@ -990,3 +1020,4 @@ class TicketSystem(Cog):
 def setup(bot):
     cog = TicketSystem(bot)
     bot.add_cog(cog)
+    bot.add_view(cog.TicketOpenView(cog))
