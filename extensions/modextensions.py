@@ -27,25 +27,31 @@ def create_mod_embed(title, description, color_type='info', author=None):
 
 async def send_mod_log(guild_id, embed_data, bot):
     try:
-        log_channel_id = cfg.get_log_channel(guild_id)
-        
-        if log_channel_id:
-            log_channel_id = int(log_channel_id)
-            guild = bot.get_guild(guild_id)
-            
-            if guild:
-                log_channel = guild.get_channel(log_channel_id)
-                
-                if log_channel and isinstance(log_channel, discord.TextChannel):
-                    embed = create_mod_embed(**embed_data)
-                    await log_channel.send(embed=embed)
-                    LogModeration(f"Log sent to channel {log_channel.id}")
-                else:
-                    LogError(f"Invalid text channel ID: {log_channel_id}")
-            else:
-                LogError(f"Guild {guild_id} not found by bot")
+        guild = bot.get_guild(guild_id)
+        if not guild:
+            LogError(f"Guild {guild_id} not found by bot")
+            return
+
+        embed = create_mod_embed(**embed_data)
+
+        # Text channel logging
+        log_channel = cfg.get_log_channel(guild)
+        if log_channel and isinstance(log_channel, discord.TextChannel):
+            try:
+                await log_channel.send(embed=embed)
+                LogModeration(f"Log sent to channel {log_channel.id}")
+            except Exception as e:
+                LogError(f"Failed to send log to text channel: {e}")
         else:
             LogDebug(f"No log channel for guild {guild_id}")
+
+        # Forum logging
+        forum = cfg.get_logging_forum(guild)
+        if forum and isinstance(forum, discord.ForumChannel):
+            try:
+                await forum.create_thread(name=embed.title, embed=embed)
+            except Exception as e:
+                LogError(f"Failed to create log thread: {e}")
     except Exception as e:
         LogError(f"Failed to send mod log: {str(e)}")
 

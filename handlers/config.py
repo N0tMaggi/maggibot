@@ -124,6 +124,11 @@ def get_log_channel(guild):
     serverconfig = loadserverconfig()
     return guild.get_channel(serverconfig.get(str(guild.id), {}).get("log_channel"))
 
+def get_logging_forum(guild):
+    serverconfig = loadserverconfig()
+    forum_id = serverconfig.get(str(guild.id), {}).get("logging_forum")
+    return guild.get_channel(forum_id)
+
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Statistics Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
