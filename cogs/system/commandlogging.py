@@ -5,7 +5,7 @@ import os
 from handlers.debug import LogDebug, LogError
 from typing import Optional
 
-class Logging(commands.Cog):
+class CommandLogging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log_channel_id = int(os.getenv('COMMAND_LOG_CHANNEL_ID', 0))
@@ -131,4 +131,4 @@ class Logging(commands.Cog):
             raise Exception(f"Failed to log command: {str(e)}") from e
 
 def setup(bot):
-    bot.add_cog(Logging(bot))
+    bot.add_cog(CommandLogging(bot))
