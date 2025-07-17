@@ -184,6 +184,10 @@ class MacBan(commands.Cog):
             await ctx.respond("❌ Unauthorized access", ephemeral=True)
             return
 
+        if ctx.guild is None:
+            await ctx.respond("❌ This command can only be used in a server.", ephemeral=True)
+            return
+
         bans = mac_load_bans()
         server_bans = [ban for ban in bans.values() if str(ban.get("serverid")) == str(ctx.guild.id)]
 
@@ -205,6 +209,38 @@ class MacBan(commands.Cog):
         embed = create_mac_embed(
             title="📄 Ban List Exported",
             description=f"Exported {len(server_bans)} entries.",
+            color=discord.Color.blue(),
+        )
+        await ctx.respond(embed=embed, file=discord.File(filename))
+        os.remove(filename)
+
+
+    @commands.slash_command(name="mac-export", description="Export all MAC ban records as a file.")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def macexport(self, ctx: discord.ApplicationContext):
+        if not is_authorized(ctx):
+            await ctx.respond("❌ Unauthorized access", ephemeral=True)
+            return
+
+        bans = mac_load_bans()
+        if not bans:
+            embed = create_mac_embed(
+                title="No Ban Records",
+                description="ℹ️ The global ban list is empty.",
+                color=discord.Color.green(),
+            )
+            await ctx.respond(embed=embed)
+            return
+
+        filename = "mac_global_banlist.txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            for ban in bans.values():
+                line = f"{ban['id']} | {ban['name']} | {ban['reason']} | {ban['bandate']} | {ban.get('serverid')}\n"
+                f.write(line)
+
+        embed = create_mac_embed(
+            title="📄 Global Ban List Exported",
+            description=f"Exported {len(bans)} entries.",
             color=discord.Color.blue(),
         )
         await ctx.respond(embed=embed, file=discord.File(filename))
