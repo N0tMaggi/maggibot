@@ -13,7 +13,7 @@ RULES = [
         "metadata": discord.AutoModTriggerMetadata(
             regex_patterns=[r"[a-zA-Z0-9_-]{23,28}\.[a-zA-Z0-9_-]{6,7}\.[a-zA-Z0-9_-]{27,}"]
         ),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "👤 - (Maggi) Private Details Filter (Telefonnummer)",
@@ -21,7 +21,7 @@ RULES = [
         "metadata": discord.AutoModTriggerMetadata(
             regex_patterns=[r"^[\+]?[(]?[0-9]{3}[)]?[-\s\. ]?[0-9]{3}[-\s\. ]?[0-9]{4,6}$"]
         ),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "🌎 - (Maggi) Discord Werbung Filter",
@@ -30,7 +30,7 @@ RULES = [
             regex_patterns=[r"(?:(?:https?://)?(?:www)?discord(?:app)?\.(?:(?:com|gg)/invite/[a-z0-9-_]+)|(?:https?://)?(?:www)?discord\.gg/[a-z0-9-_]+)"]
         ),
         "actions": [
-            discord.AutoModAction(discord.AutoModActionType.block_message),
+            discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata()),
             discord.AutoModAction(
                 discord.AutoModActionType.timeout,
                 discord.AutoModActionMetadata(timeout_duration=datetime.timedelta(minutes=10))
@@ -62,7 +62,7 @@ RULES = [
                 "wikispeedruns.com", "youtu.be", "youtube.com"
             ]
         ),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "👿 - (Maggi) Unsere Beleidigungsliste",
@@ -83,7 +83,7 @@ RULES = [
                 "*wichs*", "*wix*"
             ]
         ),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "😡 - (Maggi) Discord's Beleidigungsliste",
@@ -95,19 +95,19 @@ RULES = [
                 discord.AutoModKeywordPresetType.slurs
             ]
         ),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "💬 - (Maggi) Spam-Inhalt blockieren",
         "trigger_type": discord.AutoModTriggerType.spam,
         "metadata": discord.AutoModTriggerMetadata(),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     },
     {
         "name": "(Maggi) Block Mention Spam",
         "trigger_type": discord.AutoModTriggerType.mention_spam,
         "metadata": discord.AutoModTriggerMetadata(mention_total_limit=20),
-        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message)],
+        "actions": [discord.AutoModAction(discord.AutoModActionType.block_message, discord.AutoModActionMetadata())],
     }
 ]
 
@@ -119,7 +119,61 @@ class Automod(commands.Cog):
     @slash_command(name="setup-automod", description="Setup Maggi automod rules")
     @commands.has_permissions(administrator=True)
     async def setup_automod(self, ctx: discord.ApplicationContext):
-        await ctx.defer(ephemeral=True)
+        class AutomodSetupView(discord.ui.View):
+            def __init__(self, author):
+                super().__init__(timeout=60)
+                self.author = author
+                self.value = None
+
+            async def interaction_check(self, interaction: discord.Interaction) -> bool:
+                return interaction.user == self.author
+
+            async def on_timeout(self):
+                for item in self.children:
+                    item.disabled = True
+                await self.message.edit(view=self)
+
+            @discord.ui.button(label="Start", style=discord.ButtonStyle.success)
+            async def start_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = True
+                self.stop()
+
+            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
+            async def cancel_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.value = False
+                self.stop()
+
+        view = AutomodSetupView(ctx.author)
+        embed = create_mod_embed(
+            "🛡️ Automod Setup Confirmation",
+            "Are you sure you want to set up the automod rules?",
+            'info',
+            ctx.author
+        )
+        message = await ctx.respond(embed=embed, view=view, ephemeral=True)
+        view.message = message
+
+        await view.wait()
+
+        if view.value is None:
+            await message.edit_original_response(content="Timed out.", view=None)
+            return
+        if not view.value:
+            await message.edit_original_response(content="Cancelled.", view=None)
+            return
+
+        for item in view.children:
+            item.disabled = True
+        await message.edit_original_response(view=view)
+
+        working_embed = create_mod_embed(
+            "🛡️ Automod Setup",
+            "Working on it...",
+            'info',
+            ctx.author
+        )
+        await message.edit_original_response(embed=working_embed)
+
         guild = ctx.guild
         created = []
         skipped = []
@@ -161,7 +215,7 @@ class Automod(commands.Cog):
                 'success' if created else 'info',
                 ctx.author
             )
-            await ctx.followup.send(embed=embed, ephemeral=True)
+            await message.edit_original_response(embed=embed)
             LogDebug(f"Automod setup finished in guild {guild.id}")
         except Exception as e:
             LogError(f"Automod setup error: {e}")
@@ -171,7 +225,7 @@ class Automod(commands.Cog):
                 'error',
                 ctx.author
             )
-            await ctx.followup.send(embed=error_embed, ephemeral=True)
+            await message.edit_original_response(embed=error_embed)
 
 
 def setup(bot: commands.Bot):
