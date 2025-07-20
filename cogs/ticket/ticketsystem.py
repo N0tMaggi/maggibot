@@ -223,7 +223,9 @@ class TicketSystem(Cog):
             # Embeds
             if message.embeds:
                 for embed in message.embeds:
-                    embed_color = f"#{embed.color:06x}" if embed.color else "#5865f2"
+                    embed_color = (
+                        f"#{embed.color.value:06x}" if embed.color else "#5865f2"
+                    )
                     lines.append(f"<div class='embed' style='border-left-color: {embed_color};'>")
                     
                     # Embed author
