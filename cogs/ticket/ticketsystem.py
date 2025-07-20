@@ -99,66 +99,205 @@ class TicketSystem(Cog):
         return f"{author_id}-{int(datetime.datetime.utcnow().timestamp())}"
 
     async def generate_transcript_html(self, thread: discord.Thread) -> str:
-        """Generate an HTML transcript for a ticket thread."""
+        """Generate an HTML transcript for a ticket thread with Discord-like styling."""
         lines = [
             "<!DOCTYPE html>",
             "<html><head><meta charset='UTF-8'>",
+            "<meta name='viewport' content='width=device-width, initial-scale=1.0'>",
             "<style>",
-            "body{font-family:Arial, sans-serif;background:#2b2d31;color:#ddd;padding:10px;}",
-            ".message{margin-bottom:15px;padding:10px;background:#36393f;border-radius:4px;}",
-            ".timestamp{color:#999;margin-right:5px;font-size:0.9em;}",
-            ".author{font-weight:bold;margin-right:5px;}",
-            ".attachments a{display:block;color:#58a6ff;}",
-            ".embed{border-left:4px solid #666;margin-top:5px;padding-left:6px;}",
+            "* { box-sizing: border-box; }",
+            "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 20px; line-height: 1.375; }",
+            ".container { max-width: 1200px; margin: 0 auto; background: #2b2d31; border-radius: 8px; overflow: hidden; }",
+            ".header { background: #1e1f22; padding: 16px 20px; border-bottom: 1px solid #3f4147; }",
+            ".header h2 { margin: 0; color: #f2f3f5; font-size: 20px; font-weight: 600; }",
+            ".header .info { color: #b5bac1; font-size: 14px; margin-top: 4px; }",
+            ".messages { padding: 0; }",
+            ".message { padding: 8px 16px; position: relative; }",
+            ".message:hover { background: #2e3035; }",
+            ".message-group { margin-bottom: 17px; }",
+            ".message-header { display: flex; align-items: baseline; margin-bottom: 2px; }",
+            ".avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; background: #5865f2; display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; font-size: 16px; flex-shrink: 0; }",
+            ".message-content { margin-left: 56px; }",
+            ".author { font-weight: 500; color: #f2f3f5; margin-right: 8px; font-size: 16px; }",
+            ".timestamp { color: #949ba4; font-size: 12px; font-weight: 500; }",
+            ".content { color: #dbdee1; margin-top: 2px; word-wrap: break-word; }",
+            ".content p { margin: 0; }",
+            ".attachments { margin-top: 8px; }",
+            ".attachment { background: #2b2d31; border: 1px solid #3f4147; border-radius: 8px; padding: 8px; margin-bottom: 8px; display: inline-block; }",
+            ".attachment img { max-width: 400px; max-height: 300px; border-radius: 4px; display: block; }",
+            ".attachment a { color: #00a8fc; text-decoration: none; display: flex; align-items: center; }",
+            ".attachment a:hover { text-decoration: underline; }",
+            ".embed { background: #2f3136; border-left: 4px solid #5865f2; border-radius: 4px; padding: 16px; margin-top: 8px; max-width: 520px; }",
+            ".embed-author { display: flex; align-items: center; margin-bottom: 8px; }",
+            ".embed-author-icon { width: 20px; height: 20px; border-radius: 50%; margin-right: 8px; }",
+            ".embed-author-name { color: #f2f3f5; font-size: 14px; font-weight: 600; }",
+            ".embed-title { color: #00a8fc; font-size: 16px; font-weight: 600; margin-bottom: 8px; }",
+            ".embed-title a { color: #00a8fc; text-decoration: none; }",
+            ".embed-title a:hover { text-decoration: underline; }",
+            ".embed-description { color: #dbdee1; margin-bottom: 8px; }",
+            ".embed-fields { display: grid; gap: 8px; }",
+            ".embed-field { }",
+            ".embed-field.inline { display: inline-block; margin-right: 16px; min-width: 150px; }",
+            ".embed-field-name { color: #f2f3f5; font-size: 14px; font-weight: 600; margin-bottom: 2px; }",
+            ".embed-field-value { color: #dbdee1; font-size: 14px; }",
+            ".embed-footer { display: flex; align-items: center; margin-top: 8px; color: #949ba4; font-size: 12px; }",
+            ".embed-footer-icon { width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; }",
+            ".embed-thumbnail { float: right; margin-left: 16px; margin-bottom: 8px; }",
+            ".embed-thumbnail img { max-width: 80px; max-height: 80px; border-radius: 4px; }",
+            ".embed-image { margin-top: 16px; }",
+            ".embed-image img { max-width: 400px; max-height: 300px; border-radius: 4px; }",
+            ".system-message { background: #2f3136; border-left: 4px solid #faa61a; padding: 16px; margin: 8px 16px; border-radius: 4px; }",
+            ".system-message .content { color: #949ba4; font-size: 14px; }",
+            ".bot-tag { background: #5865f2; color: white; font-size: 10px; font-weight: 600; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }",
+            ".mention { background: rgba(88, 101, 242, 0.3); color: #dee0fc; padding: 0 2px; border-radius: 3px; }",
+            ".code-inline { background: #1e1f22; color: #dbdee1; padding: 2px 4px; border-radius: 3px; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; }",
+            ".code-block { background: #1e1f22; color: #dbdee1; padding: 8px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; margin: 8px 0; overflow-x: auto; }",
             "</style></head><body>",
-            f"<h2>Transcript for {html.escape(thread.name)}</h2>",
+            "<div class='container'>",
+            f"<div class='header'>",
+            f"<h2>#{html.escape(thread.name)}</h2>",
+            f"<div class='info'>Transcript generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>",
+            f"</div>",
+            "<div class='messages'>",
         ]
-
+        
+        last_author = None
+        last_timestamp = None
+        
         async for message in thread.history(limit=None, oldest_first=True):
             timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            author = f"{message.author.name}#{message.author.discriminator}"
-            lines.append("<div class='message'>")
-            lines.append(
-                f"<span class='timestamp'>[{timestamp}]</span> <span class='author'>{html.escape(author)}</span>"
-            )
+            author_name = message.author.display_name
+            author_discriminator = f"#{message.author.discriminator}" if message.author.discriminator != "0" else ""
+            is_bot = message.author.bot
+            
+            # Check if we need a new message group
+            time_diff = None
+            if last_timestamp:
+                time_diff = (message.created_at - last_timestamp).total_seconds()
+            
+            new_group = (last_author != message.author.id or 
+                        time_diff is None or time_diff > 420)  # 7 minutes
+            
+            if new_group:
+                if last_author is not None:
+                    lines.append("</div>")  # Close previous message group
+                
+                lines.append("<div class='message-group'>")
+                lines.append("<div class='message'>")
+                
+                # Avatar (first letter of username)
+                avatar_letter = author_name[0].upper() if author_name else "?"
+                lines.append(f"<div class='avatar'>{avatar_letter}</div>")
+                
+                lines.append("<div class='message-content'>")
+                lines.append("<div class='message-header'>")
+                lines.append(f"<span class='author'>{html.escape(author_name)}{html.escape(author_discriminator)}</span>")
+                if is_bot:
+                    lines.append("<span class='bot-tag'>BOT</span>")
+                lines.append(f"<span class='timestamp'>{timestamp}</span>")
+                lines.append("</div>")
+            else:
+                lines.append("<div class='message'>")
+                lines.append("<div class='message-content' style='margin-left: 0;'>")
+            
+            # Message content
             if message.content:
-                lines.append(
-                    f"<div class='content'>{html.escape(message.content)}</div>"
-                )
+                content = html.escape(message.content)
+                # Simple formatting for mentions, code blocks, etc.
+                content = content.replace("```", "<div class='code-block'>").replace("```", "</div>")
+                content = content.replace("`", "<span class='code-inline'>").replace("`", "</span>")
+                lines.append(f"<div class='content'>{content}</div>")
+            
+            # Attachments
             if message.attachments:
                 lines.append("<div class='attachments'>")
                 for attachment in message.attachments:
-                    if attachment.content_type and attachment.content_type.startswith(
-                        "image"
-                    ):
-                        lines.append(
-                            f"<img src='{attachment.url}' alt='{html.escape(attachment.filename)}' style='max-width:300px;'>"
-                        )
+                    lines.append("<div class='attachment'>")
+                    if attachment.content_type and attachment.content_type.startswith("image"):
+                        lines.append(f"<img src='{attachment.url}' alt='{html.escape(attachment.filename)}'>")
                     else:
-                        lines.append(
-                            f"<a href='{attachment.url}'>{html.escape(attachment.filename)}</a>"
-                        )
+                        lines.append(f"<a href='{attachment.url}' target='_blank'>📎 {html.escape(attachment.filename)}</a>")
+                    lines.append("</div>")
                 lines.append("</div>")
+            
+            # Embeds
             if message.embeds:
                 for embed in message.embeds:
-                    e_html = ["<div class='embed'>"]
+                    embed_color = f"#{embed.color:06x}" if embed.color else "#5865f2"
+                    lines.append(f"<div class='embed' style='border-left-color: {embed_color};'>")
+                    
+                    # Embed author
+                    if embed.author:
+                        lines.append("<div class='embed-author'>")
+                        if embed.author.icon_url:
+                            lines.append(f"<img class='embed-author-icon' src='{embed.author.icon_url}' alt=''>")
+                        lines.append(f"<span class='embed-author-name'>{html.escape(embed.author.name)}</span>")
+                        lines.append("</div>")
+                    
+                    # Embed thumbnail
+                    if embed.thumbnail:
+                        lines.append("<div class='embed-thumbnail'>")
+                        lines.append(f"<img src='{embed.thumbnail.url}' alt='Thumbnail'>")
+                        lines.append("</div>")
+                    
+                    # Embed title
                     if embed.title:
-                        e_html.append(
-                            f"<div class='embed-title'>{html.escape(embed.title)}</div>"
-                        )
+                        title_html = html.escape(embed.title)
+                        if embed.url:
+                            title_html = f"<a href='{embed.url}' target='_blank'>{title_html}</a>"
+                        lines.append(f"<div class='embed-title'>{title_html}</div>")
+                    
+                    # Embed description
                     if embed.description:
-                        e_html.append(
-                            f"<div class='embed-description'>{html.escape(embed.description)}</div>"
-                        )
-                    for field in embed.fields:
-                        e_html.append(
-                            f"<div class='embed-field'><strong>{html.escape(field.name)}:</strong> {html.escape(field.value)}</div>"
-                        )
-                    e_html.append("</div>")
-                    lines.extend(e_html)
-            lines.append("</div>")
-
-        lines.append("</body></html>")
+                        lines.append(f"<div class='embed-description'>{html.escape(embed.description)}</div>")
+                    
+                    # Embed fields
+                    if embed.fields:
+                        lines.append("<div class='embed-fields'>")
+                        for field in embed.fields:
+                            field_class = "embed-field"
+                            if field.inline:
+                                field_class += " inline"
+                            lines.append(f"<div class='{field_class}'>")
+                            lines.append(f"<div class='embed-field-name'>{html.escape(field.name)}</div>")
+                            lines.append(f"<div class='embed-field-value'>{html.escape(field.value)}</div>")
+                            lines.append("</div>")
+                        lines.append("</div>")
+                    
+                    # Embed image
+                    if embed.image:
+                        lines.append("<div class='embed-image'>")
+                        lines.append(f"<img src='{embed.image.url}' alt='Embed image'>")
+                        lines.append("</div>")
+                    
+                    # Embed footer
+                    if embed.footer:
+                        lines.append("<div class='embed-footer'>")
+                        if embed.footer.icon_url:
+                            lines.append(f"<img class='embed-footer-icon' src='{embed.footer.icon_url}' alt=''>")
+                        footer_text = html.escape(embed.footer.text)
+                        if embed.timestamp:
+                            footer_text += f" • {embed.timestamp.strftime('%m/%d/%Y')}"
+                        lines.append(f"<span>{footer_text}</span>")
+                        lines.append("</div>")
+                    
+                    lines.append("</div>")
+            
+            lines.append("</div>")  # Close message-content
+            lines.append("</div>")  # Close message
+            
+            last_author = message.author.id
+            last_timestamp = message.created_at
+        
+        if last_author is not None:
+            lines.append("</div>")  # Close last message group
+        
+        lines.extend([
+            "</div>",  # Close messages
+            "</div>",  # Close container
+            "</body></html>"
+        ])
+        
         return "\n".join(lines)
 
     @commands.slash_command(
