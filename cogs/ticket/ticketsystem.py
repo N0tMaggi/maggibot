@@ -156,7 +156,7 @@ class TicketSystem(Cog):
             "<div class='container'>",
             f"<div class='header'>",
             f"<h2>#{html.escape(thread.name)}</h2>",
-            f"<div class='info'>Transcript generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>",
+            f"<div class='info'>Transcript generated on {datetime.datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>",
             f"</div>",
             "<div class='messages'>",
         ]
