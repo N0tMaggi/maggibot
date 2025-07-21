@@ -343,6 +343,7 @@ class MacBan(commands.Cog):
 
         embed = create_mac_embed(
             title="Global Ban All Executed",
+            description="Finished banning all users from the global ban list.",
             color=discord.Color.red()
         )
         embed.add_field(name="Successfully Banned", value="\n".join(banned_members) if banned_members else "None", inline=False)
@@ -388,11 +389,16 @@ class MacBan(commands.Cog):
                 failed_users.append(f"{ban['name']} ({ban['id']})")
             await asyncio.sleep(1)
 
-        remaining_bans = [ban for ban in global_bans.values() if ban.get("serverid") != ctx.guild.id]
+        remaining_bans = {
+            str(ban["id"]): ban
+            for ban in global_bans.values()
+            if ban.get("serverid") != ctx.guild.id
+        }
         mac_save_bans(remaining_bans)
 
         embed = create_mac_embed(
             title="Unban All from Server",
+            description="Finished unbanning all users imported via the global ban list.",
             color=discord.Color.green()
         )
         embed.add_field(name="Successfully Unbanned", value="\n".join(unbanned_users) if unbanned_users else "None", inline=False)
@@ -421,6 +427,7 @@ class MacBan(commands.Cog):
 
         embed = create_mac_embed(
             title="📜 Global Ban Records for Server",
+            description="Displaying all global bans recorded for the specified server.",
             color=discord.Color.red()
         )
         embed.add_field(name="🔍 Server ID", value=serverid, inline=True)
