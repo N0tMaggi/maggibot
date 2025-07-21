@@ -7,7 +7,15 @@ if /i "%confirm%" neq "y" (
     pause
     exit /b 1
 )
-echo [1/3] Installing required files...
+echo [1/3] Installing dependencies from requirements.txt...
+python -m pip install -r requirements.txt
+if %errorlevel% neq 0 (
+    echo Failed to install requirements!
+    pause
+    exit /b 1
+)
+
+echo [2/3] Running initial bot setup...
 python main.py install
 if %errorlevel% neq 0 (
     echo Failed to install requirements!

@@ -231,26 +231,68 @@ def save_tags(tags):
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # MAC Ban System Configuration
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+from handlers.database import get_db_connection, DB_TYPE
+
 def mac_load_bans():
-    data = load_data(MAC_FILE, default=dict)
-    if isinstance(data, list):
-        bans = {str(ban["id"]): ban for ban in data}
+    if DB_TYPE == "json":
+        data = load_data(MAC_FILE, default=dict)
+        if isinstance(data, list):
+            bans = {str(ban["id"]): ban for ban in data}
+        else:
+            bans = {str(k): v for k, v in data.items()}
+
+        for user_id, ban in bans.items():
+            if "id" not in ban:
+                try:
+                    ban["id"] = int(user_id)
+                except ValueError:
+                    ban["id"] = user_id
+        return bans
     else:
-        bans = {str(k): v for k, v in data.items()}
+        conn = get_db_connection()
+        if not conn:
+            return {}
+        cursor = conn.cursor(dictionary=True if DB_TYPE == 'mysql' else False)
+        cursor.execute("SELECT * FROM mac_bans")
+        rows = cursor.fetchall()
+        conn.close()
 
-    # Ensure each ban entry explicitly contains the user ID for
-    # compatibility with older save formats where the ID was only the key.
-    for user_id, ban in bans.items():
-        if "id" not in ban:
-            try:
-                ban["id"] = int(user_id)
-            except ValueError:
-                # If the key isn't an int just store it as string
-                ban["id"] = user_id
+        bans = {}
+        if DB_TYPE == 'sqlite':
+            # For sqlite, rows are tuples, convert them to dicts
+            column_names = [description[0] for description in cursor.description]
+            for row in rows:
+                ban_data = dict(zip(column_names, row))
+                bans[str(ban_data['id'])] = ban_data
+        else: # mysql
+            for row in rows:
+                bans[str(row['id'])] = row
+        return bans
 
-    return bans
 
 def mac_save_bans(bans):
-    save_data(MAC_FILE, bans, mkdir=True)
+    if DB_TYPE == "json":
+        save_data(MAC_FILE, bans, mkdir=True)
+    else:
+        conn = get_db_connection()
+        if not conn:
+            return
+        cursor = conn.cursor()
+        
+        # Inefficient for databases, but matches the current logic.
+        # A better implementation would be specific add/update/delete functions.
+        cursor.execute("DELETE FROM mac_bans")
+
+        for ban in bans.values():
+            if DB_TYPE == 'mysql':
+                sql = "INSERT INTO mac_bans (id, name, bandate, reason, serverid, servername, bannedby) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            elif DB_TYPE == 'sqlite':
+                sql = "INSERT INTO mac_bans (id, name, bandate, reason, serverid, servername, bannedby) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            
+            values = (ban.get('id'), ban.get('name'), ban.get('bandate'), ban.get('reason'), ban.get('serverid'), ban.get('servername'), ban.get('bannedby'))
+            cursor.execute(sql, values)
+
+        conn.commit()
+        conn.close()
 
 
