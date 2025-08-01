@@ -71,6 +71,7 @@ class Logging(commands.Cog):
             "join",
             member,
             fields,
+            guild=member.guild,
         )
         await self.post_log(member.guild, embed, "member-join", member.id)
 
@@ -90,6 +91,7 @@ class Logging(commands.Cog):
             "leave",
             member,
             fields,
+            guild=member.guild,
         )
         await self.post_log(member.guild, embed, "member-leave", member.id)
 
@@ -97,7 +99,7 @@ class Logging(commands.Cog):
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         description = f"{user.mention} was banned."
         fields = [("User ID", str(user.id), True)]
-        embed = create_log_embed("Member Banned", description, "ban", user, fields)
+        embed = create_log_embed("Member Banned", description, "ban", user, fields, guild=guild)
         await self.post_log(guild, embed, "ban", user.id)
 
     @commands.Cog.listener()
@@ -118,6 +120,7 @@ class Logging(commands.Cog):
             "message_delete",
             message.author,
             fields,
+            guild=message.guild,
         )
         await self.post_log(message.guild, embed, "message-delete", message.author.id)
 
@@ -141,6 +144,7 @@ class Logging(commands.Cog):
             "message_delete",
             after.author,
             fields,
+            guild=after.guild,
         )
         await self.post_log(after.guild, embed, "message-edit", after.author.id)
 
@@ -148,7 +152,7 @@ class Logging(commands.Cog):
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         description = f"{user.mention} was unbanned."
         fields = [("User ID", str(user.id), True)]
-        embed = create_log_embed("Member Unbanned", description, "ban", user, fields)
+        embed = create_log_embed("Member Unbanned", description, "ban", user, fields, guild=guild)
         await self.post_log(guild, embed, "unban", user.id)
 
     @commands.Cog.listener()
@@ -166,8 +170,41 @@ class Logging(commands.Cog):
                 "default",
                 after,
                 fields,
+                guild=after.guild,
             )
             await self.post_log(after.guild, embed, "nickname-update", after.id)
+
+        if before.roles != after.roles:
+            before_roles = ", ".join(r.mention for r in before.roles if r.name != "@everyone") or "None"
+            after_roles = ", ".join(r.mention for r in after.roles if r.name != "@everyone") or "None"
+            description = f"Roles updated for {after.mention}"
+            fields = [
+                ("Before", before_roles, False),
+                ("After", after_roles, False),
+                ("User ID", str(after.id), True),
+            ]
+            embed = create_log_embed(
+                "Roles Updated",
+                description,
+                "default",
+                after,
+                fields,
+                guild=after.guild,
+            )
+            await self.post_log(after.guild, embed, "roles-update", after.id)
+
+        if before.display_avatar != after.display_avatar:
+            description = f"Avatar updated for {after.mention}"
+            fields = [("User ID", str(after.id), True)]
+            embed = create_log_embed(
+                "Avatar Updated",
+                description,
+                "default",
+                after,
+                fields,
+                guild=after.guild,
+            )
+            await self.post_log(after.guild, embed, "avatar-update", after.id)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -192,8 +229,61 @@ class Logging(commands.Cog):
                 "default",
                 member,
                 fields,
+                guild=member.guild,
             )
             await self.post_log(member.guild, embed, "voice-update", member.id)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        fields = [
+            ("Channel ID", str(channel.id), True),
+            ("Type", str(channel.type), True),
+        ]
+        creator = None
+        try:
+            async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_create):
+                if entry.target.id == channel.id:
+                    creator = entry.user
+                    break
+        except Exception:
+            pass
+
+        description = f"{channel.mention} was created."
+        embed = create_log_embed(
+            "Channel Created",
+            description,
+            "default",
+            creator,
+            fields,
+            guild=channel.guild,
+        )
+        await self.post_log(channel.guild, embed, "channel-create")
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        fields = [
+            ("Channel ID", str(channel.id), True),
+            ("Type", str(channel.type), True),
+        ]
+        deleter = None
+        try:
+            async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
+                if entry.target.id == channel.id:
+                    deleter = entry.user
+                    break
+        except Exception:
+            pass
+
+        description = f"{channel.name} was deleted."
+        embed = create_log_embed(
+            "Channel Deleted",
+            description,
+            "default",
+            deleter,
+            fields,
+            guild=channel.guild,
+        )
+        await self.post_log(channel.guild, embed, "channel-delete")
 
 
 def setup(bot: commands.Bot):
