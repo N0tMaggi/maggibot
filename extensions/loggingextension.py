@@ -35,6 +35,11 @@ def create_log_embed(
         User associated with the event.
     fields: list[tuple[str, str, bool]] | None, optional
         Extra fields to append. Each entry is ``(name, value, inline)``.
+
+    Notes
+    -----
+    The embed automatically appends the event ``title`` and the current time as
+    additional fields for more verbose logging information.
     """
 
     embed = discord.Embed(
@@ -54,5 +59,16 @@ def create_log_embed(
     if fields:
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
+
+    embed.add_field(
+        name="Event",
+        value=title,
+        inline=False,
+    )
+    embed.add_field(
+        name="Time",
+        value=f"<t:{int(embed.timestamp.timestamp())}:F>",
+        inline=False,
+    )
     embed.set_footer(text=f"Logging System | Guild ID: {guild.id if guild else 'N/A'}")
     return embed
