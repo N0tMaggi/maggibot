@@ -19,6 +19,7 @@ def create_log_embed(
     color_type: str = "default",
     user: discord.abc.User | None = None,
     fields: list[tuple[str, str, bool]] | None = None,
+    guild: discord.Guild | None = None,
 ) -> discord.Embed:
     """Create a standardized log embed.
 
@@ -45,10 +46,13 @@ def create_log_embed(
 
     if user:
         embed.set_author(name=str(user), icon_url=user.display_avatar.url)
+        embed.set_thumbnail(url=user.display_avatar.url)
+
+    if guild:
+        embed.add_field(name="Server", value=f"{guild.name} ({guild.id})", inline=False)
 
     if fields:
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
-
-    embed.set_footer(text="Logging System")
+    embed.set_footer(text=f"Logging System | Guild ID: {guild.id if guild else 'N/A'}")
     return embed
