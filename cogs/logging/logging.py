@@ -108,9 +108,12 @@ class Logging(commands.Cog):
             return
         content = message.content or "*No text content*"
         description = f"Message deleted in {message.channel.mention}."
+        attachments = ", ".join(a.url for a in message.attachments) or "None"
         fields = [
             ("Author", message.author.mention, True),
+            ("Channel", message.channel.mention, True),
             ("Content", content, False),
+            ("Attachments", attachments, False),
             ("Message ID", str(message.id), True),
             ("User ID", str(message.author.id), True),
         ]
@@ -131,10 +134,13 @@ class Logging(commands.Cog):
         if before.content == after.content:
             return
         description = f"Message edited in {after.channel.mention}."
+        attachments = ", ".join(a.url for a in after.attachments) or "None"
         fields = [
             ("Author", after.author.mention, True),
+            ("Channel", after.channel.mention, True),
             ("Before", before.content or "*No text*", False),
             ("After", after.content or "*No text*", False),
+            ("Attachments", attachments, False),
             ("Message ID", str(after.id), True),
             ("User ID", str(after.author.id), True),
         ]
@@ -284,6 +290,111 @@ class Logging(commands.Cog):
             guild=channel.guild,
         )
         await self.post_log(channel.guild, embed, "channel-delete")
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(
+        self,
+        before: discord.abc.GuildChannel,
+        after: discord.abc.GuildChannel,
+    ):
+        if before.name == after.name and getattr(before, "topic", None) == getattr(after, "topic", None):
+            return
+        fields = [
+            ("Before", before.name, True),
+            ("After", after.name, True),
+            ("Channel ID", str(after.id), True),
+        ]
+        description = f"{before.mention} was updated."
+        embed = create_log_embed(
+            "Channel Updated",
+            description,
+            "default",
+            None,
+            fields,
+            guild=after.guild,
+        )
+        await self.post_log(after.guild, embed, "channel-update")
+
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role):
+        fields = [
+            ("Role Name", role.name, True),
+            ("Role ID", str(role.id), True),
+        ]
+        creator = None
+        try:
+            async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
+                if entry.target.id == role.id:
+                    creator = entry.user
+                    break
+        except Exception:
+            pass
+
+        description = f"{role.mention} was created."
+        embed = create_log_embed(
+            "Role Created",
+            description,
+            "default",
+            creator,
+            fields,
+            guild=role.guild,
+        )
+        await self.post_log(role.guild, embed, "role-create")
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        fields = [
+            ("Role Name", role.name, True),
+            ("Role ID", str(role.id), True),
+        ]
+        deleter = None
+        try:
+            async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_delete):
+                if entry.target.id == role.id:
+                    deleter = entry.user
+                    break
+        except Exception:
+            pass
+
+        description = f"Role {role.name} was deleted."
+        embed = create_log_embed(
+            "Role Deleted",
+            description,
+            "default",
+            deleter,
+            fields,
+            guild=role.guild,
+        )
+        await self.post_log(role.guild, embed, "role-delete")
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        if before.name == after.name and before.permissions == after.permissions and before.color == after.color:
+            return
+        fields = [
+            ("Before Name", before.name, True),
+            ("After Name", after.name, True),
+            ("Role ID", str(after.id), True),
+        ]
+        editor = None
+        try:
+            async for entry in after.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_update):
+                if entry.target.id == after.id:
+                    editor = entry.user
+                    break
+        except Exception:
+            pass
+
+        description = f"Role {before.name} updated."
+        embed = create_log_embed(
+            "Role Updated",
+            description,
+            "default",
+            editor,
+            fields,
+            guild=after.guild,
+        )
+        await self.post_log(after.guild, embed, "role-update")
 
 
 def setup(bot: commands.Bot):
