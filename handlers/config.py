@@ -49,6 +49,7 @@ RANDOM_MATH_FILE = "config/randommathchannel.json"
 
 # Data
 MAC_FILE = "data/mac.json"
+MAC_BYPASS_FILE = "data/mac_bypass.json"
 STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 TICKET_DATA_FILE = "data/tickets.json"
@@ -64,6 +65,7 @@ JSON_FILES = [
     ONLY_IMAGES_FILE,
     RANDOM_MATH_FILE,
     MAC_FILE,
+    MAC_BYPASS_FILE,
     STATS_FILE,
     XP_MULTIPLIER_FILE,
     TICKET_DATA_FILE,
@@ -82,6 +84,7 @@ CONFIG_FILES = [
 
 DATA_FILES = [
     MAC_FILE,
+    MAC_BYPASS_FILE,
     STATS_FILE,
     XP_MULTIPLIER_FILE,
     TICKET_DATA_FILE,
@@ -291,6 +294,53 @@ def mac_save_bans(bans):
             
             values = (ban.get('id'), ban.get('name'), ban.get('bandate'), ban.get('reason'), ban.get('serverid'), ban.get('servername'), ban.get('bannedby'))
             cursor.execute(sql, values)
+
+        conn.commit()
+        conn.close()
+
+
+def mac_load_bypasses():
+    if DB_TYPE == "json":
+        data = load_data(MAC_BYPASS_FILE, default=dict)
+        return {str(k): v for k, v in data.items()}
+    else:
+        conn = get_db_connection()
+        if not conn:
+            return {}
+        cursor = conn.cursor(dictionary=True if DB_TYPE == 'mysql' else False)
+        cursor.execute("SELECT user_id, server_id FROM mac_bypass")
+        rows = cursor.fetchall()
+        conn.close()
+
+        bypasses = {}
+        if DB_TYPE == 'sqlite':
+            for row in rows:
+                user_id, server_id = row
+                bypasses.setdefault(str(user_id), []).append(server_id)
+        else:  # mysql
+            for row in rows:
+                user_id = str(row['user_id'])
+                bypasses.setdefault(user_id, []).append(row['server_id'])
+        return bypasses
+
+
+def mac_save_bypasses(bypasses):
+    if DB_TYPE == "json":
+        save_data(MAC_BYPASS_FILE, bypasses, mkdir=True)
+    else:
+        conn = get_db_connection()
+        if not conn:
+            return
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM mac_bypass")
+
+        for user_id, servers in bypasses.items():
+            for server_id in servers:
+                if DB_TYPE == 'mysql':
+                    sql = "INSERT INTO mac_bypass (user_id, server_id) VALUES (%s, %s)"
+                elif DB_TYPE == 'sqlite':
+                    sql = "INSERT INTO mac_bypass (user_id, server_id) VALUES (?, ?)"
+                cursor.execute(sql, (int(user_id), server_id))
 
         conn.commit()
         conn.close()
