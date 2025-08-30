@@ -66,11 +66,6 @@ class MacBan(commands.Cog):
                     value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
                     inline=False,
                 )
-                    color=discord.Color.green()
-                )
-                notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
-                notify_embed.add_field(name="🛡️ Server", value=f"`{member.guild.name}`", inline=True)
-                notify_embed.add_field(name="📄 Ban Reason", value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```", inline=False)
                 notify_embed.set_thumbnail(url=member.display_avatar.url)
                 await channel.send(embed=notify_embed)
             return
