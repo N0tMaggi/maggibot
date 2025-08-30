@@ -4,7 +4,12 @@ import datetime
 import asyncio
 import os
 from handlers.env import get_mac_channel, get_owner
-from handlers.config import mac_load_bans, mac_save_bans
+from handlers.config import (
+    mac_load_bans,
+    mac_save_bans,
+    mac_load_bypasses,
+    mac_save_bypasses,
+)
 from extensions.macextension import trim_field, create_mac_embed
 
 NOTIFY_CHANNEL_ID = int(get_mac_channel())
@@ -25,6 +30,42 @@ class MacBan(commands.Cog):
         bans = mac_load_bans()
         ban_record = bans.get(str(member.id))
         if not ban_record:
+            return
+
+        bypasses = mac_load_bypasses()
+        allowed_servers = bypasses.get(str(member.id), [])
+        if member.guild.id in allowed_servers or str(member.guild.id) in allowed_servers:
+            try:
+                dm_embed = create_mac_embed(
+                    title="ℹ️ MAC™ Bypass Active",
+                    description=f"You are globally banned but allowed to join `{member.guild.name}`.",
+                    color=discord.Color.green(),
+                )
+                dm_embed.add_field(
+                    name="📄 Ban Reason",
+                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
+                    inline=False,
+                )
+                await member.send(embed=dm_embed)
+            except discord.Forbidden:
+                pass
+
+            channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
+            if channel:
+                notify_embed = create_mac_embed(
+                    title="✅ Bypass User Joined",
+                    description="A globally banned user joined using a MAC™ bypass.",
+                    color=discord.Color.green(),
+                )
+                notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
+                notify_embed.add_field(name="🛡️ Server", value=f"`{member.guild.name}`", inline=True)
+                notify_embed.add_field(
+                    name="📄 Ban Reason",
+                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
+                    inline=False,
+                )
+                notify_embed.set_thumbnail(url=member.display_avatar.url)
+                await channel.send(embed=notify_embed)
             return
 
         attempted_server = member.guild.name
@@ -105,6 +146,33 @@ class MacBan(commands.Cog):
             await user.send(embed=user_embed)
         except discord.Forbidden:
             pass
+
+    @commands.slash_command(name="mac-bypass", description="Allows a globally banned user to join this server.")
+    @commands.has_permissions(administrator=True)
+    async def macbypass(self, ctx: discord.ApplicationContext, user: discord.User):
+        bypasses = mac_load_bypasses()
+        guild_id = ctx.guild.id
+        user_id = str(user.id)
+        servers = set(bypasses.get(user_id, []))
+        if guild_id in servers or str(guild_id) in servers:
+            embed = create_mac_embed(
+                title="⚠️ Bypass Exists",
+                description=f"{user.mention} already has a bypass for this server.",
+                color=discord.Color.orange(),
+            )
+            return await ctx.respond(embed=embed, ephemeral=True)
+
+        servers.add(guild_id)
+        bypasses[user_id] = list(servers)
+        mac_save_bypasses(bypasses)
+
+        embed = create_mac_embed(
+            title="✅ Bypass Added",
+            description=f"{user.mention} may now join this server despite a global ban.",
+            color=discord.Color.green(),
+        )
+        embed.add_field(name="🛡️ Server", value=f"`{ctx.guild.name}`", inline=False)
+        await ctx.respond(embed=embed)
 
     @commands.slash_command(name="mac-unban", description="Removes a global ban from a user.")
     @is_owner()
