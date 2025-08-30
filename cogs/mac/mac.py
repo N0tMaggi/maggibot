@@ -35,11 +35,37 @@ class MacBan(commands.Cog):
         bypasses = mac_load_bypasses()
         allowed_servers = bypasses.get(str(member.id), [])
         if member.guild.id in allowed_servers or str(member.guild.id) in allowed_servers:
+            try:
+                dm_embed = create_mac_embed(
+                    title="ℹ️ MAC™ Bypass Active",
+                    description=f"You are globally banned but allowed to join `{member.guild.name}`.",
+                    color=discord.Color.green(),
+                )
+                dm_embed.add_field(
+                    name="📄 Ban Reason",
+                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
+                    inline=False,
+                )
+                await member.send(embed=dm_embed)
+            except discord.Forbidden:
+                pass
+
+
             channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
             if channel:
                 notify_embed = create_mac_embed(
                     title="✅ Bypass User Joined",
                     description="A globally banned user joined using a MAC™ bypass.",
+
+                    color=discord.Color.green(),
+                )
+                notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
+                notify_embed.add_field(name="🛡️ Server", value=f"`{member.guild.name}`", inline=True)
+                notify_embed.add_field(
+                    name="📄 Ban Reason",
+                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
+                    inline=False,
+                )
                     color=discord.Color.green()
                 )
                 notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
