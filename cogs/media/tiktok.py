@@ -63,7 +63,7 @@ class Tiktok(commands.Cog):
 
         try:
             # Fetch API data
-            api_url = f"https://api.ag7-dev.de/v1/tiktok/tiktok.php?api_key={API_KEY}&url={link}"
+            api_url = f"https://api.ag7-dev.de/tiktok?url={link}"
             LogDebug(f"Requesting API URL: {api_url}")
             api_response = requests.get(api_url)
 
