@@ -32,7 +32,7 @@ def create_embed(title: str, description: str, color: discord.Color) -> discord.
         timestamp=datetime.datetime.now()
     )
     embed.set_thumbnail(url=TIKTOK_ICON_URL)
-    embed.set_footer(text="TikTok Downloader • ag7-dev.de API")
+    embed.set_footer(text="TikTok Downloader • maggi.dev API")
     return embed
 
 def safe_embed_field_value(value: str, max_length: int = 1024) -> str:
@@ -63,7 +63,7 @@ class Tiktok(commands.Cog):
 
         try:
             # Fetch API data
-            api_url = f"https://api.ag7-dev.de/tiktok?url={link}"
+            api_url = f"https://api.maggi.dev/tiktok?url={link}"
             LogDebug(f"Requesting API URL: {api_url}")
             api_response = requests.get(api_url)
 
