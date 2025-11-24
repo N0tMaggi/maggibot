@@ -1,36 +1,23 @@
 import discord
 from discord.ext import commands
 from discord.commands import slash_command
-import datetime
 import random
 from handlers.debug import LogError, LogModeration
+from utils.embed_helpers import create_mod_embed
 
 class ModCommunityMute(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-        self.embed_colors = {
-            'success': 0x2ECC71,
-            'error': 0xE74C3C,
-            'mod_action': 0x992D22,
-            'vote': 0xF1C40F
-        }
 
     def create_embed(self, title, description, color_type='mod_action', author=None):
-        spacer = "\u200b" * 20  
-        divider = "─" * 30
-        
-        embed = discord.Embed(
+        """Create a moderation embed using centralized utility"""
+        return create_mod_embed(
             title=title,
-            description=f"{description}\n\n{divider}",
-            color=self.embed_colors.get(color_type, 0x2b2d31),
-            timestamp=datetime.datetime.utcnow()
+            description=description,
+            color_type=color_type,
+            author=author,
+            bot_user=self.bot.user
         )
-        
-        if author:
-            embed.set_author(name=str(author), icon_url=author.display_avatar.url)
-            
-        embed.set_footer(text="Community ModSystem", icon_url=self.bot.user.display_avatar.url)
-        return embed
 
     @slash_command(name="mod-community-mute", description="Start community mute vote (Admin only)")
     @commands.has_permissions(administrator=True)

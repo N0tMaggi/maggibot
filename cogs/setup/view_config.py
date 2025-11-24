@@ -136,7 +136,7 @@ class ConfigSettings(commands.Cog):
 
         except Exception as e:
             LogError(f"An error occurred while showing the server configuration: {e}")
-            raise Exception(f"An error occurred while showing the server configuration: {e}")
+            raise RuntimeError(f"An error occurred while showing the server configuration: {e}")
 
 def setup(bot):
     bot.add_cog(ConfigSettings(bot))

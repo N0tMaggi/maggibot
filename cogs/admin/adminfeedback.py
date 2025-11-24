@@ -76,7 +76,7 @@ class AdminFeedback(commands.Cog):
                 description="An error occurred while sending your feedback.",
                 color=discord.Color.red()
             ))
-            raise Exception(f"❌ Error sending feedback: {e}")
+            raise RuntimeError(f"❌ Error sending feedback: {e}")
 
     @commands.slash_command(name="view-feedbacks-from", description="🔍 View feedbacks from a specific user across all servers")
     async def view_feedbacks_from(self, ctx, user: discord.Member):

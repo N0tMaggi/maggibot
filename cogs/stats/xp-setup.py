@@ -2,10 +2,10 @@ import discord
 from discord.ext import commands
 import json
 import os
-import datetime
 from dotenv import load_dotenv
 from handlers.debug import LogSystem, LogError, LogDebug, LogNetwork
 from handlers.config import load_stats, save_stats, load_multiplier_config, save_multiplier_config
+from utils.embed_helpers import create_embed as utils_create_embed
 
 load_dotenv()
 MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
@@ -17,24 +17,16 @@ XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 class XPSetup(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.embed_colors = {
-            "stats": 0x3498DB,
-            "leaderboard": 0xF1C40F,
-            "system": 0x2ECC71,
-            "error": 0xE74C3C,
-            "mod": 0x992D22
-        }
 
     def create_embed(self, title, description="", color_type="stats"):
-        embed = discord.Embed(
+        """Helper to create stats embeds"""
+        embed = utils_create_embed(
             title=title,
             description=description,
-            color=self.embed_colors.get(color_type, 0x3498DB),
-            timestamp=datetime.datetime.now()
-        )
-        embed.set_footer(
-            text="AG7 Stats System",
-            icon_url="https://ag7-dev.de/favicon/favicon.ico"
+            color=color_type,
+            bot_user=self.bot.user,
+            footer_text="AG7 Stats System",
+            footer_icon="https://ag7-dev.de/favicon/favicon.ico"
         )
         return embed
 

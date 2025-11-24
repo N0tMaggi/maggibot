@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
-from datetime import datetime
 from discord import default_permissions
+from utils.embed_helpers import create_embed as utils_create_embed
 
 class TrollCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -13,16 +13,25 @@ class TrollCommands(commands.Cog):
 
     def create_embed(self, title, description, color, **kwargs):
         """Helper function to create consistent embeds"""
-        embed = discord.Embed(
+        # Extract custom kwargs
+        user = kwargs.pop("user", None)
+        guild = kwargs.pop("guild", None)
+        
+        # Use centralized function
+        embed = utils_create_embed(
             title=title,
             description=description,
             color=color,
-            timestamp=datetime.utcnow()
+            bot_user=self.bot.user,
+            **kwargs
         )
-        if "user" in kwargs:
-            embed.set_footer(text=f"Requested by {kwargs['user']}", icon_url=kwargs["user"].display_avatar.url)
-        if "guild" in kwargs:
-            embed.set_author(name=kwargs["guild"].name, icon_url=kwargs["guild"].icon.url)
+        
+        # Apply custom footer/author
+        if user:
+            embed.set_footer(text=f"Requested by {user}", icon_url=user.display_avatar.url)
+        if guild and guild.icon:
+            embed.set_author(name=guild.name, icon_url=guild.icon.url)
+        
         return embed
 
     @commands.slash_command(

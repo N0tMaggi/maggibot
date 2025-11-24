@@ -2,35 +2,25 @@ import discord
 from discord.ext import commands
 import handlers.config as config
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem
+from utils.embed_helpers import create_embed as utils_create_embed
 
 class TicketVerify(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.embed_footer = {
-            "text": "AG7 Verification System",
-            "icon_url": "https://ag7-dev.de/favicon/favicon.ico"
-        }
-        self.embed_colors = {
-            "success": 0x2ECC71,   # Bright green [[5]]
-            "error": 0xED4245,     # Discord red [[6]]
-            "info": 0x7289DA,      # Discord blue [[5]]
-            "warning": 0xFFD700    # Gold [[5]]
-        }
 
     def create_embed(self, title, description, color_type="info", thumbnail=""):
-        # Dynamische Emoji-Icons für die Titel [[5]]
+        # Dynamic emoji icons for titles
         title_icon = "✅" if color_type == "success" else "❌" if color_type == "error" else "ℹ️"
-        embed = discord.Embed(
+        
+        embed = utils_create_embed(
             title=f"{title_icon} {title}",
             description=description,
-            color=self.embed_colors.get(color_type, self.embed_colors['info'])
+            color=color_type,
+            thumbnail=thumbnail if thumbnail else None,
+            footer_text="AG7 Verification System",
+            footer_icon="https://ag7-dev.de/favicon/favicon.ico",
+            timestamp=True
         )
-        embed.set_footer(**self.embed_footer)
-        embed.timestamp = discord.utils.utcnow()
-        
-        # Dynamische Thumbnails [[5]][[7]]
-        if thumbnail:
-            embed.set_thumbnail(url=thumbnail)
         return embed
 
     def format_role(self, role):

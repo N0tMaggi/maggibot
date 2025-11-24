@@ -68,7 +68,7 @@ class Server(Cog):
 
         except Exception as e:
             LogError(f"An error occurred while setting the log channel: {e}")
-            raise Exception(f"An error occurred while setting the log channel: {e}")
+            raise RuntimeError(f"An error occurred while setting the log channel: {e}")
 
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -102,7 +102,7 @@ class Server(Cog):
                     msg = await self.bot.wait_for('message', timeout=30, check=check)
                     rules_text = msg.content
                 except Exception:
-                    raise Exception("Timeout: You did not provide the required text in time.")
+                    raise TimeoutError(" You did not provide the required text in time.")
 
             self.voicegateconfig[str(ctx.guild.id)] = {
                 "gate_channel_id": gate_channel.id,
@@ -120,14 +120,14 @@ class Server(Cog):
             await safe_respond(ctx, embed_success)
 
         except Exception as e:
-            raise Exception(f"Error in setup_voicegate command: {e}")
+            raise RuntimeError(f"Error in setup_voicegate command: {e}")
 
     @commands.slash_command(name="setup-showvoicegatesettings", description="Show the current voice gate settings for this server")
     @commands.has_permissions(administrator=True)
     async def setup_showvoicegatesettings(self, ctx: discord.ApplicationContext):
         try:
             if str(ctx.guild.id) not in self.voicegateconfig:
-                raise Exception("No voice gate configuration found for this server.")
+                raise ValueError("No voice gate configuration found for this server.")
             config_data = self.voicegateconfig[str(ctx.guild.id)]
             embed_settings = discord.Embed(
                 title="Voice Gate Settings",
@@ -137,17 +137,17 @@ class Server(Cog):
                 embed_settings.add_field(name=key, value=str(value), inline=False)
             await safe_respond(ctx, embed_settings)
         except Exception as e:
-            raise Exception(f"Error in setup-showvoicegatesettings command: {e}")
+            raise RuntimeError(f"Error in setup-showvoicegatesettings command: {e}")
 
     @commands.slash_command(name="setup-deletevoicegate", description="Delete the voice gate configuration for the given voice channel")
     @commands.has_permissions(administrator=True)
     async def setup_deletevoicegate(self, ctx: discord.ApplicationContext, gate_channel: discord.VoiceChannel):
         try:
             if str(ctx.guild.id) not in self.voicegateconfig:
-                raise Exception("No voice gate configuration found for this server.")
+                raise ValueError("No voice gate configuration found for this server.")
             config_data = self.voicegateconfig[str(ctx.guild.id)]
             if config_data.get("gate_channel_id") != gate_channel.id:
-                raise Exception("The provided voice channel does not match the stored configuration.")
+                raise ValueError("The provided voice channel does not match the stored configuration.")
             del self.voicegateconfig[str(ctx.guild.id)]
             config.savevoicegateconfig(self.voicegateconfig)
             embed_success = discord.Embed(
@@ -157,7 +157,7 @@ class Server(Cog):
             )
             await safe_respond(ctx, embed_success)
         except Exception as e:
-            raise Exception(f"[VOICEGATE] Error in setup-deletevoicegate command: {e}")
+            raise RuntimeError(f"[VOICEGATE] Error in setup-deletevoicegate command: {e}")
 
 
 
@@ -196,7 +196,7 @@ class Server(Cog):
 
         except Exception as e:
             LogError(f"Error setting up autorole: {str(e)}")
-            raise Exception ("Error setting up autorole") from e
+            raise RuntimeError("Error setting up autorole") from e
 
     @commands.slash_command(name="setup-deleteautorole", description="Delete autorole configuration for the server")
     @commands.has_permissions(administrator=True)
@@ -232,7 +232,7 @@ class Server(Cog):
 
         except Exception as e:
             LogError(f"Error deleting autorole: {str(e)}")
-            raise Exception ("Error deleting autorole") from e
+            raise RuntimeError("Error deleting autorole") from e
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #AdminFeedback
@@ -254,7 +254,7 @@ class Server(Cog):
             await ctx.respond(embed=embed)
         except Exception as e:
             LogError(f"❌ Error setting up admin feedback: {e}")
-            raise Exception("Error setting up admin feedback") from e
+            raise RuntimeError("Error setting up admin feedback") from e
 
     @commands.slash_command(name="setup-deleteadminfeedback", description="🗑 Remove the admin feedback system")
     @commands.has_permissions(administrator=True)
@@ -277,7 +277,7 @@ class Server(Cog):
             await ctx.respond(embed=embed)
         except Exception as e:
             LogError(f"❌ Error deleting admin feedback configuration: {e}")
-            raise Exception("Error deleting admin feedback configuration") from e
+            raise RuntimeError("Error deleting admin feedback configuration") from e
 
 
 def setup(bot):

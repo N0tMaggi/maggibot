@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
+import asyncio
 from handlers.debug import LogDebug, LogError
 from handlers.config import loadvoicegateconfig, savevoicegateconfig
 
@@ -77,16 +78,20 @@ class VoiceGate(commands.Cog):
                 if final_channel is None:
                     try:
                         await member.send("Final channel not found. Please contact an administrator.")
-                    except Exception:
-                        pass
+                    except discord.Forbidden:
+                        LogDebug(f"Could not send DM to {member.id} about missing final channel")
+                    except Exception as e:
+                        LogError(f"Failed to send channel missing DM to {member.id}: {str(e)}")
                     return
                 await member.move_to(final_channel)
                 await member.edit(mute=False)
                 try:
                     await member.send("You have been moved to the final channel. Enjoy!")
-                except Exception:
-                    pass
-            except Exception:
+                except discord.Forbidden:
+                    LogDebug(f"Could not send success DM to {member.id} - DMs disabled")
+                except Exception as e:
+                    LogError(f"Failed to send success DM to {member.id}: {str(e)}")
+            except asyncio.TimeoutError:
                 try:
                     await member.move_to(None)
                     await member.send("You did not accept the rules in time. Please rejoin the voice channel to try again.")

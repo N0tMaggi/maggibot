@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord.commands import slash_command
-import datetime
 import os
 import requests
 from io import BytesIO
@@ -10,6 +9,7 @@ from urllib.parse import urlparse
 import handlers.config as cfg
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
 from handlers.env import get_tiktok_api_key
+from utils.embed_helpers import create_embed as utils_create_embed
 
 media_dir = "data/media"
 API_KEY = get_tiktok_api_key()
@@ -25,14 +25,14 @@ def get_extension(url: str, default_ext: str) -> str:
     return ext.lstrip(".")
 
 def create_embed(title: str, description: str, color: discord.Color) -> discord.Embed:
-    embed = discord.Embed(
+    embed = utils_create_embed(
         title=title,
         description=description,
         color=color,
-        timestamp=datetime.datetime.now()
+        thumbnail=TIKTOK_ICON_URL,
+        footer_text="TikTok Downloader • maggi.dev API",
+        timestamp=True
     )
-    embed.set_thumbnail(url=TIKTOK_ICON_URL)
-    embed.set_footer(text="TikTok Downloader • maggi.dev API")
     return embed
 
 def safe_embed_field_value(value: str, max_length: int = 1024) -> str:
@@ -68,7 +68,7 @@ class Tiktok(commands.Cog):
             api_response = requests.get(api_url)
 
             if api_response.status_code != 200:
-                raise Exception(f"API returned HTTP {api_response.status_code}")
+                raise requests.HTTPError(f"API returned HTTP {api_response.status_code}", response=api_response)
 
             api_data = api_response.json()
 
