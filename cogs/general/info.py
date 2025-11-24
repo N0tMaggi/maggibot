@@ -126,8 +126,10 @@ class InfoSystem(commands.Cog):
                     self.clear_items()
                     message = await self.message.edit(view=self)
                     await message.edit(view=None)
-                except:
-                    pass
+                except discord.NotFound:
+                    LogDebug("Message already deleted in status refresh")
+                except Exception as e:
+                    LogError(f"Failed to clear status view: {str(e)}")
 
         try:
             view = RefreshView(self)

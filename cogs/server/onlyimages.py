@@ -3,6 +3,7 @@ from discord.ext import commands
 import json
 import os
 from handlers.config import load_onlyimages, save_onlyimages
+from handlers.debug import LogError
 from utils.embed_helpers import create_embed as utils_create_embed
 
 
@@ -91,7 +92,9 @@ class OnlyImages(commands.Cog):
             try:
                 await message.delete()
             except discord.Forbidden:
-                pass
+                LogError(f"Missing permissions to delete message in {message.channel.id}")
+            except Exception as e:
+                LogError(f"Failed to delete non-image message: {str(e)}")
             
             warning_embed = self.create_embed(
                 title="⚠️ Attachment Required",
@@ -105,7 +108,9 @@ class OnlyImages(commands.Cog):
             try:
                 await message.channel.send(embed=warning_embed, delete_after=10)
             except discord.Forbidden:
-                pass
+                LogError(f"Missing permissions to send warning in {message.channel.id}")
+            except Exception as e:
+                LogError(f"Failed to send image-only warning: {str(e)}")
 
 def setup(bot: commands.Bot):
     bot.add_cog(OnlyImages(bot))

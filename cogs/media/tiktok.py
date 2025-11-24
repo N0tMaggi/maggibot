@@ -68,7 +68,7 @@ class Tiktok(commands.Cog):
             api_response = requests.get(api_url)
 
             if api_response.status_code != 200:
-                raise Exception(f"API returned HTTP {api_response.status_code}")
+                raise ConnectionError(f"API returned HTTP {api_response.status_code}")
 
             api_data = api_response.json()
 

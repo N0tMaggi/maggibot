@@ -48,7 +48,9 @@ class MacBan(commands.Cog):
                 )
                 await member.send(embed=dm_embed)
             except discord.Forbidden:
-                pass
+                LogDebug(f"Could not send bypass DM to {member.id} - DMs disabled")
+            except Exception as e:
+                LogError(f"Failed to send bypass DM to {member.id}: {str(e)}")
 
 
             channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
@@ -81,12 +83,16 @@ class MacBan(commands.Cog):
             dm_embed.add_field(name="Need Help?", value="> Contact support: [discord.ag7-dev.de](https://discord.ag7-dev.de)", inline=False)
             await member.send(embed=dm_embed)
         except discord.Forbidden:
-            pass
+            LogDebug(f"Could not send ban DM to {member.id} - DMs disabled")
+        except Exception as e:
+            LogError(f"Failed to send ban DM to {member.id}: {str(e)}")
 
         try:
             await member.kick(reason="MAC™ Global Ban")
-        except Exception:
-            pass
+        except discord.Forbidden as e:
+            LogError(f"Missing permissions to kick {member.id} from {member.guild.id}")
+        except Exception as e:
+            LogError(f"Failed to kick banned user {member.id}: {str(e)}")
 
         channel = self.bot.get_channel(NOTIFY_CHANNEL_ID)
         if channel:
@@ -147,7 +153,9 @@ class MacBan(commands.Cog):
             user_embed.add_field(name="억 Appeal Information", value="> Contact support: [discord.ag7-dev.de](https://discord.ag7-dev.de)", inline=False)
             await user.send(embed=user_embed)
         except discord.Forbidden:
-            pass
+            LogDebug(f"Could not send ban notification to {user.id} - DMs disabled")
+        except Exception as e:
+            LogError(f"Failed to send ban notification to {user.id}: {str(e)}")
 
     @commands.slash_command(name="mac-bypass", description="Allows a globally banned user to join this server.")
     @commands.has_permissions(administrator=True)
@@ -206,7 +214,9 @@ class MacBan(commands.Cog):
             )
             await user.send(embed=user_embed)
         except discord.Forbidden:
-            pass
+            LogDebug(f"Could not send unban notification to {user.id} - DMs disabled")
+        except Exception as e:
+            LogError(f"Failed to send unban notification to {user.id}: {str(e)}")
 
     @commands.slash_command(name="mac-lookup", description="Looks up a user's global ban record.")
     @is_owner()

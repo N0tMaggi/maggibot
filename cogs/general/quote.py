@@ -40,7 +40,8 @@ class Quote(commands.Cog):
                     font_regular = ImageFont.truetype("fonts/NotoSans-Regular.ttf", 32)
                     font_italic = ImageFont.truetype("fonts/NotoSans-Italic.ttf", 28)
                     font_small = ImageFont.truetype("fonts/NotoSans-Regular.ttf", 24)
-                except:
+                except IOError as e:
+                    LogDebug(f"Font files not found, using default fonts: {e}")
                     font_regular = ImageFont.load_default(32)
                     font_italic = ImageFont.load_default(28)
                     font_small = ImageFont.load_default(24)
