@@ -4,19 +4,21 @@ from discord.ext import commands
 from discord.commands import slash_command
 import os
 import asyncio
-from datetime import datetime
+from utils.embed_helpers import create_embed as utils_create_embed
 
 class SortedAction(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
 
-    def create_embed(self, title, description, color=discord.Color.blue()):
+    def create_embed(self, title, description, color=None):
         """Helper function to create uniform embeds."""
-        embed = discord.Embed(
+        if color is None:
+            color = discord.Color.blue()
+        embed = utils_create_embed(
             title=title,
             description=description,
             color=color,
-            timestamp=datetime.now()
+            bot_user=self.bot.user
         )
         embed.set_footer(text="Moderation Action | Bot")
         return embed

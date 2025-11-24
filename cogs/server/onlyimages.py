@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 import json
 import os
-from datetime import datetime
 from handlers.config import load_onlyimages, save_onlyimages
+from utils.embed_helpers import create_embed as utils_create_embed
 
 
 
@@ -14,13 +14,12 @@ class OnlyImages(commands.Cog):
         self.embed_color = 0x2b2d31
 
     def create_embed(self, title, description, color=None):
-        embed = discord.Embed(
+        embed = utils_create_embed(
             title=title,
             description=description,
             color=color or self.embed_color,
-            timestamp=datetime.utcnow()
+            bot_user=self.bot.user
         )
-        embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.avatar.url)
         return embed
 
     @commands.slash_command(description="Enable only images mode in this channel")

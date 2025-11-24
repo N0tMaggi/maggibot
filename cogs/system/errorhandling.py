@@ -289,11 +289,12 @@ class ErrorHandling(commands.Cog):
         sys.exit()
 
     def create_embed(self, title, description, style):
-        return discord.Embed(
+        from utils.embed_helpers import create_embed as utils_create_embed
+        return utils_create_embed(
             title=title,
             description=description,
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=True
         )
 
 def setup(bot: commands.Bot):

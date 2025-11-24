@@ -1,17 +1,19 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
 import psutil
 import time
 import platform
 import os
 from handlers.debug import LogSystem, LogError, LogDebug
+from utils.embed_helpers import create_info_embed
 
 def get_host_uptime():
+    from datetime import datetime
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
     return str(uptime).split('.')[0]  
 
 def get_bot_uptime():
+    from datetime import datetime
     uptime = datetime.now() - datetime.fromtimestamp(time.time() - psutil.Process().create_time())
     return str(uptime).split('.')[0]
 
@@ -20,11 +22,6 @@ class InfoSystem(commands.Cog):
         self.bot = bot
         self.owner_id = os.getenv("OWNER_ID")
         self.bot.version = os.getenv("BOT_VERSION")
-        self.embed_colors = {
-            "info": 0x3498db,
-            "status": 0x2ecc71,
-            "error": 0xe74c3c
-        }
 
     class SupportView(discord.ui.View):
         def __init__(self):
@@ -50,18 +47,12 @@ class InfoSystem(commands.Cog):
             ))
 
     def create_embed(self, title, description, color_name="info"):
-        embed = discord.Embed(
+        """Create an info embed using centralized utility"""
+        return create_info_embed(
             title=title,
             description=description,
-            color=self.embed_colors.get(color_name, 0x3498db),
-            timestamp=datetime.utcnow()
+            bot_user=self.bot.user
         )
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-        embed.set_footer(
-            text="AG7 Dev System",
-            icon_url="https://ag7-dev.de/favicon/favicon.ico"
-        )
-        return embed
 
     @commands.slash_command(name="info", description="📚 Get detailed bot information")
     async def info(self, ctx: discord.ApplicationContext):

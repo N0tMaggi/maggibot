@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
 
 import os
 import asyncio
 from typing import Optional
 from handlers.debug import LogDebug, LogSystem, LogError
 from handlers.env import get_owner
+from utils.embed_helpers import create_info_embed
 
 class OwnerCommands(commands.Cog):
     def __init__(self, bot):
@@ -14,29 +14,18 @@ class OwnerCommands(commands.Cog):
         self.shutdown_in_progress = False
         self.reboot_in_progress = False
         self.owner_id = get_owner()
-        self.embed_colors = {
-            "info": 0x3498db,
-            "status": 0x2ecc71,
-            "error": 0xe74c3c
-        }
 
     async def check_running_tasks(self) -> bool:
         # Work in progress
         return True
 
     def create_embed(self, title, description, color_name="info"):
-        embed = discord.Embed(
+        """Create an info embed using centralized utility"""
+        return create_info_embed(
             title=title,
             description=description,
-            color=self.embed_colors.get(color_name, 0x3498db),
-            timestamp=datetime.utcnow()
+            bot_user=self.bot.user
         )
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-        embed.set_footer(
-            text="AG7 Dev System",
-            icon_url="https://ag7-dev.de/favicon/favicon.ico"
-        )
-        return embed
     
 
     async def shutdown_sequence(self, ctx: discord.ApplicationContext):

@@ -1,35 +1,22 @@
 import discord
 from discord.ext import commands
 from discord.commands import slash_command
-import datetime
 from handlers.debug import LogError, LogModeration
+from utils.embed_helpers import create_mod_embed
 
 class ModCommunityBan(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-        self.embed_colors = {
-            'success': 0x2ECC71,
-            'error': 0xE74C3C,
-            'mod_action': 0x992D22
-        }
 
     def create_embed(self, title, description, color_type='mod_action', author=None):
-        spacer = "\u200b" * 20  
-        divider = "─" * 30 
-        
-        embed = discord.Embed(
+        """Create a moderation embed using centralized utility"""
+        return create_mod_embed(
             title=title,
-            description=f"{description}\n\n{divider}",
-            color=self.embed_colors.get(color_type, 0x2b2d31),
-            timestamp=datetime.datetime.utcnow()
+            description=description,
+            color_type=color_type,
+            author=author,
+            bot_user=self.bot.user
         )
-        
-        if author:
-            embed.set_author(name=str(author), icon_url=author.display_avatar.url)
-            
-        
-        embed.set_footer(text="Community ModSystem", icon_url=self.bot.user.display_avatar.url)
-        return embed
 
     @slash_command(name="mod-community-ban", description="Start community ban vote (Admin only)")
     @commands.has_permissions(administrator=True)
@@ -118,8 +105,10 @@ class ModCommunityBan(commands.Cog):
                         'error'
                     )
                     await self.target.send(embed=dm_embed)
-                except:
-                    pass
+                except discord.Forbidden:
+                    LogError(f"Could not send DM to {self.target.id} - DMs disabled")
+                except Exception as e:
+                    LogError(f"Failed to send ban DM: {str(e)}")
 
                 LogModeration(f"Community ban executed for {self.target.id} by {interaction.user.id}")
 
