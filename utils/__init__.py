@@ -2,6 +2,7 @@
 Utility modules for MaggiBot
 """
 
-from .embed_helpers import create_embed, EmbedColors
+from .colors import EmbedColors
+from .embed_helpers import create_embed
 
 __all__ = ['create_embed', 'EmbedColors']

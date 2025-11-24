@@ -29,7 +29,7 @@ class TrollCommands(commands.Cog):
         # Apply custom footer/author
         if user:
             embed.set_footer(text=f"Requested by {user}", icon_url=user.display_avatar.url)
-        if guild and hasattr(guild, 'icon') and guild.icon:
+        if guild and guild.icon:
             embed.set_author(name=guild.name, icon_url=guild.icon.url)
         
         return embed

@@ -4,16 +4,15 @@ import psutil
 import time
 import platform
 import os
+from datetime import datetime
 from handlers.debug import LogSystem, LogError, LogDebug
 from utils.embed_helpers import create_info_embed
 
 def get_host_uptime():
-    from datetime import datetime
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
     return str(uptime).split('.')[0]  
 
 def get_bot_uptime():
-    from datetime import datetime
     uptime = datetime.now() - datetime.fromtimestamp(time.time() - psutil.Process().create_time())
     return str(uptime).split('.')[0]
 

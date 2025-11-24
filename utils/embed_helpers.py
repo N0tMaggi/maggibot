@@ -3,7 +3,6 @@ Centralized embed creation utilities
 """
 
 import discord
-from datetime import datetime, timezone
 from typing import Optional, Union
 
 from .colors import EmbedColors
