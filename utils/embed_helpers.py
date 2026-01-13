@@ -69,8 +69,8 @@ def create_embed(
     # Set footer
     if footer_text or footer_icon:
         embed.set_footer(
-            text=footer_text or discord.Embed.Empty,
-            icon_url=footer_icon or discord.Embed.Empty
+            text=footer_text or None,
+            icon_url=footer_icon or None
         )
     elif bot_user:
         # Default footer with bot icon
