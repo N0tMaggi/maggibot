@@ -3,26 +3,65 @@ from discord.ext import commands
 import datetime
 
 import handlers.config as config
-from handlers.debug import LogDebug, LogError
+from handlers.debug import LogError
 from extensions.loggingextension import create_log_embed
 
 
 class Logging(commands.Cog):
+    DEFAULT_EVENT_FLAGS = {
+        "member_join": True,
+        "member_remove": True,
+        "member_ban": True,
+        "member_unban": True,
+        "member_update": True,
+        "message_delete": True,
+        "message_edit": True,
+        "voice_state": True,
+        "channel_create": True,
+        "channel_delete": True,
+        "channel_update": True,
+        "role_create": True,
+        "role_delete": True,
+        "role_update": True,
+    }
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.serverconfig = config.loadserverconfig()
 
-    # ------------------------------------------------------------
-    # Setup command
-    # ------------------------------------------------------------
-    @commands.slash_command(name="setup-logging", description="Set the logging forum channel")
-    @commands.has_permissions(administrator=True)
-    async def setup_logging(self, ctx: discord.ApplicationContext, forum: discord.ForumChannel):
+    def _refresh_config(self):
+        self.serverconfig = config.loadserverconfig()
+
+    def _get_event_flags(self, guild_id: str) -> dict:
+        guild_cfg = self.serverconfig.get(guild_id, {})
+        flags = guild_cfg.get("logging_events", {})
+        merged = self.DEFAULT_EVENT_FLAGS.copy()
+        if isinstance(flags, dict):
+            merged.update({k: bool(v) for k, v in flags.items() if k in merged})
+        return merged
+
+    def _is_enabled(self, guild: discord.Guild, event_name: str) -> bool:
+        self._refresh_config()
+        return self._get_event_flags(str(guild.id)).get(event_name, True)
+
+    def _trim(self, value: str, max_len: int = 950) -> str:
+        if not value:
+            return "N/A"
+        return value if len(value) <= max_len else f"{value[:max_len]}…"
+
+    async def configure_logging_forum(
+        self,
+        ctx: discord.ApplicationContext,
+        forum: discord.ForumChannel,
+    ):
         try:
+            self._refresh_config()
             guild_id = str(ctx.guild.id)
             if guild_id not in self.serverconfig:
                 self.serverconfig[guild_id] = {}
             self.serverconfig[guild_id]["logging_forum"] = forum.id
+
+            self.serverconfig[guild_id].setdefault("logging_events", self.DEFAULT_EVENT_FLAGS.copy())
             config.saveserverconfig(self.serverconfig)
 
             embed = discord.Embed(
@@ -35,6 +74,30 @@ class Logging(commands.Cog):
         except Exception as e:
             LogError(f"Failed to configure logging forum: {e}")
             await ctx.respond("Error configuring logging forum.", ephemeral=True)
+
+    async def configure_event(
+        self,
+        ctx: discord.ApplicationContext,
+        event_name: str,
+        enabled: bool,
+    ):
+        if event_name not in self.DEFAULT_EVENT_FLAGS:
+            await ctx.respond("Unknown logging event.", ephemeral=True)
+            return
+
+        self._refresh_config()
+        guild_id = str(ctx.guild.id)
+        self.serverconfig.setdefault(guild_id, {})
+        event_flags = self._get_event_flags(guild_id)
+        event_flags[event_name] = enabled
+        self.serverconfig[guild_id]["logging_events"] = event_flags
+        config.saveserverconfig(self.serverconfig)
+
+        state = "enabled" if enabled else "disabled"
+        await ctx.respond(
+            f"Logging event `{event_name}` is now **{state}**.",
+            ephemeral=True,
+        )
 
     # ------------------------------------------------------------
     # Helper to send logs
@@ -51,6 +114,7 @@ class Logging(commands.Cog):
             return
         try:
             thread_name = f"{title}-{user_id}" if user_id else title
+            thread_name = self._trim(thread_name, max_len=95)
             await forum.create_thread(name=thread_name, embed=embed)
         except Exception as e:
             LogError(f"Failed to post log in guild {guild.id}: {e}")
@@ -60,6 +124,8 @@ class Logging(commands.Cog):
     # ------------------------------------------------------------
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+        if not self._is_enabled(member.guild, "member_join"):
+            return
         description = f"{member.mention} joined the server."
         fields = [
             ("Account Created", f"<t:{int(member.created_at.timestamp())}:R>", True),
@@ -77,6 +143,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
+        if not self._is_enabled(member.guild, "member_remove"):
+            return
         description = f"{member.mention} left the server."
         join_time = (
             f"<t:{int(member.joined_at.timestamp())}:R>" if member.joined_at else "Unknown"
@@ -97,6 +165,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
+        if not self._is_enabled(guild, "member_ban"):
+            return
         description = f"{user.mention} was banned."
         fields = [("User ID", str(user.id), True)]
         embed = create_log_embed("Member Banned", description, "ban", user, fields, guild=guild)
@@ -106,9 +176,12 @@ class Logging(commands.Cog):
     async def on_message_delete(self, message: discord.Message):
         if not message.guild or message.author.bot:
             return
-        content = message.content or "*No text content*"
+        if not self._is_enabled(message.guild, "message_delete"):
+            return
+
+        content = self._trim(message.content or "*No text content*")
         description = f"Message deleted in {message.channel.mention}."
-        attachments = ", ".join(a.url for a in message.attachments) or "None"
+        attachments = self._trim(", ".join(a.url for a in message.attachments) or "None")
         fields = [
             ("Author", message.author.mention, True),
             ("Channel", message.channel.mention, True),
@@ -133,13 +206,15 @@ class Logging(commands.Cog):
             return
         if before.content == after.content:
             return
+        if not self._is_enabled(after.guild, "message_edit"):
+            return
         description = f"Message edited in {after.channel.mention}."
-        attachments = ", ".join(a.url for a in after.attachments) or "None"
+        attachments = self._trim(", ".join(a.url for a in after.attachments) or "None")
         fields = [
             ("Author", after.author.mention, True),
             ("Channel", after.channel.mention, True),
-            ("Before", before.content or "*No text*", False),
-            ("After", after.content or "*No text*", False),
+            ("Before", self._trim(before.content or "*No text*"), False),
+            ("After", self._trim(after.content or "*No text*"), False),
             ("Attachments", attachments, False),
             ("Message ID", str(after.id), True),
             ("User ID", str(after.author.id), True),
@@ -156,6 +231,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
+        if not self._is_enabled(guild, "member_unban"):
+            return
         description = f"{user.mention} was unbanned."
         fields = [("User ID", str(user.id), True)]
         embed = create_log_embed("Member Unbanned", description, "ban", user, fields, guild=guild)
@@ -163,6 +240,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if not self._is_enabled(after.guild, "member_update"):
+            return
         if before.nick != after.nick:
             description = f"Nickname changed for {after.mention}"
             fields = [
@@ -214,6 +293,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if not self._is_enabled(member.guild, "voice_state"):
+            return
         if before.channel != after.channel:
             if before.channel is None:
                 action = "joined"
@@ -241,6 +322,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        if not self._is_enabled(channel.guild, "channel_create"):
+            return
         fields = [
             ("Channel ID", str(channel.id), True),
             ("Type", str(channel.type), True),
@@ -267,6 +350,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        if not self._is_enabled(channel.guild, "channel_delete"):
+            return
         fields = [
             ("Channel ID", str(channel.id), True),
             ("Type", str(channel.type), True),
@@ -297,6 +382,8 @@ class Logging(commands.Cog):
         before: discord.abc.GuildChannel,
         after: discord.abc.GuildChannel,
     ):
+        if not self._is_enabled(after.guild, "channel_update"):
+            return
         if before.name == after.name and getattr(before, "topic", None) == getattr(after, "topic", None):
             return
         fields = [
@@ -317,6 +404,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role: discord.Role):
+        if not self._is_enabled(role.guild, "role_create"):
+            return
         fields = [
             ("Role Name", role.name, True),
             ("Role ID", str(role.id), True),
@@ -343,6 +432,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
+        if not self._is_enabled(role.guild, "role_delete"):
+            return
         fields = [
             ("Role Name", role.name, True),
             ("Role ID", str(role.id), True),
@@ -369,6 +460,8 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        if not self._is_enabled(after.guild, "role_update"):
+            return
         if before.name == after.name and before.permissions == after.permissions and before.color == after.color:
             return
         fields = [

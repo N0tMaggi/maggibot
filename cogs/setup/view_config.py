@@ -1,11 +1,9 @@
 import discord
 from discord.ext import commands
-from discord.commands import slash_command
-from discord.ui import View, Select, Button
-from discord import ui
+from discord.ui import Select, Button
 import datetime
 import handlers.config as config
-from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
+from handlers.debug import LogError
 
 
 class ConfigView(discord.ui.View):
@@ -89,10 +87,6 @@ class ConfigSettings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(
-        name="setup-showconfig",
-        description="Show the current server configuration"
-    )
     @commands.has_permissions(administrator=True)
     async def settings_showconfig(self, ctx: discord.ApplicationContext):
         try:

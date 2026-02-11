@@ -25,7 +25,6 @@ class Server(Cog):
 # LogChannel
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    @commands.slash_command(name="setup-logchannel", description="Set the log channel for the server")
     @commands.has_permissions(administrator=True)
     async def settings_logchannel(self, ctx: discord.ApplicationContext, channel: discord.TextChannel):
         try:
@@ -76,7 +75,6 @@ class Server(Cog):
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 
-    @commands.slash_command(name="setup-voicegate", description="Set up a voice gate channel for this server")
     @commands.has_permissions(administrator=True)
     async def setup_voicegate(
         self, 
@@ -122,7 +120,6 @@ class Server(Cog):
         except Exception as e:
             raise RuntimeError(f"Error in setup_voicegate command: {e}")
 
-    @commands.slash_command(name="setup-showvoicegatesettings", description="Show the current voice gate settings for this server")
     @commands.has_permissions(administrator=True)
     async def setup_showvoicegatesettings(self, ctx: discord.ApplicationContext):
         try:
@@ -139,7 +136,6 @@ class Server(Cog):
         except Exception as e:
             raise RuntimeError(f"Error in setup-showvoicegatesettings command: {e}")
 
-    @commands.slash_command(name="setup-deletevoicegate", description="Delete the voice gate configuration for the given voice channel")
     @commands.has_permissions(administrator=True)
     async def setup_deletevoicegate(self, ctx: discord.ApplicationContext, gate_channel: discord.VoiceChannel):
         try:
@@ -167,7 +163,6 @@ class Server(Cog):
 
 
 
-    @commands.slash_command(name="setup-autorole", description="Setup autorole for the server")
     @commands.has_permissions(administrator=True)
     async def setup_autorole(self, ctx: discord.ApplicationContext, role: discord.Role):
         """Setup autorole for server"""
@@ -198,7 +193,6 @@ class Server(Cog):
             LogError(f"Error setting up autorole: {str(e)}")
             raise RuntimeError("Error setting up autorole") from e
 
-    @commands.slash_command(name="setup-deleteautorole", description="Delete autorole configuration for the server")
     @commands.has_permissions(administrator=True)
     async def setup_deleteautorole(self, ctx: discord.ApplicationContext):
         """Delete autorole for server"""
@@ -238,7 +232,6 @@ class Server(Cog):
 #AdminFeedback
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    @commands.slash_command(name="setup-adminfeedback", description="🔧 Set up admin feedback")
     @commands.has_permissions(administrator=True)
     async def setup_admin_feedback(self, ctx, team_role: discord.Role):
         try:
@@ -256,7 +249,6 @@ class Server(Cog):
             LogError(f"❌ Error setting up admin feedback: {e}")
             raise RuntimeError("Error setting up admin feedback") from e
 
-    @commands.slash_command(name="setup-deleteadminfeedback", description="🗑 Remove the admin feedback system")
     @commands.has_permissions(administrator=True)
     async def setup_delete_admin_feedback(self, ctx):
         try:
