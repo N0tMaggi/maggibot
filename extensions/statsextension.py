@@ -17,8 +17,8 @@ def create_stats_embed(title, description="", color_type="stats", author=None):
         timestamp=datetime.datetime.now()
     )
     embed.set_footer(
-        text="AG7 Stats System",
-        icon_url="https://ag7-dev.de/favicon/favicon.ico"
+        text="Maggi Stats System",
+        icon_url="https://maggi.dev/favicon/favicon.ico"
     )
 
     if author:

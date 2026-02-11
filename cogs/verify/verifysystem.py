@@ -17,8 +17,8 @@ class TicketVerify(commands.Cog):
             description=description,
             color=color_type,
             thumbnail=thumbnail if thumbnail else None,
-            footer_text="AG7 Verification System",
-            footer_icon="https://ag7-dev.de/favicon/favicon.ico",
+            footer_text="Maggi Verification System",
+            footer_icon="https://maggi.dev/favicon/favicon.ico",
             timestamp=True
         )
         return embed

@@ -134,7 +134,7 @@ def create_info_embed(
     **kwargs
 ) -> discord.Embed:
     """
-    Create an info embed with AG7 Dev styling.
+    Create an info embed with Maggi Dev styling.
     
     Args:
         title: Embed title
@@ -150,8 +150,8 @@ def create_info_embed(
         description=description,
         color='info',
         thumbnail=bot_user.display_avatar.url if bot_user and hasattr(bot_user, 'display_avatar') else None,
-        footer_text="AG7 Dev System",
-        footer_icon="https://ag7-dev.de/favicon/favicon.ico",
+        footer_text="Maggi Dev System",
+        footer_icon="https://maggi.dev/favicon/favicon.ico",
         **kwargs
     )
     

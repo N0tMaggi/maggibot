@@ -3,7 +3,7 @@
 </p>
 <p align="center"><h1 align="center">MAGGIBOT</h1></p>
 <p align="center">
-	<em><code>❯ Made by AG7</code></em>
+	<em><code>❯ Made by Maggi</code></em>
 </p>
 <p align="center">
 	<img src="https://img.shields.io/github/license/ag7dev/maggibot?style=flat&logo=opensourceinitiative&logoColor=white&color=ff00e0" alt="license">

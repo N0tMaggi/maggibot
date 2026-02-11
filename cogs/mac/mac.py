@@ -80,7 +80,7 @@ class MacBan(commands.Cog):
                 color=discord.Color.dark_red()
             )
             dm_embed.add_field(name="Reason", value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```", inline=False)
-            dm_embed.add_field(name="Need Help?", value="> Contact support: [discord.ag7-dev.de](https://discord.ag7-dev.de)", inline=False)
+            dm_embed.add_field(name="Need Help?", value="> Contact support: [discord.maggi.dev](https://discord.maggi.dev)", inline=False)
             await member.send(embed=dm_embed)
         except discord.Forbidden:
             LogDebug(f"Could not send ban DM to {member.id} - DMs disabled")
@@ -150,7 +150,7 @@ class MacBan(commands.Cog):
                 color=discord.Color.dark_red()
             )
             user_embed.add_field(name="📄 Reason", value=f"```{reason}```", inline=False)
-            user_embed.add_field(name="억 Appeal Information", value="> Contact support: [discord.ag7-dev.de](https://discord.ag7-dev.de)", inline=False)
+            user_embed.add_field(name="억 Appeal Information", value="> Contact support: [discord.maggi.dev](https://discord.maggi.dev)", inline=False)
             await user.send(embed=user_embed)
         except discord.Forbidden:
             LogDebug(f"Could not send ban notification to {user.id} - DMs disabled")

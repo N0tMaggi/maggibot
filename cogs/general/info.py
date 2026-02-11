@@ -27,13 +27,13 @@ class InfoSystem(commands.Cog):
             super().__init__(timeout=None)
             self.add_item(discord.ui.Button(
                 label="Support Server",
-                url="https://discord.ag7-dev.de",
+                url="https://discord.maggi.dev",
                 style=discord.ButtonStyle.link,
                 emoji="🌐"
             ))
             self.add_item(discord.ui.Button(
                 label="Documentation",
-                url="https://ag7-dev.de/docs",
+                url="https://maggi.dev/docs",
                 style=discord.ButtonStyle.link,
                 disabled=True,
                 emoji="📚"

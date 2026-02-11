@@ -25,8 +25,8 @@ class XPSetup(commands.Cog):
             description=description,
             color=color_type,
             bot_user=self.bot.user,
-            footer_text="AG7 Stats System",
-            footer_icon="https://ag7-dev.de/favicon/favicon.ico"
+            footer_text="Maggi Stats System",
+            footer_icon="https://maggi.dev/favicon/favicon.ico"
         )
         return embed
 
