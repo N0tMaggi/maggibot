@@ -3,19 +3,15 @@
 
 import sys
 import os
-import time
 import json
-import logging
 import datetime
 import requests
 import discord
-from discord.ext import commands
-from discord.commands import slash_command
 from colorama import Fore, Style, init
 from dotenv import load_dotenv
 
 # Local imports
-from handlers.debug import LogDebug, LogError, LogSystem
+from handlers.debug import LogError, LogSystem
 from handlers.config import get_config_files, get_data_files
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -38,7 +34,10 @@ bot = discord.Bot(intents=intents)
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def clear_screen():
     """Clear console screen"""
-    os.system('cls' if os.name == 'nt' else 'clear')
+    if os.name == 'nt':
+        print('\033c', end='')
+    else:
+        print('\033c', end='')
 
 def handle_installation():
     """Handle command line installation arguments"""
@@ -154,17 +153,20 @@ def load_extensions(bot, directory='cogs'):
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 def delete_traceback_files():
-    for filename in os.listdir('./logs/traceback'):
+    traceback_directory = './logs/traceback'
+    os.makedirs(traceback_directory, exist_ok=True)
+
+    for filename in os.listdir(traceback_directory):
         if filename.startswith('traceback_'):
             try:
-                os.remove(os.path.join('./logs/traceback', filename))
+                os.remove(os.path.join(traceback_directory, filename))
                 LogSystem(f" Deleted traceback file {filename}")
-                print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-                print (Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
+                print(Fore.GREEN + Style.BRIGHT + "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+                print(Fore.GREEN + Style.BRIGHT + f"Deleted traceback file {filename}")
             except Exception as e:
                 LogError(f" Error deleting log file {filename}: {e}")
                 raise Exception (f"Error deleting log file {filename}: {e}")
-    print(Fore.GREEN + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+    print(Fore.GREEN + Style.BRIGHT + "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Main Execution

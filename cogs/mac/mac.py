@@ -11,6 +11,7 @@ from handlers.config import (
     mac_save_bypasses,
 )
 from extensions.macextension import trim_field, create_mac_embed
+from handlers.debug import LogDebug, LogError
 
 NOTIFY_CHANNEL_ID = int(get_mac_channel())
 OWNER_ID = int(get_owner())
