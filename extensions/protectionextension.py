@@ -75,6 +75,18 @@ async def create_alert_embed(message, mention_count):
 
 
 
+def _format_user_label(user: discord.abc.User | None) -> str:
+    if user is None:
+        return "Unknown"
+    name = user.name
+    discriminator = getattr(user, "discriminator", None)
+    if discriminator and discriminator != "0":
+        tag = f"{name}#{discriminator}"
+    else:
+        tag = name
+    return f"{user.mention}\n{tag}"
+
+
 async def create_protection_config_embed(ctx, title, description, color, fields=None):
     embed = discord.Embed(
         title=title,
@@ -82,19 +94,27 @@ async def create_protection_config_embed(ctx, title, description, color, fields=
         color=color,
         timestamp=datetime.datetime.utcnow()
     )
-    
-    embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-    
-    embed.add_field(name="🛡️ Action Performed By", 
-                   value=f"{ctx.author.mention}\n{ctx.author.name}#{ctx.author.discriminator}",
-                   inline=True)
-    
+
+    guild = getattr(ctx, "guild", None)
+    if guild:
+        embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+
+    user = getattr(ctx, "author", None) or getattr(ctx, "user", None)
+    embed.add_field(
+        name="Action Performed By",
+        value=_format_user_label(user),
+        inline=True
+    )
+
     if fields:
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
-    
-    embed.set_footer(text=f"Server ID: {ctx.guild.id} | Protection System")
-    
+
+    if guild:
+        embed.set_footer(text=f"Server ID: {guild.id} | Protection System")
+    else:
+        embed.set_footer(text="Protection System")
+
     return embed
 
 
