@@ -6,3 +6,4 @@ config/
 data/
 logs/traceback/
 venv/
+.venv/
