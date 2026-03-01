@@ -1009,8 +1009,8 @@ class TicketSystem(Cog):
                     ticket_data["status"] == "Open"
                     and inactivity >= escalation_threshold
                 ):
-                    log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
-                    log_channel = guild.get_channel(log_channel_id)
+                    log_channel_id = self.serverconfig.get(guild_id, {}).get("ticketlogchannel")
+                    log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
                     if log_channel:
                         embed_escalation = discord.Embed(
                             title="Ticket Escalation",
@@ -1029,8 +1029,9 @@ class TicketSystem(Cog):
                             inline=True,
                         )
                         await log_channel.send(embed=embed_escalation)
-                ticket_data["status"] = "Escalated"
-                self.save_ticket_data(self.tickets)
+
+                    ticket_data["status"] = "Escalated"
+                    self.save_ticket_data(self.tickets)
 
     @ticket_check_loop.before_loop
     async def before_ticket_check(self):
