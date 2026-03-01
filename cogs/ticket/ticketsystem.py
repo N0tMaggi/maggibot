@@ -8,6 +8,7 @@ import io
 import html
 import handlers.config as config
 from handlers.debug import LogDebug, LogError
+from utils.ticket_flow import decide_inactivity_action
 
 
 def NoPrivateMessage(ctx):
@@ -988,10 +989,14 @@ class TicketSystem(Cog):
                     ticket_data["last_activity"]
                 )
                 inactivity = now - last_activity
-                if (
-                    ticket_data["status"] == "Open"
-                    and reminder_threshold < inactivity < escalation_threshold
-                ):
+                decision = decide_inactivity_action(
+                    status=ticket_data.get("status", ""),
+                    inactivity=inactivity,
+                    reminder_threshold=reminder_threshold,
+                    escalation_threshold=escalation_threshold,
+                )
+
+                if decision.send_reminder:
                     embed_reminder = discord.Embed(
                         title="Ticket Reminder",
                         description="There has been no activity in this ticket for over 1 hour. Please update your ticket or a support agent will follow up shortly.",
@@ -1005,10 +1010,7 @@ class TicketSystem(Cog):
                         name="Status", value=ticket_data["status"], inline=True
                     )
                     await ticket_thread.send(embed=embed_reminder)
-                elif (
-                    ticket_data["status"] == "Open"
-                    and inactivity >= escalation_threshold
-                ):
+                elif decision.escalate:
                     log_channel_id = self.serverconfig.get(guild_id, {}).get("ticketlogchannel")
                     log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
                     if log_channel:
