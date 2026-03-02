@@ -35,6 +35,10 @@ class TicketSystem(Cog):
         self._last_ticket_save_at = now
         self.save_ticket_data(self.tickets)
 
+    def _save_tickets_now(self):
+        self._last_ticket_save_at = time.monotonic()
+        self.save_ticket_data(self.tickets)
+
     class TicketOpenView(discord.ui.View):
         def __init__(self, cog):
             super().__init__(timeout=None)
@@ -514,7 +518,7 @@ class TicketSystem(Cog):
         if guild_id not in self.tickets:
             self.tickets[guild_id] = {}
         self.tickets[guild_id][str(ctx.author.id)] = ticket_data
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         embed_channel = discord.Embed(
             title="🎟️ Support Ticket Created",
@@ -662,12 +666,12 @@ class TicketSystem(Cog):
 
         # Update ticket status to Closed before locking
         ticket_data["status"] = "Closed"
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         del self.tickets[guild_id][user_id]
         if not self.tickets[guild_id]:
             del self.tickets[guild_id]
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         closed_tag = self.get_tag_by_name(ticket_thread.parent, "closed")
         edit_kwargs = {"locked": True}
@@ -701,7 +705,7 @@ class TicketSystem(Cog):
         ticket_data["assigned_to"] = agent.id
         ticket_data["status"] = "In Progress"
         ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         embed_assign = discord.Embed(
             title="Ticket Assigned",
@@ -825,7 +829,7 @@ class TicketSystem(Cog):
         if guild_id not in self.tickets:
             self.tickets[guild_id] = {}
         self.tickets[guild_id][str(user.id)] = data
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         embed_channel = discord.Embed(
             title="🎟️ Support Ticket Created",
@@ -892,7 +896,7 @@ class TicketSystem(Cog):
         ticket_data["assigned_to"] = interaction.user.id
         ticket_data["status"] = "In Progress"
         ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         embed = discord.Embed(
             title="Ticket Claimed",
@@ -966,12 +970,12 @@ class TicketSystem(Cog):
             LogError(f"Failed to send DM to {user_id}: {e}")
 
         ticket_data["status"] = "Closed"
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         del self.tickets[guild_id][user_id]
         if not self.tickets[guild_id]:
             del self.tickets[guild_id]
-        self.save_ticket_data(self.tickets)
+        self._save_tickets_now()
 
         closed_tag = self.get_tag_by_name(ticket_thread.parent, "closed")
         edit_kwargs = {"locked": True}
@@ -1042,7 +1046,7 @@ class TicketSystem(Cog):
                         await log_channel.send(embed=embed_escalation)
 
                     ticket_data["status"] = "Escalated"
-                    self.save_ticket_data(self.tickets)
+                    self._save_tickets_now()
 
     @ticket_check_loop.before_loop
     async def before_ticket_check(self):
@@ -1099,7 +1103,7 @@ class TicketSystem(Cog):
                 del self.tickets[guild_id][user_id]
                 if not self.tickets[guild_id]:
                     del self.tickets[guild_id]
-                self.save_ticket_data(self.tickets)
+                self._save_tickets_now()
 
     @Cog.listener()
     async def on_message(self, message: discord.Message):
