@@ -1144,12 +1144,14 @@ class TicketSystem(Cog):
                                 await user.send(content)
                                 for attachment in message.attachments:
                                     await user.send(attachment.url)
+
+                                ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
+                                self.save_ticket_data(self.tickets)
+
                                 try:
                                     await message.add_reaction("✅")
                                 except Exception as e:
-                                    LogError(
-                                        f"Failed to add reaction to ticket thread message: {e}"
-                                    )
+                                    LogError(f"Failed to add reaction to ticket thread message: {e}")
                             except Exception as e:
                                 LogError(f"Error forwarding message to user DM: {e}")
                                 try:
