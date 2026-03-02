@@ -45,9 +45,9 @@ class AntiSpam(commands.Cog):
             LogDebug(f"Logged mass mention by {message.author} ({mention_count} mentions)")
 
         except discord.NotFound:
-            LogError(f"Log channel not found: {log_channel_id}")
+            LogError("Log channel not found")
         except discord.Forbidden:
-            LogError(f"Missing permissions for log channel: {log_channel_id}")
+            LogError("Missing permissions for log channel")
         except Exception as e:
             LogError(f"Mass mention handling error: {str(e)}")
             try:
