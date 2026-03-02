@@ -8,6 +8,21 @@ from extensions.loggingextension import create_log_embed
 from utils.audit import find_audit_actor
 
 
+def _format_perm_changes(before: discord.Permissions, after: discord.Permissions) -> str:
+    before_set = {name for name, value in before if value}
+    after_set = {name for name, value in after if value}
+    added = sorted(after_set - before_set)
+    removed = sorted(before_set - after_set)
+
+    parts = []
+    if added:
+        parts.append("+ " + ", ".join(added[:25]))
+    if removed:
+        parts.append("- " + ", ".join(removed[:25]))
+
+    return "\n".join(parts) if parts else "None"
+
+
 class Logging(commands.Cog):
     DEFAULT_EVENT_FLAGS = {
         "member_join": True,
@@ -526,13 +541,22 @@ class Logging(commands.Cog):
     async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
         if not self._is_enabled(after.guild, "role_update"):
             return
-        if before.name == after.name and before.permissions == after.permissions and before.color == after.color:
+
+        changed = []
+        if before.name != after.name:
+            changed.append("name")
+        if before.permissions != after.permissions:
+            changed.append("permissions")
+        if before.color != after.color:
+            changed.append("color")
+        if before.hoist != after.hoist:
+            changed.append("hoist")
+        if before.mentionable != after.mentionable:
+            changed.append("mentionable")
+
+        if not changed:
             return
-        fields = [
-            ("Before Name", before.name, True),
-            ("After Name", after.name, True),
-            ("Role ID", str(after.id), True),
-        ]
+
         audit = await find_audit_actor(
             guild=after.guild,
             action=discord.AuditLogAction.role_update,
@@ -540,7 +564,24 @@ class Logging(commands.Cog):
         )
         editor = audit.user
 
-        description = f"Role {before.name} updated."
+        fields = [
+            ("Changed", ", ".join(changed), False),
+            ("Role", after.mention, True),
+            ("Role ID", str(after.id), True),
+            ("Actor", editor.mention if editor else "Unknown", True),
+            ("Reason", self._trim(audit.reason) if audit.reason else "None", False),
+            ("Name (before)", before.name, True),
+            ("Name (after)", after.name, True),
+            ("Color (before)", str(before.color), True),
+            ("Color (after)", str(after.color), True),
+            ("Hoist", f"{before.hoist} -> {after.hoist}", True),
+            ("Mentionable", f"{before.mentionable} -> {after.mentionable}", True),
+        ]
+
+        if before.permissions != after.permissions:
+            fields.append(("Permission changes", _format_perm_changes(before.permissions, after.permissions), False))
+
+        description = f"Role {after.mention} updated."
         embed = create_log_embed(
             "Role Updated",
             description,
