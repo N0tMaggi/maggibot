@@ -209,11 +209,20 @@ class Logging(commands.Cog):
         content = self._trim(message.content or "*No text content*")
         description = f"Message deleted in {message.channel.mention}."
         attachments = self._trim(", ".join(a.url for a in message.attachments) or "None")
+        attachment_count = len(message.attachments)
+
+        created_ts = int(message.author.created_at.timestamp()) if getattr(message.author, "created_at", None) else None
+        joined_ts = int(message.author.joined_at.timestamp()) if getattr(message.author, "joined_at", None) else None
+        created_rel = f"<t:{created_ts}:R>" if created_ts else "Unknown"
+        joined_rel = f"<t:{joined_ts}:R>" if joined_ts else "Unknown"
+
         fields = [
             ("Author", message.author.mention, True),
             ("Channel", message.channel.mention, True),
+            ("Account created", created_rel, True),
+            ("Joined server", joined_rel, True),
+            ("Attachments", f"{attachment_count}\n{attachments}", False),
             ("Content", content, False),
-            ("Attachments", attachments, False),
             ("Message ID", str(message.id), True),
             ("User ID", str(message.author.id), True),
         ]
@@ -251,7 +260,7 @@ class Logging(commands.Cog):
         embed = create_log_embed(
             "Message Edited",
             description,
-            "message_delete",
+            "default",
             after.author,
             fields,
             guild=after.guild,
