@@ -6,6 +6,7 @@ import json
 import os
 import io
 import html
+import time
 import handlers.config as config
 from handlers.debug import LogDebug, LogError
 from utils.ticket_flow import decide_inactivity_action
@@ -25,6 +26,14 @@ class TicketSystem(Cog):
         self.serverconfig = config.loadserverconfig()
         self.tickets = config.load_ticket_data()
         self.save_ticket_data = config.save_ticket_data
+        self._last_ticket_save_at = 0.0
+
+    def _save_tickets_throttled(self, min_interval_seconds: float = 5.0):
+        now = time.monotonic()
+        if now - self._last_ticket_save_at < min_interval_seconds:
+            return
+        self._last_ticket_save_at = now
+        self.save_ticket_data(self.tickets)
 
     class TicketOpenView(discord.ui.View):
         def __init__(self, cog):
@@ -1118,10 +1127,8 @@ class TicketSystem(Cog):
                                 await message.add_reaction("✅")
                             except Exception as e:
                                 LogError(f"Failed to add reaction to DM message: {e}")
-                            ticket_data["last_activity"] = (
-                                datetime.datetime.utcnow().isoformat()
-                            )
-                            self.save_ticket_data(self.tickets)
+                            ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
+                            self._save_tickets_throttled()
                         except Exception as e:
                             LogError(f"Error forwarding DM message: {e}")
                     break
@@ -1146,7 +1153,7 @@ class TicketSystem(Cog):
                                     await user.send(attachment.url)
 
                                 ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
-                                self.save_ticket_data(self.tickets)
+                                self._save_tickets_throttled()
 
                                 try:
                                     await message.add_reaction("✅")
