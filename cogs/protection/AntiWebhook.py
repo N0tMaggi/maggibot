@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
-from handlers.config import loadserverconfig, get_protection_log_channel
+
+from handlers.config import get_protection_log_channel, loadserverconfig
 from handlers.debug import LogDebug, LogError
+from utils.audit import find_audit_actor
 
 class WebhookProtectionCog(commands.Cog):
     def __init__(self, bot):
@@ -27,17 +29,30 @@ class WebhookProtectionCog(commands.Cog):
                     LogDebug(f"Verified bot webhook allowed: {webhook.name} by {creator}")
                     continue
                     
+                audit = await find_audit_actor(
+                    guild=guild,
+                    action=discord.AuditLogAction.webhook_create,
+                    target_id=webhook.id,
+                )
+
+                actor = audit.user or creator
+
                 embed = discord.Embed(
-                    title="⚠️ SECURITY ALERT: Webhook Created",
+                    title="Webhook created",
                     description=f"New webhook detected in {channel.mention}",
                     color=discord.Color.orange(),
-                    timestamp=discord.utils.utcnow()
+                    timestamp=discord.utils.utcnow(),
                 )
                 embed.set_thumbnail(url=guild_icon)
-                embed.add_field(name="Webhook Name", value=webhook.name, inline=True)
-                embed.add_field(name="Channel", value=channel.name, inline=True)
-                embed.add_field(name="Creator", value=f"{creator} (`{creator.id}`)" if creator else "Unknown", inline=False)
-                embed.set_footer(text=f"Server ID: {guild.id}", icon_url=self.bot.user.avatar.url)
+                embed.add_field(name="Webhook", value=f"{webhook.name} ({webhook.id})", inline=False)
+                embed.add_field(name="Channel", value=f"{channel.name} ({channel.id})", inline=False)
+                embed.add_field(
+                    name="Actor",
+                    value=f"{actor.mention} ({actor.id})" if actor else "Unknown",
+                    inline=False,
+                )
+                embed.add_field(name="Audit reason", value=audit.reason or "None", inline=False)
+                embed.set_footer(text=f"Protection System | Guild ID: {guild.id}")
 
                 if protection and creator and creator.bot:
                     try:
@@ -69,17 +84,28 @@ class WebhookProtectionCog(commands.Cog):
             webhook = next((w for w in await message.channel.webhooks() if w.id == message.webhook_id), None)
             guild_icon = message.guild.icon.url if message.guild.icon else None
 
+            jump_url = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
+
             embed = discord.Embed(
-                title="📡 Webhook Activity Detected",
+                title="Webhook activity",
                 description=f"Message from webhook in {message.channel.mention}",
                 color=discord.Color.greyple(),
-                timestamp=discord.utils.utcnow()
+                timestamp=discord.utils.utcnow(),
             )
             embed.set_thumbnail(url=guild_icon)
-            embed.add_field(name="Webhook", value=webhook.name if webhook else "Unknown", inline=True)
-            embed.add_field(name="Message Content", value=message.content[:1000] or "*No text*", inline=False)
-            embed.add_field(name="Sent By", value=f"{webhook.user} (`{webhook.user.id}`)" if webhook and webhook.user else "Unknown", inline=False)
-            embed.set_footer(text=f"Server ID: {message.guild.id}", icon_url=self.bot.user.avatar.url)
+            embed.add_field(
+                name="Webhook",
+                value=f"{webhook.name} ({webhook.id})" if webhook else "Unknown",
+                inline=False,
+            )
+            embed.add_field(name="Jump", value=f"[Open message]({jump_url})", inline=False)
+            embed.add_field(
+                name="Sent by",
+                value=f"{webhook.user} ({webhook.user.id})" if webhook and webhook.user else "Unknown",
+                inline=False,
+            )
+            embed.add_field(name="Content", value=message.content[:1000] or "*No text*", inline=False)
+            embed.set_footer(text=f"Protection System | Guild ID: {message.guild.id}")
 
             if protection and webhook and webhook.user and webhook.user.bot:
                 try:
