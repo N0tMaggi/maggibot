@@ -125,7 +125,27 @@ def saveserverconfig(serverconfig):
 
 def get_log_channel(guild):
     serverconfig = loadserverconfig()
-    return guild.get_channel(serverconfig.get(str(guild.id), {}).get("log_channel"))
+    guild_cfg = serverconfig.get(str(guild.id), {})
+    channel_id = guild_cfg.get("log_channel") or guild_cfg.get("logchannel")
+    return guild.get_channel(channel_id) if channel_id else None
+
+
+def get_protection_log_channel(guild):
+    """Best-effort protection log channel resolver.
+
+    Prefers protection-specific log channel if present, otherwise falls back to
+    general log channel keys.
+    """
+
+    serverconfig = loadserverconfig()
+    guild_cfg = serverconfig.get(str(guild.id), {})
+    channel_id = (
+        guild_cfg.get("protectionlogchannel")
+        or guild_cfg.get("protection_log_channel")
+        or guild_cfg.get("log_channel")
+        or guild_cfg.get("logchannel")
+    )
+    return guild.get_channel(channel_id) if channel_id else None
 
 def get_logging_forum(guild):
     serverconfig = loadserverconfig()

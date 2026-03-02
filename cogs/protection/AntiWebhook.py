@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from handlers.config import loadserverconfig
+from handlers.config import loadserverconfig, get_protection_log_channel
 from handlers.debug import LogDebug, LogError
 
 class WebhookProtectionCog(commands.Cog):
@@ -12,7 +12,7 @@ class WebhookProtectionCog(commands.Cog):
         guild = channel.guild
         config = loadserverconfig().get(str(guild.id), {})
         protection = config.get("protection", False)
-        log_channel = self.bot.get_channel(config.get("logchannel")) if config.get("logchannel") else None
+        log_channel = get_protection_log_channel(guild)
         
         try:
             webhooks = await channel.webhooks()
@@ -63,7 +63,7 @@ class WebhookProtectionCog(commands.Cog):
 
         config = loadserverconfig().get(str(message.guild.id), {})
         protection = config.get("protection", False)
-        log_channel = self.bot.get_channel(config.get("logchannel")) if config.get("logchannel") else None
+        log_channel = get_protection_log_channel(message.guild)
 
         try:
             webhook = next((w for w in await message.channel.webhooks() if w.id == message.webhook_id), None)

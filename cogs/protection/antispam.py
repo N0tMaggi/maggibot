@@ -32,12 +32,10 @@ class AntiSpam(commands.Cog):
             return
 
         try:
-            log_channel_id = serverconfig[server_id].get("protectionlogchannel")
-            if not log_channel_id:
+            log_channel = config.get_protection_log_channel(message.guild)
+            if not log_channel:
                 LogDebug(f"No log channel set in {message.guild.name}")
                 return
-
-            log_channel = await message.guild.fetch_channel(log_channel_id)
             if not log_channel.permissions_for(message.guild.me).send_messages:
                 LogError(f"No send permissions in {log_channel.name}")
                 return

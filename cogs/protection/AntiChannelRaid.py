@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from handlers.config import loadserverconfig
+from handlers.config import loadserverconfig, get_protection_log_channel
 from handlers.debug import LogDebug, LogError
 from collections import defaultdict
 import asyncio
@@ -80,13 +80,7 @@ class ChannelProtectionCog(commands.Cog):
         }[action_type]
 
     async def log_security_event(self, guild: discord.Guild, title: str, description: str, color: discord.Color):
-        config = loadserverconfig().get(str(guild.id), {})
-        log_channel_id = config.get("logchannel")
-
-        if not log_channel_id:
-            return
-
-        log_channel = self.bot.get_channel(log_channel_id)
+        log_channel = get_protection_log_channel(guild)
         if not log_channel:
             return
 
