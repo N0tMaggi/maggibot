@@ -5,6 +5,7 @@ import datetime
 import handlers.config as config
 from handlers.debug import LogError
 from extensions.loggingextension import create_log_embed
+from utils.audit import find_audit_actor
 
 
 class Logging(commands.Cog):
@@ -167,8 +168,19 @@ class Logging(commands.Cog):
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         if not self._is_enabled(guild, "member_ban"):
             return
+
+        audit = await find_audit_actor(
+            guild=guild,
+            action=discord.AuditLogAction.ban,
+            target_id=user.id,
+        )
+
         description = f"{user.mention} was banned."
-        fields = [("User ID", str(user.id), True)]
+        fields = [
+            ("User ID", str(user.id), True),
+            ("Actor", audit.user.mention if audit.user else "Unknown", True),
+            ("Reason", self._trim(audit.reason) if audit.reason else "None", False),
+        ]
         embed = create_log_embed("Member Banned", description, "ban", user, fields, guild=guild)
         await self.post_log(guild, embed, "ban", user.id)
 
@@ -233,8 +245,19 @@ class Logging(commands.Cog):
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         if not self._is_enabled(guild, "member_unban"):
             return
+
+        audit = await find_audit_actor(
+            guild=guild,
+            action=discord.AuditLogAction.unban,
+            target_id=user.id,
+        )
+
         description = f"{user.mention} was unbanned."
-        fields = [("User ID", str(user.id), True)]
+        fields = [
+            ("User ID", str(user.id), True),
+            ("Actor", audit.user.mention if audit.user else "Unknown", True),
+            ("Reason", self._trim(audit.reason) if audit.reason else "None", False),
+        ]
         embed = create_log_embed("Member Unbanned", description, "ban", user, fields, guild=guild)
         await self.post_log(guild, embed, "unban", user.id)
 
@@ -324,18 +347,19 @@ class Logging(commands.Cog):
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
         if not self._is_enabled(channel.guild, "channel_create"):
             return
+        audit = await find_audit_actor(
+            guild=channel.guild,
+            action=discord.AuditLogAction.channel_create,
+            target_id=channel.id,
+        )
+        creator = audit.user
+
         fields = [
             ("Channel ID", str(channel.id), True),
             ("Type", str(channel.type), True),
+            ("Actor", creator.mention if creator else "Unknown", True),
+            ("Reason", self._trim(audit.reason) if audit.reason else "None", False),
         ]
-        creator = None
-        try:
-            async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_create):
-                if entry.target.id == channel.id:
-                    creator = entry.user
-                    break
-        except Exception:
-            pass
 
         description = f"{channel.mention} was created."
         embed = create_log_embed(
@@ -352,18 +376,19 @@ class Logging(commands.Cog):
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         if not self._is_enabled(channel.guild, "channel_delete"):
             return
+        audit = await find_audit_actor(
+            guild=channel.guild,
+            action=discord.AuditLogAction.channel_delete,
+            target_id=channel.id,
+        )
+        deleter = audit.user
+
         fields = [
             ("Channel ID", str(channel.id), True),
             ("Type", str(channel.type), True),
+            ("Actor", deleter.mention if deleter else "Unknown", True),
+            ("Reason", self._trim(audit.reason) if audit.reason else "None", False),
         ]
-        deleter = None
-        try:
-            async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
-                if entry.target.id == channel.id:
-                    deleter = entry.user
-                    break
-        except Exception:
-            pass
 
         description = f"{channel.name} was deleted."
         embed = create_log_embed(
@@ -410,14 +435,12 @@ class Logging(commands.Cog):
             ("Role Name", role.name, True),
             ("Role ID", str(role.id), True),
         ]
-        creator = None
-        try:
-            async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
-                if entry.target.id == role.id:
-                    creator = entry.user
-                    break
-        except Exception:
-            pass
+        audit = await find_audit_actor(
+            guild=role.guild,
+            action=discord.AuditLogAction.role_create,
+            target_id=role.id,
+        )
+        creator = audit.user
 
         description = f"{role.mention} was created."
         embed = create_log_embed(
@@ -438,14 +461,12 @@ class Logging(commands.Cog):
             ("Role Name", role.name, True),
             ("Role ID", str(role.id), True),
         ]
-        deleter = None
-        try:
-            async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_delete):
-                if entry.target.id == role.id:
-                    deleter = entry.user
-                    break
-        except Exception:
-            pass
+        audit = await find_audit_actor(
+            guild=role.guild,
+            action=discord.AuditLogAction.role_delete,
+            target_id=role.id,
+        )
+        deleter = audit.user
 
         description = f"Role {role.name} was deleted."
         embed = create_log_embed(
@@ -469,14 +490,12 @@ class Logging(commands.Cog):
             ("After Name", after.name, True),
             ("Role ID", str(after.id), True),
         ]
-        editor = None
-        try:
-            async for entry in after.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_update):
-                if entry.target.id == after.id:
-                    editor = entry.user
-                    break
-        except Exception:
-            pass
+        audit = await find_audit_actor(
+            guild=after.guild,
+            action=discord.AuditLogAction.role_update,
+            target_id=after.id,
+        )
+        editor = audit.user
 
         description = f"Role {before.name} updated."
         embed = create_log_embed(
