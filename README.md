@@ -83,7 +83,9 @@ environment file based on `.env.example`.
     │   └── All Handlers are here
     ├── main.py
     ├── requirements.txt
-    └── start.bat
+    ├── start.bat
+    ├── install.sh
+    └── start.sh
 ```
 
 

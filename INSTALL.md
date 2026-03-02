@@ -30,9 +30,15 @@ This document describes how to install and run **Maggibot** locally.
 4. **Start the bot**
    ```bash
    start.bat  # Windows
+   ./start.sh # Linux/macOS
    # or
    python main.py
    ```
+
+### Linux/macOS helper scripts
+
+- `./install.sh` creates a local `.venv/`, installs dependencies and runs `python main.py install`.
+- `./start.sh` creates/uses `.venv/`, installs dependencies and starts the bot.
 
 For Windows users there are also `install.bat` and `start.bat` helpers that wrap these commands.
 
