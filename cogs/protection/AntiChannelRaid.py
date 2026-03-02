@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from handlers.config import loadserverconfig, get_protection_log_channel
+from utils.audit import find_audit_actor
 from handlers.debug import LogDebug, LogError
 from collections import defaultdict
 import asyncio
@@ -28,44 +29,74 @@ class ChannelProtectionCog(commands.Cog):
             return
 
         try:
-            async for entry in guild.audit_logs(limit=1, action=self.get_audit_action(action_type)):
-                if entry.target.id != channel.id or not entry.user.bot:
-                    return
+            audit = await find_audit_actor(
+                guild=guild,
+                action=self.get_audit_action(action_type),
+                target_id=channel.id,
+            )
 
-                bot = entry.user
-                self.action_counter[bot.id] += 1
+            actor = audit.user
+            if not actor or not getattr(actor, "bot", False):
+                return
 
-                if self.action_counter[bot.id] > self.ACTION_THRESHOLD:
-                    if bot.public_flags.verified_bot:
-                        await self.log_verified_bot_spam(guild, bot, channel, action_type)
-                    else:
-                        await self.handle_unverified_bot_spam(guild, bot, channel, action_type)
-                    return
+            bot = actor
+            self.action_counter[bot.id] += 1
 
-                asyncio.create_task(self.reset_counter(bot.id))
+            if self.action_counter[bot.id] > self.ACTION_THRESHOLD:
+                if getattr(bot, "public_flags", None) and bot.public_flags.verified_bot:
+                    await self.log_verified_bot_spam(guild, bot, channel, action_type, audit.reason)
+                else:
+                    await self.handle_unverified_bot_spam(guild, bot, channel, action_type, audit.reason)
+                return
+
+            asyncio.create_task(self.reset_counter(bot.id))
         except Exception as e:
             LogError(f"Channel {action_type} audit error in {guild.name}: {str(e)}")
 
-    async def handle_unverified_bot_spam(self, guild: discord.Guild, bot: discord.User, channel: discord.abc.GuildChannel, action_type: str):
+    async def handle_unverified_bot_spam(
+        self,
+        guild: discord.Guild,
+        bot: discord.User,
+        channel: discord.abc.GuildChannel,
+        action_type: str,
+        reason: str | None,
+    ):
         try:
             await guild.ban(bot, reason=f"Potential raid: {self.ACTION_THRESHOLD}+ channel {action_type}s")
             await self.log_security_event(
                 guild,
-                "🚨 Unverified Bot Detected",
-                f"Bot {bot} (`{bot.id}`) triggered a threshold of {self.ACTION_THRESHOLD}+ channel {action_type}s.\n"
-                f"Channel: {channel.name}\nAction: Banned",
-                discord.Color.dark_red()
+                "Unverified bot triggered channel protection",
+                {
+                    "Bot": f"{bot} ({bot.id})",
+                    "Verified": "False",
+                    "Action": f"Ban (threshold {self.ACTION_THRESHOLD})",
+                    "Channel": f"{channel.name} ({channel.id})",
+                    "Audit reason": reason or "None",
+                },
+                discord.Color.dark_red(),
             )
         except Exception as e:
             LogError(f"Failed to ban bot in {guild.name}: {str(e)}")
 
-    async def log_verified_bot_spam(self, guild: discord.Guild, bot: discord.User, channel: discord.abc.GuildChannel, action_type: str):
+    async def log_verified_bot_spam(
+        self,
+        guild: discord.Guild,
+        bot: discord.User,
+        channel: discord.abc.GuildChannel,
+        action_type: str,
+        reason: str | None,
+    ):
         await self.log_security_event(
             guild,
-            "⚠️ Verified Bot Triggered Channel Protection",
-            f"Verified bot {bot} (`{bot.id}`) exceeded the channel {action_type} threshold.\n"
-            f"Channel: {channel.name}\nAction: Logged only (not banned)",
-            discord.Color.orange()
+            "Verified bot triggered channel protection",
+            {
+                "Bot": f"{bot} ({bot.id})",
+                "Verified": "True",
+                "Action": "Log only",
+                "Channel": f"{channel.name} ({channel.id})",
+                "Audit reason": reason or "None",
+            },
+            discord.Color.orange(),
         )
         LogDebug(f"Verified bot {bot} exceeded channel action threshold in {guild.name}")
 
@@ -79,20 +110,28 @@ class ChannelProtectionCog(commands.Cog):
             "delete": discord.AuditLogAction.channel_delete
         }[action_type]
 
-    async def log_security_event(self, guild: discord.Guild, title: str, description: str, color: discord.Color):
+    async def log_security_event(
+        self,
+        guild: discord.Guild,
+        title: str,
+        fields: dict[str, str],
+        color: discord.Color,
+    ):
         log_channel = get_protection_log_channel(guild)
         if not log_channel:
             return
 
         embed = discord.Embed(
             title=title,
-            description=description,
             color=color,
-            timestamp=discord.utils.utcnow()
+            timestamp=discord.utils.utcnow(),
         )
         embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
-        embed.add_field(name="Server", value=guild.name, inline=True)
-        embed.add_field(name="Server ID", value=guild.id, inline=True)
+
+        for key, value in fields.items():
+            embed.add_field(name=key, value=value, inline=False)
+
+        embed.set_footer(text=f"Protection System | Guild ID: {guild.id}")
 
         try:
             await log_channel.send(embed=embed)
