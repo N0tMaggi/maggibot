@@ -220,11 +220,13 @@ class Logging(commands.Cog):
             return
         if not self._is_enabled(after.guild, "message_edit"):
             return
+        jump_url = f"https://discord.com/channels/{after.guild.id}/{after.channel.id}/{after.id}"
         description = f"Message edited in {after.channel.mention}."
         attachments = self._trim(", ".join(a.url for a in after.attachments) or "None")
         fields = [
             ("Author", after.author.mention, True),
             ("Channel", after.channel.mention, True),
+            ("Jump", f"[Open message]({jump_url})", False),
             ("Before", self._trim(before.content or "*No text*"), False),
             ("After", self._trim(after.content or "*No text*"), False),
             ("Attachments", attachments, False),
@@ -315,33 +317,60 @@ class Logging(commands.Cog):
             await self.post_log(after.guild, embed, "avatar-update", after.id)
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ):
         if not self._is_enabled(member.guild, "voice_state"):
             return
-        if before.channel != after.channel:
-            if before.channel is None:
-                action = "joined"
-                channel = after.channel
-            elif after.channel is None:
-                action = "left"
-                channel = before.channel
-            else:
-                action = "moved"
-                channel = after.channel
 
-            description = f"{member.mention} {action} voice channel {channel.mention if channel else 'N/A'}."
-            fields = [
-                ("User ID", str(member.id), True),
-            ]
-            embed = create_log_embed(
-                "Voice Channel Update",
-                description,
-                "default",
-                member,
-                fields,
-                guild=member.guild,
-            )
-            await self.post_log(member.guild, embed, "voice-update", member.id)
+        changed = []
+        if before.channel != after.channel:
+            changed.append("channel")
+        if before.self_mute != after.self_mute:
+            changed.append("self_mute")
+        if before.self_deaf != after.self_deaf:
+            changed.append("self_deaf")
+        if before.mute != after.mute:
+            changed.append("server_mute")
+        if before.deaf != after.deaf:
+            changed.append("server_deaf")
+        if before.self_stream != after.self_stream:
+            changed.append("stream")
+        if before.self_video != after.self_video:
+            changed.append("video")
+
+        if not changed:
+            return
+
+        before_channel = before.channel.mention if before.channel else "None"
+        after_channel = after.channel.mention if after.channel else "None"
+
+        description = f"Voice state updated for {member.mention}."
+        fields = [
+            ("Changed", ", ".join(changed), False),
+            ("Channel (before)", before_channel, True),
+            ("Channel (after)", after_channel, True),
+            ("Self mute", str(bool(after.self_mute)), True),
+            ("Self deaf", str(bool(after.self_deaf)), True),
+            ("Server mute", str(bool(after.mute)), True),
+            ("Server deaf", str(bool(after.deaf)), True),
+            ("Streaming", str(bool(after.self_stream)), True),
+            ("Video", str(bool(after.self_video)), True),
+            ("User ID", str(member.id), True),
+        ]
+
+        embed = create_log_embed(
+            "Voice State Update",
+            description,
+            "default",
+            member,
+            fields,
+            guild=member.guild,
+        )
+        await self.post_log(member.guild, embed, "voice-update", member.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
@@ -409,12 +438,26 @@ class Logging(commands.Cog):
     ):
         if not self._is_enabled(after.guild, "channel_update"):
             return
-        if before.name == after.name and getattr(before, "topic", None) == getattr(after, "topic", None):
+        before_topic = getattr(before, "topic", None)
+        after_topic = getattr(after, "topic", None)
+
+        changed = []
+        if before.name != after.name:
+            changed.append("name")
+        if before_topic != after_topic:
+            changed.append("topic")
+
+        if not changed:
             return
+
         fields = [
-            ("Before", before.name, True),
-            ("After", after.name, True),
+            ("Changed", ", ".join(changed), False),
+            ("Name (before)", before.name, True),
+            ("Name (after)", after.name, True),
+            ("Topic (before)", self._trim(before_topic or ""), False),
+            ("Topic (after)", self._trim(after_topic or ""), False),
             ("Channel ID", str(after.id), True),
+            ("Type", str(after.type), True),
         ]
         description = f"{before.mention} was updated."
         embed = create_log_embed(
