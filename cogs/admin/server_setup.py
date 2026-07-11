@@ -4,12 +4,13 @@ from discord.ext.commands import Cog
 import datetime
 import handlers.config as config
 from handlers.debug import LogDebug, LogNetwork, LogSystem, LogError
+from utils.components import build_container, build_view
 
-async def safe_respond(ctx: discord.ApplicationContext, embed: discord.Embed):
+async def safe_respond(ctx: discord.ApplicationContext, container: discord.ui.Container):
     try:
-        await ctx.respond(embed=embed, ephemeral=True)
+        await ctx.respond(view=build_view(container), ephemeral=True)
     except Exception:
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        await ctx.followup.send(view=build_view(container), ephemeral=True)
 
 class Server(Cog):
     def __init__(self, bot):
@@ -39,31 +40,19 @@ class Server(Cog):
 
             config.saveserverconfig(self.serverconfig)
 
-            embed = discord.Embed(
+            container = build_container(
                 title="📁 Log Channel Configuration",
                 description=f"**Successfully configured logging system!**",
-                color=0x3498DB,
-                timestamp=datetime.datetime.utcnow()
+                color="info",
+                author=ctx.guild,
+                fields=[
+                    ("⚙️ Setting Updated", f"```diff\n+ Log Channel: #{channel.name}\n```", False),
+                    ("📝 Details", f"• Channel: {channel.mention}\n• ID: `{channel.id}`\n• Server: `{ctx.guild.id}`", True),
+                ],
+                footer_text=f"Configured by {ctx.author.display_name}",
+                timestamp=True,
             )
-            embed.set_author(
-                name=f"{ctx.guild.name} Settings",
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else self.bot.user.avatar.url
-            )
-            embed.add_field(
-                name="⚙️ Setting Updated",
-                value=f"```diff\n+ Log Channel: #{channel.name}\n```",
-                inline=False
-            )
-            embed.add_field(
-                name="📝 Details",
-                value=f"• Channel: {channel.mention}\n• ID: `{channel.id}`\n• Server: `{ctx.guild.id}`",
-                inline=True
-            )
-            embed.set_footer(
-                text=f"Configured by {ctx.author.display_name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else self.bot.user.avatar.url
-            )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
 
         except Exception as e:
             LogError(f"An error occurred while setting the log channel: {e}")
@@ -86,12 +75,12 @@ class Server(Cog):
         try:
             rules_text = ""
             if need_accept_rules:
-                embed_prompt = discord.Embed(
+                prompt_container = build_container(
                     title="Voice Gate Setup",
                     description="Please enter the rules text within 30 seconds.",
-                    color=0x3498DB
+                    color="info"
                 )
-                await safe_respond(ctx, embed_prompt)
+                await safe_respond(ctx, prompt_container)
 
                 def check(message: discord.Message):
                     return message.author == ctx.author and message.channel == ctx.channel
@@ -110,12 +99,12 @@ class Server(Cog):
             }
             config.savevoicegateconfig(self.voicegateconfig)
 
-            embed_success = discord.Embed(
+            success_container = build_container(
                 title="Success",
                 description="Voice gate has been successfully set up.",
-                color=0x2ECC71
+                color="success"
             )
-            await safe_respond(ctx, embed_success)
+            await safe_respond(ctx, success_container)
 
         except Exception as e:
             raise RuntimeError(f"Error in setup_voicegate command: {e}")
@@ -126,13 +115,16 @@ class Server(Cog):
             if str(ctx.guild.id) not in self.voicegateconfig:
                 raise ValueError("No voice gate configuration found for this server.")
             config_data = self.voicegateconfig[str(ctx.guild.id)]
-            embed_settings = discord.Embed(
-                title="Voice Gate Settings",
-                color=0x3498DB
-            )
+            fields = []
             for key, value in config_data.items():
-                embed_settings.add_field(name=key, value=str(value), inline=False)
-            await safe_respond(ctx, embed_settings)
+                fields.append((key, str(value), False))
+
+            settings_container = build_container(
+                title="Voice Gate Settings",
+                color="info",
+                fields=fields
+            )
+            await safe_respond(ctx, settings_container)
         except Exception as e:
             raise RuntimeError(f"Error in setup-showvoicegatesettings command: {e}")
 
@@ -146,12 +138,12 @@ class Server(Cog):
                 raise ValueError("The provided voice channel does not match the stored configuration.")
             del self.voicegateconfig[str(ctx.guild.id)]
             config.savevoicegateconfig(self.voicegateconfig)
-            embed_success = discord.Embed(
+            success_container = build_container(
                 title="Success",
                 description="Voice gate configuration has been deleted.",
-                color=0x2ECC71
+                color="success"
             )
-            await safe_respond(ctx, embed_success)
+            await safe_respond(ctx, success_container)
         except Exception as e:
             raise RuntimeError(f"[VOICEGATE] Error in setup-deletevoicegate command: {e}")
 
@@ -177,17 +169,18 @@ class Server(Cog):
             config.saveserverconfig(self.serverconfig)
             LogDebug(f"Autorole setup for guild: {guild_id} Role: {role_id}")
 
-            embed = discord.Embed(
+            container = build_container(
                 title="Autorole Setup",
                 description="Autorole has been successfully configured for this server.",
-                color=0x00ff00,
-                timestamp=datetime.datetime.utcnow()
+                color="success",
+                author=ctx.author,
+                fields=[
+                    ("Role", role.mention, True),
+                    ("Guild", ctx.guild.name, True),
+                ],
+                footer_text="Autorole Setup",
             )
-            embed.add_field(name="Role", value=role.mention, inline=True)
-            embed.add_field(name="Guild", value=ctx.guild.name, inline=True)
-            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-            embed.set_footer(text="Autorole Setup")
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
 
         except Exception as e:
             LogError(f"Error setting up autorole: {str(e)}")
@@ -204,25 +197,23 @@ class Server(Cog):
                 config.saveserverconfig(self.serverconfig)
                 LogDebug(f"Autorole deleted for guild: {guild_id}")
 
-                embed = discord.Embed(
+                container = build_container(
                     title="Autorole Deleted",
                     description="Autorole configuration has been removed from this server.",
-                    color=0x00ff00,
-                    timestamp=datetime.datetime.utcnow()
+                    color="success",
+                    author=ctx.author,
+                    footer_text="Autorole Configuration",
                 )
-                embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-                embed.set_footer(text="Autorole Configuration")
-                await ctx.respond(embed=embed)
+                await ctx.respond(view=build_view(container))
             else:
-                embed = discord.Embed(
+                container = build_container(
                     title="No Autorole Found",
                     description="There is no autorole configuration set up for this server.",
-                    color=0xff0000,
-                    timestamp=datetime.datetime.utcnow()
+                    color="error",
+                    author=ctx.author,
+                    footer_text="Autorole Configuration",
                 )
-                embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-                embed.set_footer(text="Autorole Configuration")
-                await ctx.respond(embed=embed, ephemeral=True)
+                await ctx.respond(view=build_view(container), ephemeral=True)
 
         except Exception as e:
             LogError(f"Error deleting autorole: {str(e)}")
@@ -237,14 +228,14 @@ class Server(Cog):
         try:
             self.admin_feedback["configs"][str(ctx.guild.id)] = {"team_role": team_role.id}
             config.save_admin_feedback(self.admin_feedback)
-            embed = discord.Embed(
+            container = build_container(
                 title="✅ Admin feedback set up!",
                 description="The admin feedback system has been successfully configured.",
-                color=discord.Color.green()
+                color="success",
+                fields=[("👥 Team Role", team_role.mention, False)],
+                footer_text="Use /feedback to send feedback to an admin."
             )
-            embed.add_field(name="👥 Team Role", value=team_role.mention, inline=False)
-            embed.set_footer(text="Use /feedback to send feedback to an admin.")
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
         except Exception as e:
             LogError(f"❌ Error setting up admin feedback: {e}")
             raise RuntimeError("Error setting up admin feedback") from e
@@ -255,18 +246,18 @@ class Server(Cog):
             if str(ctx.guild.id) in self.admin_feedback["configs"]:
                 del self.admin_feedback["configs"][str(ctx.guild.id)]
                 config.save_admin_feedback(self.admin_feedback)
-                embed = discord.Embed(
+                container = build_container(
                     title="🗑 Admin feedback deleted!",
                     description="The admin feedback configuration has been removed.",
-                    color=discord.Color.green()
+                    color="success"
                 )
             else:
-                embed = discord.Embed(
+                container = build_container(
                     title="⚠️ No configuration found!",
                     description="There is no stored admin feedback configuration for this server.",
-                    color=discord.Color.orange()
+                    color="warning"
                 )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
         except Exception as e:
             LogError(f"❌ Error deleting admin feedback configuration: {e}")
             raise RuntimeError("Error deleting admin feedback configuration") from e

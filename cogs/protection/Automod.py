@@ -4,6 +4,7 @@ from discord.commands import slash_command
 import datetime
 from extensions.modextensions import create_mod_embed
 from handlers.debug import LogDebug, LogError
+from utils.components import build_view
 
 
 RULES = [
@@ -119,60 +120,91 @@ class Automod(commands.Cog):
     @slash_command(name="setup-automod", description="Setup Maggi automod rules")
     @commands.has_permissions(administrator=True)
     async def setup_automod(self, ctx: discord.ApplicationContext):
-        class AutomodSetupView(discord.ui.View):
-            def __init__(self, author):
+        class AutomodSetupRow(discord.ui.ActionRow):
+            def __init__(self, parent_view):
+                super().__init__()
+                self.parent_view = parent_view
+
+                self.start_button = discord.ui.Button(label="Start", style=discord.ButtonStyle.success)
+                self.cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.danger)
+
+                self.start_button.callback = self.start_callback
+                self.cancel_button.callback = self.cancel_callback
+
+                self.add_item(self.start_button)
+                self.add_item(self.cancel_button)
+
+            async def start_callback(self, interaction: discord.Interaction):
+                self.parent_view.value = True
+                await interaction.response.defer()
+                self.parent_view.stop()
+
+            async def cancel_callback(self, interaction: discord.Interaction):
+                self.parent_view.value = False
+                await interaction.response.defer()
+                self.parent_view.stop()
+
+        class AutomodSetupView(discord.ui.DesignerView):
+            def __init__(self, author, container):
                 super().__init__(timeout=60)
                 self.author = author
                 self.value = None
+                self.message = None
+                self.row = AutomodSetupRow(self)
+                self.add_item(container)
+                self.add_item(self.row)
 
             async def interaction_check(self, interaction: discord.Interaction) -> bool:
                 return interaction.user == self.author
 
             async def on_timeout(self):
-                for item in self.children:
+                for item in self.row.children:
                     item.disabled = True
-                await self.message.edit(view=self)
+                if self.message:
+                    await self.message.edit_original_response(view=self)
 
-            @discord.ui.button(label="Start", style=discord.ButtonStyle.success)
-            async def start_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-                self.value = True
-                self.stop()
-
-            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
-            async def cancel_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-                self.value = False
-                self.stop()
-
-        view = AutomodSetupView(ctx.author)
-        embed = create_mod_embed(
+        container = create_mod_embed(
             "🛡️ Automod Setup Confirmation",
             "Are you sure you want to set up the automod rules?",
             'info',
             ctx.author
         )
-        message = await ctx.respond(embed=embed, view=view, ephemeral=True)
+        view = AutomodSetupView(ctx.author, container)
+        message = await ctx.respond(view=view, ephemeral=True)
         view.message = message
 
         await view.wait()
 
         if view.value is None:
-            await message.edit_original_response(content="Timed out.", view=None)
+            timeout_container = create_mod_embed(
+                "🛡️ Automod Setup",
+                "Timed out.",
+                'warning',
+                ctx.author
+            )
+            await message.edit_original_response(view=build_view(timeout_container))
             return
         if not view.value:
-            await message.edit_original_response(content="Cancelled.", view=None)
+            cancelled_container = create_mod_embed(
+                "🛡️ Automod Setup",
+                "Cancelled.",
+                'info',
+                ctx.author
+            )
+            await message.edit_original_response(view=build_view(cancelled_container))
             return
 
-        for item in view.children:
+        for item in view.row.children:
             item.disabled = True
         await message.edit_original_response(view=view)
 
-        working_embed = create_mod_embed(
+        working_container = create_mod_embed(
             "🛡️ Automod Setup",
             "Working on it...",
             'info',
             ctx.author
         )
-        await message.edit_original_response(embed=working_embed)
+        await message.edit_original_response(view=build_view(working_container))
 
         guild = ctx.guild
         created = []
@@ -209,23 +241,23 @@ class Automod(commands.Cog):
             if not description_parts:
                 description_parts.append("No changes were made.")
 
-            embed = create_mod_embed(
+            result_container = create_mod_embed(
                 "🛡️ Automod Setup",
                 "\n\n".join(description_parts),
                 'success' if created else 'info',
                 ctx.author
             )
-            await message.edit_original_response(embed=embed)
+            await message.edit_original_response(view=build_view(result_container))
             LogDebug(f"Automod setup finished in guild {guild.id}")
         except Exception as e:
             LogError(f"Automod setup error: {e}")
-            error_embed = create_mod_embed(
+            error_container = create_mod_embed(
                 "❌ Automod Setup Failed",
                 f"An error occurred while creating automod rules: {e}",
                 'error',
                 ctx.author
             )
-            await message.edit_original_response(embed=error_embed)
+            await message.edit_original_response(view=build_view(error_container))
 
 
 def setup(bot: commands.Bot):

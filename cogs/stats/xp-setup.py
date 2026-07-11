@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from handlers.debug import LogSystem, LogError, LogDebug, LogNetwork
 from handlers.config import load_stats, save_stats, load_multiplier_config, save_multiplier_config
-from utils.embed_helpers import create_embed as utils_create_embed
+from utils.components import build_container, build_view
 
 load_dotenv()
 MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
@@ -19,16 +19,20 @@ class XPSetup(commands.Cog):
         self.bot = bot
 
     def create_embed(self, title, description="", color_type="stats"):
-        """Helper to create stats embeds"""
-        embed = utils_create_embed(
+        """Helper to create stats containers"""
+        color_map = {
+            "system": "status",
+        }
+        resolved_color = color_map.get(color_type, color_type)
+        container = build_container(
             title=title,
             description=description,
-            color=color_type,
+            color=resolved_color,
             bot_user=self.bot.user,
             footer_text="Maggi Stats System",
             footer_icon="https://maggi.dev/favicon/favicon.ico"
         )
-        return embed
+        return container
 
 
 
@@ -44,12 +48,12 @@ class XPSetup(commands.Cog):
             config["multipliers"][str(role.id)] = multiplier
             save_multiplier_config(config)
             
-            embed = self.create_embed(
+            container = self.create_embed(
                 "⚖️ Multiplier Updated",
                 f"Role {role.mention} now grants `{multiplier}x` XP",
                 "system"
             )
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
 
         except Exception as e:
             LogError(f"Set multiplier error: {str(e)}")
@@ -62,7 +66,7 @@ class XPSetup(commands.Cog):
         
         try:
             config = load_multiplier_config()
-            embed = self.create_embed(
+            container = self.create_embed(
                 "📜 Active Multipliers",
                 color_type="system"
             )
@@ -70,15 +74,15 @@ class XPSetup(commands.Cog):
             if config["multipliers"]:
                 for role_id, mult in config["multipliers"].items():
                     role = ctx.guild.get_role(int(role_id))
-                    embed.add_field(
-                        name=f"⚖️ {role.name if role else 'Deleted Role'}",
-                        value=f"`{mult}x` Multiplier",
-                        inline=True
+                    container.add_item(
+                        discord.ui.TextDisplay(
+                            f"**⚖️ {role.name if role else 'Deleted Role'}**\n`{mult}x` Multiplier"
+                        )
                     )
             else:
-                embed.description = "```diff\n- No multipliers set```"
+                container.add_item(discord.ui.TextDisplay("```diff\n- No multipliers set```"))
 
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
 
         except Exception as e:
             LogError(f"Show multipliers error: {str(e)}")
@@ -97,19 +101,19 @@ class XPSetup(commands.Cog):
             if role_id in config["multipliers"]:
                 del config["multipliers"][role_id]
                 save_multiplier_config(config)
-                embed = self.create_embed(
+                container = self.create_embed(
                     "🗑️ Multiplier Removed",
                     f"Removed multiplier for {role.mention}",
                     "system"
                 )
             else:
-                embed = self.create_embed(
+                container = self.create_embed(
                     "⚠️ Not Found",
                     f"No multiplier set for {role.mention}",
                     "error"
                 )
             
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
 
         except Exception as e:
             LogError(f"Remove multiplier error: {str(e)}")
@@ -125,21 +129,13 @@ class XPSetup(commands.Cog):
             total = len(stats)
             active = sum(1 for u in stats.values() if u.get("xp", 0) > 0)
             
-            embed = self.create_embed(
+            container = self.create_embed(
                 "📦 Database Statistics",
                 color_type="stats"
             )
-            embed.add_field(
-                name="Total Users",
-                value=f"```yaml\n{total}```",
-                inline=True
-            )
-            embed.add_field(
-                name="Active Users",
-                value=f"```yaml\n{active}```",
-                inline=True
-            )
-            await ctx.followup.send(embed=embed)
+            container.add_item(discord.ui.TextDisplay(f"**Total Users**\n```yaml\n{total}```"))
+            container.add_item(discord.ui.TextDisplay(f"**Active Users**\n```yaml\n{active}```"))
+            await ctx.followup.send(view=build_view(container))
 
         except Exception as e:
             LogError(f"XP count error: {str(e)}")

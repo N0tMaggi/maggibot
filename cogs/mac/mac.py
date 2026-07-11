@@ -12,6 +12,7 @@ from handlers.config import (
 )
 from extensions.macextension import trim_field, create_mac_embed
 from handlers.debug import LogDebug, LogError
+from utils.components import build_view
 
 NOTIFY_CHANNEL_ID = int(get_mac_channel())
 OWNER_ID = int(get_owner())
@@ -42,12 +43,8 @@ class MacBan(commands.Cog):
                     description=f"You are globally banned but allowed to join `{member.guild.name}`.",
                     color=discord.Color.green(),
                 )
-                dm_embed.add_field(
-                    name="📄 Ban Reason",
-                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
-                    inline=False,
-                )
-                await member.send(embed=dm_embed)
+                dm_embed.add_item(discord.ui.TextDisplay(f"**📄 Ban Reason**\n```{trim_field(ban_record.get('reason', 'No reason provided'))}```"))
+                await member.send(view=build_view(dm_embed))
             except discord.Forbidden:
                 LogDebug(f"Could not send bypass DM to {member.id} - DMs disabled")
             except Exception as e:
@@ -62,15 +59,11 @@ class MacBan(commands.Cog):
 
                     color=discord.Color.green(),
                 )
-                notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
-                notify_embed.add_field(name="🛡️ Server", value=f"`{member.guild.name}`", inline=True)
-                notify_embed.add_field(
-                    name="📄 Ban Reason",
-                    value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```",
-                    inline=False,
-                )
-                notify_embed.set_thumbnail(url=member.display_avatar.url)
-                await channel.send(embed=notify_embed)
+                notify_embed.add_item(discord.ui.Section(discord.ui.TextDisplay("\u200b"), accessory=discord.ui.Thumbnail(member.display_avatar.url)))
+                notify_embed.add_item(discord.ui.TextDisplay(f"**👤 User**\n{member.mention} (`{member.id}`)"))
+                notify_embed.add_item(discord.ui.TextDisplay(f"**🛡️ Server**\n`{member.guild.name}`"))
+                notify_embed.add_item(discord.ui.TextDisplay(f"**📄 Ban Reason**\n```{trim_field(ban_record.get('reason', 'No reason provided'))}```"))
+                await channel.send(view=build_view(notify_embed))
             return
 
         attempted_server = member.guild.name
@@ -80,9 +73,9 @@ class MacBan(commands.Cog):
                 description=f"You are **globally banned** by MAC™ and cannot join `{member.guild.name}` or any other protected server.",
                 color=discord.Color.dark_red()
             )
-            dm_embed.add_field(name="Reason", value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```", inline=False)
-            dm_embed.add_field(name="Need Help?", value="> Contact support: [discord.maggi.dev](https://discord.maggi.dev)", inline=False)
-            await member.send(embed=dm_embed)
+            dm_embed.add_item(discord.ui.TextDisplay(f"**Reason**\n```{trim_field(ban_record.get('reason', 'No reason provided'))}```"))
+            dm_embed.add_item(discord.ui.TextDisplay("**Need Help?**\n> Contact support: [discord.maggi.dev](https://discord.maggi.dev)"))
+            await member.send(view=build_view(dm_embed))
         except discord.Forbidden:
             LogDebug(f"Could not send ban DM to {member.id} - DMs disabled")
         except Exception as e:
@@ -102,11 +95,11 @@ class MacBan(commands.Cog):
                 description=f"A globally banned user attempted to join a server.",
                 color=discord.Color.red()
             )
-            notify_embed.add_field(name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=True)
-            notify_embed.add_field(name="🛡️ Server", value=f"`{attempted_server}`", inline=True)
-            notify_embed.add_field(name="📄 Ban Reason", value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```", inline=False)
-            notify_embed.set_thumbnail(url=member.display_avatar.url)
-            await channel.send(embed=notify_embed)
+            notify_embed.add_item(discord.ui.Section(discord.ui.TextDisplay("\u200b"), accessory=discord.ui.Thumbnail(member.display_avatar.url)))
+            notify_embed.add_item(discord.ui.TextDisplay(f"**👤 User**\n{member.mention} (`{member.id}`)"))
+            notify_embed.add_item(discord.ui.TextDisplay(f"**🛡️ Server**\n`{attempted_server}`"))
+            notify_embed.add_item(discord.ui.TextDisplay(f"**📄 Ban Reason**\n```{trim_field(ban_record.get('reason', 'No reason provided'))}```"))
+            await channel.send(view=build_view(notify_embed))
 
     @commands.slash_command(name="mac-ban", description="Globally bans a user from all protected servers.")
     @is_owner()
@@ -118,8 +111,8 @@ class MacBan(commands.Cog):
                 description=f"{user.mention} is already globally banned.",
                 color=discord.Color.orange()
             )
-            embed.add_field(name="Current Reason", value=f"```{trim_field(bans[str(user.id)]['reason'])}```", inline=False)
-            return await ctx.respond(embed=embed, ephemeral=True)
+            embed.add_item(discord.ui.TextDisplay(f"**Current Reason**\n```{trim_field(bans[str(user.id)]['reason'])}```"))
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         ban_record = {
             "id": user.id,
@@ -138,11 +131,11 @@ class MacBan(commands.Cog):
             description=f"**{user.mention}** has been added to the global ban list.",
             color=discord.Color.green()
         )
-        embed.add_field(name="👤 User", value=f"`{user.name}` (`{user.id}`)", inline=True)
-        embed.add_field(name="🛡️ Moderator", value=ctx.author.mention, inline=True)
-        embed.add_field(name="📄 Reason", value=f"```{reason}```", inline=False)
-        embed.set_thumbnail(url=user.display_avatar.url)
-        await ctx.respond(embed=embed)
+        embed.add_item(discord.ui.Section(discord.ui.TextDisplay("\u200b"), accessory=discord.ui.Thumbnail(user.display_avatar.url)))
+        embed.add_item(discord.ui.TextDisplay(f"**👤 User**\n`{user.name}` (`{user.id}`)"))
+        embed.add_item(discord.ui.TextDisplay(f"**🛡️ Moderator**\n{ctx.author.mention}"))
+        embed.add_item(discord.ui.TextDisplay(f"**📄 Reason**\n```{reason}```"))
+        await ctx.respond(view=build_view(embed))
 
         try:
             user_embed = create_mac_embed(
@@ -150,9 +143,9 @@ class MacBan(commands.Cog):
                 description="Your account has been restricted from joining any server protected by MAC™.",
                 color=discord.Color.dark_red()
             )
-            user_embed.add_field(name="📄 Reason", value=f"```{reason}```", inline=False)
-            user_embed.add_field(name="억 Appeal Information", value="> Contact support: [discord.maggi.dev](https://discord.maggi.dev)", inline=False)
-            await user.send(embed=user_embed)
+            user_embed.add_item(discord.ui.TextDisplay(f"**📄 Reason**\n```{reason}```"))
+            user_embed.add_item(discord.ui.TextDisplay("**억 Appeal Information**\n> Contact support: [discord.maggi.dev](https://discord.maggi.dev)"))
+            await user.send(view=build_view(user_embed))
         except discord.Forbidden:
             LogDebug(f"Could not send ban notification to {user.id} - DMs disabled")
         except Exception as e:
@@ -171,7 +164,7 @@ class MacBan(commands.Cog):
                 description=f"{user.mention} already has a bypass for this server.",
                 color=discord.Color.orange(),
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         servers.add(guild_id)
         bypasses[user_id] = list(servers)
@@ -182,8 +175,8 @@ class MacBan(commands.Cog):
             description=f"{user.mention} may now join this server despite a global ban.",
             color=discord.Color.green(),
         )
-        embed.add_field(name="🛡️ Server", value=f"`{ctx.guild.name}`", inline=False)
-        await ctx.respond(embed=embed)
+        embed.add_item(discord.ui.TextDisplay(f"**🛡️ Server**\n`{ctx.guild.name}`"))
+        await ctx.respond(view=build_view(embed))
 
     @commands.slash_command(name="mac-unban", description="Removes a global ban from a user.")
     @is_owner()
@@ -195,7 +188,7 @@ class MacBan(commands.Cog):
                 description=f"{user.mention} is not on the global ban list.",
                 color=discord.Color.orange()
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         del bans[str(user.id)]
         mac_save_bans(bans)
@@ -205,7 +198,7 @@ class MacBan(commands.Cog):
             description=f"**{user.mention}** has been removed from the global ban list.",
             color=discord.Color.green()
         )
-        await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(embed))
 
         try:
             user_embed = create_mac_embed(
@@ -213,7 +206,7 @@ class MacBan(commands.Cog):
                 description="You are now able to join servers protected by MAC™ again.",
                 color=discord.Color.green()
             )
-            await user.send(embed=user_embed)
+            await user.send(view=build_view(user_embed))
         except discord.Forbidden:
             LogDebug(f"Could not send unban notification to {user.id} - DMs disabled")
         except Exception as e:
@@ -231,19 +224,19 @@ class MacBan(commands.Cog):
                 description=f"{user.mention} is not globally banned.",
                 color=discord.Color.blue()
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         embed = create_mac_embed(
             title=f"Global Ban Record: {ban_record.get('name', 'Unknown User')}",
             color=discord.Color.red()
         )
-        embed.set_thumbnail(url=user.display_avatar.url)
-        embed.add_field(name="👤 User", value=f"{user.mention} (`{user.id}`)", inline=False)
-        embed.add_field(name="📅 Ban Date", value=f"<t:{int(datetime.datetime.fromisoformat(ban_record['bandate']).timestamp())}:F>", inline=True)
-        embed.add_field(name="🛡️ Banned By", value=f"`{ban_record.get('bannedby', 'Unknown')}`", inline=True)
-        embed.add_field(name="🌍 Origin Server", value=f"`{ban_record.get('servername', 'Unknown')}` (`{ban_record.get('serverid', 'N/A')}`)", inline=False)
-        embed.add_field(name="📄 Reason", value=f"```{trim_field(ban_record.get('reason', 'No reason provided'))}```", inline=False)
-        await ctx.respond(embed=embed)
+        embed.add_item(discord.ui.Section(discord.ui.TextDisplay("\u200b"), accessory=discord.ui.Thumbnail(user.display_avatar.url)))
+        embed.add_item(discord.ui.TextDisplay(f"**👤 User**\n{user.mention} (`{user.id}`)"))
+        embed.add_item(discord.ui.TextDisplay(f"**📅 Ban Date**\n<t:{int(datetime.datetime.fromisoformat(ban_record['bandate']).timestamp())}:F>"))
+        embed.add_item(discord.ui.TextDisplay(f"**🛡️ Banned By**\n`{ban_record.get('bannedby', 'Unknown')}`"))
+        embed.add_item(discord.ui.TextDisplay(f"**🌍 Origin Server**\n`{ban_record.get('servername', 'Unknown')}` (`{ban_record.get('serverid', 'N/A')}`)"))
+        embed.add_item(discord.ui.TextDisplay(f"**📄 Reason**\n```{trim_field(ban_record.get('reason', 'No reason provided'))}```"))
+        await ctx.respond(view=build_view(embed))
 
     @commands.slash_command(name="mac-info", description="Displays statistics about the MAC™ global ban list.")
     @is_owner()
@@ -256,7 +249,7 @@ class MacBan(commands.Cog):
             description="An overview of the global ban database.",
             color=discord.Color.blue()
         )
-        embed.add_field(name="📊 Total Bans", value=f"**{total_bans}** users are currently banned.", inline=False)
+        embed.add_item(discord.ui.TextDisplay(f"**📊 Total Bans**\n**{total_bans}** users are currently banned."))
 
         if bans:
             recent_bans = sorted(bans.values(), key=lambda x: x['bandate'], reverse=True)[:5]
@@ -264,9 +257,9 @@ class MacBan(commands.Cog):
             for ban in recent_bans:
                 user_name = ban.get('name', 'Unknown')
                 ban_list += f"• **{user_name}** (`{ban['id']}`) - <t:{int(datetime.datetime.fromisoformat(ban['bandate']).timestamp())}:R>\n"
-            embed.add_field(name="📰 Recent Bans", value=ban_list, inline=False)
+            embed.add_item(discord.ui.TextDisplay(f"**📰 Recent Bans**\n{ban_list}"))
 
-        await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(embed))
 
     @commands.slash_command(name="mac-export", description="Exports the complete global ban list as a file.")
     @is_owner()
@@ -279,7 +272,7 @@ class MacBan(commands.Cog):
                 description="The global ban list is currently empty.",
                 color=discord.Color.blue()
             )
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(embed))
             return
 
         filename = f"mac_global_banlist_{datetime.datetime.utcnow().strftime('%Y%m%d')}.txt"
@@ -294,7 +287,7 @@ class MacBan(commands.Cog):
             description=f"Successfully exported **{len(bans)}** entries to `{filename}`.",
             color=discord.Color.green(),
         )
-        await ctx.followup.send(embed=embed, file=discord.File(filename))
+        await ctx.followup.send(view=build_view(embed), file=discord.File(filename))
         os.remove(filename)
 
     @commands.slash_command(name="mac-scanserver", description="Scans the current server for globally banned users.")
@@ -314,7 +307,7 @@ class MacBan(commands.Cog):
                 description=f"No globally banned users were found on `{ctx.guild.name}`.",
                 color=discord.Color.green()
             )
-            return await ctx.followup.send(embed=embed)
+            return await ctx.followup.send(view=build_view(embed))
 
         embed = create_mac_embed(
             title=f"🚨 Scan Result: {len(banned_members_on_server)} Banned User(s) Found",
@@ -324,13 +317,15 @@ class MacBan(commands.Cog):
 
         for member in banned_members_on_server:
             ban_record = global_bans[str(member.id)]
-            embed.add_field(
-                name=f"👤 {member.name} (`{member.id}`)",
-                value=f"**Reason:** {trim_field(ban_record.get('reason', 'N/A'))}\n**Banned By:** `{ban_record.get('bannedby', 'N/A')}`",
-                inline=False
+            embed.add_item(
+                discord.ui.TextDisplay(
+                    f"**👤 {member.name} (`{member.id}`)**\n"
+                    f"**Reason:** {trim_field(ban_record.get('reason', 'N/A'))}\n"
+                    f"**Banned By:** `{ban_record.get('bannedby', 'N/A')}`"
+                )
             )
 
-        await ctx.followup.send(embed=embed)
+        await ctx.followup.send(view=build_view(embed))
 
 def setup(bot: commands.Bot):
     bot.add_cog(MacBan(bot))

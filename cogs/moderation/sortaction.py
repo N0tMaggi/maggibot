@@ -4,24 +4,22 @@ from discord.ext import commands
 from discord.commands import slash_command
 import os
 import asyncio
-from utils.embed_helpers import create_embed as utils_create_embed
+from utils.components import build_container, build_view
 
 class SortedAction(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
 
-    def create_embed(self, title, description, color=None):
-        """Helper function to create uniform embeds."""
-        if color is None:
-            color = discord.Color.blue()
-        embed = utils_create_embed(
+    def create_embed(self, title, description, color='info', fields=None):
+        """Helper function to create uniform moderation containers."""
+        return build_container(
             title=title,
             description=description,
             color=color,
-            bot_user=self.bot.user
+            bot_user=self.bot.user,
+            footer_text="Moderation Action | Bot",
+            fields=fields or [],
         )
-        embed.set_footer(text="Moderation Action | Bot")
-        return embed
 
     @slash_command(name="sortedaction", description="Perform actions (ban/kick) on users with a specific role.")
     async def sortedaction(self, ctx: discord.ApplicationContext, 
@@ -31,26 +29,26 @@ class SortedAction(commands.Cog):
         
         # Prüfung: Hat der Nutzer die Berechtigung?
         if action == "ban" and not ctx.author.guild_permissions.ban_members:
-            embed = self.create_embed("🚫 Permission Denied", "You do not have the `ban_members` permission.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("🚫 Permission Denied", "You do not have the `ban_members` permission.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
         elif action == "kick" and not ctx.author.guild_permissions.kick_members:
-            embed = self.create_embed("🚫 Permission Denied", "You do not have the `kick_members` permission.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("🚫 Permission Denied", "You do not have the `kick_members` permission.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
 
         role_obj = discord.utils.get(ctx.guild.roles, name=role.name)
         if not role_obj:
-            embed = self.create_embed("❌ Error", f"Role '{role}' not found.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("❌ Error", f"Role '{role}' not found.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
 
         members_with_role = [member for member in ctx.guild.members if role_obj in member.roles]
         total_users = len(members_with_role)
 
         if not total_users:
-            embed = self.create_embed("🔍 No Users Found", f"No users found with the role '{role}'.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("🔍 No Users Found", f"No users found with the role '{role}'.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
         
         # Export-Bereich
@@ -63,41 +61,40 @@ class SortedAction(commands.Cog):
             embed = self.create_embed(
                 "📤 Export Successful", 
                 f"User IDs and join dates have been exported. **{total_users} user(s)** found.", 
-                color=discord.Color.green()
+                color='success',
+                fields=[
+                    ("📄 File Details", "Format: `ID | Username | Joined`\nFile will be deleted after sending.", False)
+                ]
             )
-            embed.add_field(
-                name="📄 File Details", 
-                value="Format: `ID | Username | Joined`\nFile will be deleted after sending."
-            )
-            await ctx.respond(embed=embed, file=discord.File("exported_users.txt"))
+            await ctx.respond(view=build_view(embed), file=discord.File("exported_users.txt"))
             os.remove("exported_users.txt")  # Datei löschen
 
         if action is None:
-            embed = self.create_embed("ℹ️ No Action Performed", "Only export was requested. No ban/kick action was executed.", color=discord.Color.orange())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("ℹ️ No Action Performed", "Only export was requested. No ban/kick action was executed.", color='warning')
+            await ctx.respond(view=build_view(embed))
             return
 
         # Prüfung: Hat der Bot die Berechtigung?
         if action == "ban" and not ctx.guild.me.guild_permissions.ban_members:
-            embed = self.create_embed("⚠️ Permission Missing", "I do not have the `ban_members` permission.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("⚠️ Permission Missing", "I do not have the `ban_members` permission.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
         elif action == "kick" and not ctx.guild.me.guild_permissions.kick_members:
-            embed = self.create_embed("⚠️ Permission Missing", "I do not have the `kick_members` permission.", color=discord.Color.red())
-            await ctx.respond(embed=embed)
+            embed = self.create_embed("⚠️ Permission Missing", "I do not have the `kick_members` permission.", color='error')
+            await ctx.respond(view=build_view(embed))
             return
 
-        # Initialer Progress-Embed
+        # Initialer Progress-Container
         progress_embed = self.create_embed(
             "🔄 Action Started", 
             f"Starting `{action}` for {total_users} users.", 
-            color=discord.Color.yellow()
+            color='warning',
+            fields=[
+                ("📊 Progress", "**Processed: 0/0**\n**Success: 0 | Failed: 0**", False)
+            ]
         )
-        progress_embed.add_field(
-            name="📊 Progress", 
-            value="**Processed: 0/0**\n**Success: 0 | Failed: 0**"
-        )
-        progress_message = await ctx.respond(embed=progress_embed)
+        await ctx.respond(view=build_view(progress_embed))
+        progress_message = await ctx.interaction.original_response()
 
         # Aktion durchführen
         success_count = 0
@@ -123,23 +120,28 @@ class SortedAction(commands.Cog):
             except Exception as e:
                 failed_count += 1
 
-            # Aktualisiere Progress-Embed
-            progress_embed.set_field_at(
-                index=0,
-                name="📊 Progress",
-                value=f"**Processed: {idx}/{total_users}**\n**Success: {success_count} | Failed: {failed_count}**"
+            # Aktualisiere Progress-Container
+            progress_embed = self.create_embed(
+                "🔄 Action Started",
+                f"Starting `{action}` for {total_users} users.",
+                color='warning',
+                fields=[
+                    ("📊 Progress", f"**Processed: {idx}/{total_users}**\n**Success: {success_count} | Failed: {failed_count}**", False)
+                ]
             )
-            await progress_message.edit(embed=progress_embed)
+            await progress_message.edit(view=build_view(progress_embed))
             await asyncio.sleep(0.5)  # Rate Limit Schutz 
 
         # Abschlussmeldung
         final_embed = self.create_embed(
             "✅ Action Completed", 
             f"Successfully {action}ed **{success_count}/{total_users}** users.", 
-            color=discord.Color.green()
+            color='success',
+            fields=[
+                ("📈 Summary", f"Success: {success_count}\nFailed: {failed_count}", False)
+            ]
         )
-        final_embed.add_field(name="📈 Summary", value=f"Success: {success_count}\nFailed: {failed_count}")
-        await progress_message.edit(embed=final_embed)
+        await progress_message.edit(view=build_view(final_embed))
 
 def setup(bot: discord.Bot):
     bot.add_cog(SortedAction(bot))

@@ -3,7 +3,7 @@ from discord.ext import commands
 import asyncio
 import os
 from discord import default_permissions
-from utils.embed_helpers import create_embed as utils_create_embed
+from utils.components import build_container, build_view
 
 class TrollCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -12,27 +12,32 @@ class TrollCommands(commands.Cog):
         os.makedirs(self.assets_dir, exist_ok=True)
 
     def create_embed(self, title, description, color, **kwargs):
-        """Helper function to create consistent embeds"""
+        """Helper function to create consistent containers"""
         # Extract custom kwargs
         user = kwargs.pop("user", None)
         guild = kwargs.pop("guild", None)
         
         # Use centralized function
-        embed = utils_create_embed(
+        container = build_container(
             title=title,
             description=description,
-            color=color,
+            color=color.value if hasattr(color, "value") else color,
             bot_user=self.bot.user,
             **kwargs
         )
         
         # Apply custom footer/author
         if user:
-            embed.set_footer(text=f"Requested by {user}", icon_url=user.display_avatar.url)
+            container.add_item(discord.ui.TextDisplay(f"-# Requested by {user}"))
         if guild and guild.icon:
-            embed.set_author(name=guild.name, icon_url=guild.icon.url)
+            container.add_item(
+                discord.ui.Section(
+                    discord.ui.TextDisplay(guild.name),
+                    accessory=discord.ui.Thumbnail(guild.icon.url),
+                )
+            )
         
-        return embed
+        return container
 
     @commands.slash_command(
         name="jumpscare", 
@@ -51,7 +56,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
         
         voice_channel = user.voice.channel
         file_path = os.path.join(self.assets_dir, f"{name}.mp3")
@@ -69,7 +74,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(embed))
 
             source = discord.FFmpegPCMAudio(
                 executable="ffmpeg",
@@ -98,7 +103,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(embed), ephemeral=True)
         except FileNotFoundError as e:
             embed = self.create_embed(
                 title="🔍 Asset Not Found",
@@ -107,7 +112,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(embed), ephemeral=True)
         except Exception as e:
             embed = self.create_embed(
                 title="💥 Unexpected Error",
@@ -116,7 +121,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(embed), ephemeral=True)
         finally:
             if ctx.guild.voice_client:
                 await ctx.guild.voice_client.disconnect(force=True)
@@ -141,7 +146,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         voice_channels = [ch for ch in ctx.guild.voice_channels 
                          if ch != user.voice.channel and ch.permissions_for(ctx.me).move_members]
@@ -154,7 +159,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         embed = self.create_embed(
             title="🌀 Channel Roulette Started",
@@ -163,7 +168,7 @@ class TrollCommands(commands.Cog):
             user=ctx.author,
             guild=ctx.guild
         )
-        await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(embed))
 
         start_time = discord.utils.utcnow()
         move_count = 0
@@ -189,7 +194,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(embed))
 
     @commands.slash_command(
         name="asset-upload", 
@@ -208,7 +213,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         if len(file.size) > 5 * 1024 * 1024:  
             embed = self.create_embed(
@@ -218,7 +223,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
 
         target_path = os.path.join(self.assets_dir, f"{name}.mp3")
         
@@ -231,9 +236,9 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            embed.add_field(name="File Size", value=f"{file.size/1024:.1f} KB")
-            embed.add_field(name="Total Assets", value=str(len(self.get_available_sounds())))
-            await ctx.respond(embed=embed)
+            embed.add_item(discord.ui.TextDisplay(f"**File Size**\n{file.size/1024:.1f} KB"))
+            embed.add_item(discord.ui.TextDisplay(f"**Total Assets**\n{len(self.get_available_sounds())}"))
+            await ctx.respond(view=build_view(embed))
         except Exception as e:
             embed = self.create_embed(
                 title="💥 Upload Failed",
@@ -242,7 +247,7 @@ class TrollCommands(commands.Cog):
                 user=ctx.author,
                 guild=ctx.guild
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(embed), ephemeral=True)
 
 def setup(bot: commands.Bot):
     bot.add_cog(TrollCommands(bot))

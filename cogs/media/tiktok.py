@@ -10,7 +10,7 @@ import datetime
 import handlers.config as cfg
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
 from handlers.env import get_tiktok_api_key
-from utils.embed_helpers import create_embed as utils_create_embed
+from utils.components import build_container, build_view
 
 media_dir = "data/media"
 API_KEY = get_tiktok_api_key()
@@ -25,19 +25,18 @@ def get_extension(url: str, default_ext: str) -> str:
         return default_ext
     return ext.lstrip(".")
 
-def create_embed(title: str, description: str, color: discord.Color) -> discord.Embed:
-    embed = utils_create_embed(
+def create_embed(title: str, description: str, color: discord.Color) -> discord.ui.Container:
+    return build_container(
         title=title,
         description=description,
-        color=color,
+        color=color.value if hasattr(color, "value") else color,
         thumbnail=TIKTOK_ICON_URL,
         footer_text="TikTok Downloader • maggi.dev API",
         timestamp=True
     )
-    return embed
 
 def safe_embed_field_value(value: str, max_length: int = 1024) -> str:
-    """Ensures that a Discord embed field value does not exceed the maximum allowed length."""
+    """Ensures that a field value does not exceed the maximum allowed length."""
     if value is None:
         return ""
     value = str(value)
@@ -60,7 +59,7 @@ class Tiktok(commands.Cog):
             color=discord.Color.blue()
         )
         await ctx.defer()
-        await ctx.respond(embed=processing_embed)
+        await ctx.respond(view=build_view(processing_embed))
 
         try:
             # Fetch API data
@@ -92,7 +91,7 @@ class Tiktok(commands.Cog):
                 description="Fetching media from TikTok...",
                 color=discord.Color.dark_purple()
             )
-            await ctx.interaction.edit_original_response(embed=processing_embed)
+            await ctx.interaction.edit_original_response(view=build_view(processing_embed))
 
             result = api_data.get("result", {})
             attachments = []
@@ -177,44 +176,35 @@ class Tiktok(commands.Cog):
                         break
 
             # Create result embed
-            info_embed = create_embed(
-                title="🎬 TikTok Media Information",
-                description=safe_embed_field_value(result.get("description", "No description available")),
-                color=discord.Color.green()
-            )
-            # Truncate the link if it's too long for the field
-            display_link = "[Original Link]({})".format(link)
-            info_embed.add_field(
-                name="🔗 Source URL",
-                value=safe_embed_field_value(display_link),
-                inline=False
-            )
+            info_fields = [
+                (
+                    "🔗 Source URL",
+                    safe_embed_field_value("[Original Link]({})".format(link)),
+                    False,
+                )
+            ]
 
             if author := result.get("author"):
                 author_name = author.get("nickname", author.get("username", "Unknown"))
                 if profile_url := author.get("url"):
-                    info_embed.add_field(
-                        name="👤 Author",
-                        value=safe_embed_field_value(f"[{author_name}]({profile_url})"),
-                        inline=True
+                    info_fields.append(
+                        ("👤 Author", safe_embed_field_value(f"[{author_name}]({profile_url})"), True)
                     )
                 else:
-                    info_embed.add_field(
-                        name="👤 Author",
-                        value=safe_embed_field_value(author_name),
-                        inline=True
-                    )
+                    info_fields.append(("👤 Author", safe_embed_field_value(author_name), True))
 
-            info_embed.add_field(
-                name="📁 Media Type",
-                value=safe_embed_field_value(result.get("type", "N/A").capitalize()),
-                inline=True
+            info_fields.extend([
+                ("📁 Media Type", safe_embed_field_value(result.get("type", "N/A").capitalize()), True),
+                ("📦 Attachments", safe_embed_field_value(str(len(attachments))), True),
+            ])
+
+            info_embed = create_embed(
+                title="🎬 TikTok Media Information",
+                description=safe_embed_field_value(result.get("description", "No description available")),
+                color=discord.Color.green(),
             )
-            info_embed.add_field(
-                name="📦 Attachments",
-                value=safe_embed_field_value(str(len(attachments))),
-                inline=True
-            )
+            for field_name, field_value, field_inline in info_fields:
+                info_embed.add_item(discord.ui.TextDisplay(f"**{field_name}**\n{field_value}"))
 
             # Final response
             success_embed = create_embed(
@@ -222,7 +212,7 @@ class Tiktok(commands.Cog):
                 description="Successfully processed TikTok media",
                 color=discord.Color.green()
             )
-            await ctx.interaction.edit_original_response(embed=success_embed)
+            await ctx.interaction.edit_original_response(view=build_view(success_embed))
 
             content_msg = []
             if big_file_links:
@@ -231,33 +221,35 @@ class Tiktok(commands.Cog):
                     description=safe_embed_field_value(f"{len(big_file_links)} files exceed Discord's size limit"),
                     color=discord.Color.orange()
                 )
-                warning_embed.add_field(
-                    name="Large Files", 
-                    value=safe_embed_field_value("\n".join(f"• [Link {idx+1}]({url})" for idx, url in enumerate(big_file_links))),
-                    inline=False
+                big_file_links_text = "\n".join(
+                    f"• [Link {idx + 1}]({url})" for idx, url in enumerate(big_file_links)
                 )
-                await ctx.followup.send(embed=warning_embed)
+                warning_embed.add_item(
+                    discord.ui.TextDisplay(
+                        f"**Large Files**\n{safe_embed_field_value(big_file_links_text)}"
+                    )
+                )
+                await ctx.followup.send(view=build_view(warning_embed))
 
             if attachments:
                 for i in range(0, len(attachments), 10):
                     chunk = attachments[i:i + 10]
                     if i == 0:
                         await ctx.followup.send(
-                            content="📁 Downloaded Attachments:",
-                            embed=info_embed,
+                            view=build_view(discord.ui.TextDisplay("📁 Downloaded Attachments:"), info_embed),
                             files=chunk,
                         )
                     else:
                         await ctx.followup.send(files=chunk)
             else:
-                await ctx.followup.send(embed=info_embed)
+                await ctx.followup.send(view=build_view(info_embed))
         except Exception as e:
             error_embed = create_embed(
                 title="❌ Critical Error",
                 description=f"An unexpected error occurred: {str(e)}",
                 color=discord.Color.red()
             )
-            await ctx.followup.send(embed=error_embed)
+            await ctx.followup.send(view=build_view(error_embed))
             LogError(f"TikTok command failed: {str(e)}")
 
 def setup(bot: discord.Bot):    bot.add_cog(Tiktok(bot))

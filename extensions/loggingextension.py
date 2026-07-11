@@ -1,15 +1,15 @@
 import discord
-import datetime
+from utils.components import build_container
 
 
 COLOR_MAP = {
-    "join": discord.Color.green(),
-    "leave": discord.Color.red(),
-    "ban": discord.Color.dark_red(),
-    "kick": discord.Color.orange(),
-    "warn": discord.Color.orange(),
-    "message_delete": discord.Color.orange(),
-    "default": discord.Color.blue(),
+    "join": "success",
+    "leave": "error",
+    "ban": "mod_action",
+    "kick": "warning",
+    "warn": "warning",
+    "message_delete": "warning",
+    "default": "info",
 }
 
 
@@ -20,8 +20,8 @@ def create_log_embed(
     user: discord.abc.User | None = None,
     fields: list[tuple[str, str, bool]] | None = None,
     guild: discord.Guild | None = None,
-) -> discord.Embed:
-    """Create a standardized log embed.
+) -> discord.ui.Container:
+    """Create a standardized log container (Components V2).
 
     Parameters
     ----------
@@ -38,37 +38,30 @@ def create_log_embed(
 
     Notes
     -----
-    The embed automatically appends the event ``title`` and the current time as
+    The container automatically appends the event ``title`` and the current time as
     additional fields for more verbose logging information.
     """
 
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=COLOR_MAP.get(color_type, COLOR_MAP["default"]),
-        timestamp=datetime.datetime.utcnow(),
-    )
-
-    if user:
-        embed.set_author(name=str(user), icon_url=user.display_avatar.url)
-        embed.set_thumbnail(url=user.display_avatar.url)
+    timestamp_unix = int(discord.utils.utcnow().timestamp())
+    container_fields = []
 
     if guild:
-        embed.add_field(name="Server", value=f"{guild.name} ({guild.id})", inline=False)
+        container_fields.append(("Server", f"{guild.name} ({guild.id})", False))
 
     if fields:
         for name, value, inline in fields:
-            embed.add_field(name=name, value=value, inline=inline)
+            container_fields.append((name, value, inline))
 
-    embed.add_field(
-        name="Event",
-        value=title,
-        inline=False,
+    container_fields.append(("Event", title, False))
+    container_fields.append(("Time", f"<t:{timestamp_unix}:F>", False))
+
+    return build_container(
+        title=title,
+        description=description,
+        color=COLOR_MAP.get(color_type, COLOR_MAP["default"]),
+        author=user,
+        thumbnail=user.display_avatar.url if user else None,
+        fields=container_fields,
+        footer_text=f"Logging System | Guild ID: {guild.id if guild else 'N/A'}",
+        timestamp=True,
     )
-    embed.add_field(
-        name="Time",
-        value=f"<t:{int(embed.timestamp.timestamp())}:F>",
-        inline=False,
-    )
-    embed.set_footer(text=f"Logging System | Guild ID: {guild.id if guild else 'N/A'}")
-    return embed

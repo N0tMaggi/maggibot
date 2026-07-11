@@ -5,6 +5,7 @@ import os
 import asyncio
 from handlers.debug import LogDebug, LogError
 from handlers.config import loadvoicegateconfig, savevoicegateconfig
+from utils.components import build_container, build_view
 
 
 
@@ -50,16 +51,16 @@ class VoiceGate(commands.Cog):
                 LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
 
             rules_text = config_data.get("rules_text", "No rules provided.")
-            embed_rules = discord.Embed(
+            rules_container = build_container(
                 title="Voice Gate Rules",
                 description=rules_text,
-                color=0x3498DB
+                color="info",
+                footer_text="React with ✅ within 30 seconds to accept the rules."
             )
-            embed_rules.set_footer(text="React with ✅ within 30 seconds to accept the rules.")
 
             try:
                 dm_channel = await member.create_dm()
-                rules_message = await dm_channel.send(embed=embed_rules)
+                rules_message = await dm_channel.send(view=build_view(rules_container))
                 await rules_message.add_reaction("✅")
             except Exception as e:
                 LogError(f"[VOICEGATE] Failed to send DM to member {member.id}: {e}")

@@ -4,80 +4,69 @@ from discord.ui import Select, Button
 import datetime
 import handlers.config as config
 from handlers.debug import LogError
+from utils.components import build_container, build_view
 
 
-class ConfigView(discord.ui.View):
+def build_config_container(config_data, guild, requester, selected="all") -> discord.ui.Container:
+    fields = []
+    if selected == "all" or not config_data:
+        if config_data:
+            config_list = "\n".join([f"• **{k}:** `{v}`" for k, v in config_data.items()])
+            fields.append(("📜 Active Settings", config_list, False))
+        else:
+            fields.append(("❌ No Configuration Found", "This server hasn't set up any custom settings yet!", False))
+    else:
+        value = config_data.get(selected, "Not Found")
+        fields.append((f"**{selected}:**", f"`{value}`", False))
+
+    return build_container(
+        title="🔧 Server Configuration",
+        description=f"**Current settings for {guild.name}**",
+        color="stats",
+        author=guild,
+        fields=fields,
+        footer_text=f"Requested by {requester.display_name}",
+    )
+
+
+class ConfigSelectRow(discord.ui.ActionRow):
     def __init__(self, config_data, guild):
-        super().__init__(timeout=180)
+        super().__init__()
         self.config_data = config_data
         self.guild = guild
 
-        # Create Select options
         options = []
         if config_data:
             for key in config_data.keys():
                 options.append(discord.SelectOption(label=key, value=key))
             options.append(discord.SelectOption(label="All Settings", value="all"))
         else:
-            options.append(discord.SelectOption(
-                label="No Settings",
-                value="none",
-                default=True
-            ))
+            options.append(discord.SelectOption(label="No Settings", value="none", default=True))
 
-        # Configure Select menu
         self.select_menu = Select(
             placeholder="Select a setting",
             options=options,
             min_values=1,
-            max_values=1
+            max_values=1,
+            disabled=not bool(config_data),
         )
         self.select_menu.callback = self.select_callback
         self.add_item(self.select_menu)
 
-        # Add Close button
-        self.close_button = Button(
-            label="Close",
-            style=discord.ButtonStyle.red
-        )
-        self.close_button.callback = self.close_callback
-        self.add_item(self.close_button)
-
     async def select_callback(self, interaction):
         selected = self.select_menu.values[0]
-        embed = discord.Embed(
-            title="🔧 Server Configuration",
-            color=0x9B59B6,
-            timestamp=datetime.datetime.utcnow()
-        )
-        embed.set_author(
-            name=f"{self.guild.name} System Settings",
-            icon_url=self.guild.icon.url if self.guild.icon else interaction.client.user.avatar.url
+        container = build_config_container(self.config_data, self.guild, interaction.user, selected=selected)
+        await interaction.response.edit_message(
+            view=build_view(container, ConfigSelectRow(self.config_data, self.guild), ConfigCloseRow())
         )
 
-        if selected == "all" or not self.config_data:
-            if self.config_data:
-                config_list = "\n".join([f"• **{k}:** `{v}`" for k, v in self.config_data.items()])
-                embed.add_field(name="📜 Active Settings", value=config_list, inline=False)
-            else:
-                embed.add_field(
-                    name="❌ No Configuration Found",
-                    value="This server hasn't set up any custom settings yet!",
-                    inline=False
-                )
-        else:
-            value = self.config_data.get(selected, "Not Found")
-            embed.add_field(
-                name=f"**{selected}:**",
-                value=f"`{value}`",
-                inline=False
-            )
-        
-        embed.set_footer(
-            text=f"Requested by {interaction.user.display_name}",
-            icon_url=interaction.user.avatar.url
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
+
+class ConfigCloseRow(discord.ui.ActionRow):
+    def __init__(self):
+        super().__init__()
+        self.close_button = Button(label="Close", style=discord.ButtonStyle.red)
+        self.close_button.callback = self.close_callback
+        self.add_item(self.close_button)
 
     async def close_callback(self, interaction):
         await interaction.message.delete()
@@ -94,39 +83,11 @@ class ConfigSettings(commands.Cog):
             serverconfig = config.loadserverconfig()  
             config_data = serverconfig.get(guild_id, {})
 
-            initial_embed = discord.Embed(
-                title="🔧 Server Configuration",
-                description=f"**Current settings for {ctx.guild.name}**",
-                color=0x9B59B6,
-                timestamp=datetime.datetime.utcnow()
-            )
-            initial_embed.set_author(
-                name=f"{ctx.guild.name} System Settings",
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else self.bot.user.avatar.url
-            )
+            container = build_config_container(config_data, ctx.guild, ctx.author, selected="all")
+            select_row = ConfigSelectRow(config_data, ctx.guild)
+            close_row = ConfigCloseRow()
 
-            if config_data:
-                config_list = "\n".join([f"• **{k}:** `{v}`" for k, v in config_data.items()])
-                initial_embed.add_field(name="📜 Active Settings", value=config_list, inline=False)
-            else:
-                initial_embed.add_field(
-                    name="❌ No Configuration Found",
-                    value="This server hasn't set up any custom settings yet!",
-                    inline=False
-                )
-
-            initial_embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else self.bot.user.avatar.url
-            )
-
-            # Disable components if no config exists
-            view = ConfigView(config_data, ctx.guild)
-            if not config_data:
-                view.select_menu.disabled = True
-                view.close_button.disabled = False  # Keep close button enabled
-
-            await ctx.respond(embed=initial_embed, view=view, ephemeral=False)
+            await ctx.respond(view=build_view(container, select_row, close_row), ephemeral=False)
 
         except Exception as e:
             LogError(f"An error occurred while showing the server configuration: {e}")

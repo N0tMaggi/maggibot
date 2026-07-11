@@ -7,6 +7,7 @@ import os
 import handlers.config as cfg
 from extensions.modextensions import create_mod_embed, send_mod_log
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
+from utils.components import build_container, build_view
 
 class Moderation(commands.Cog):
     def __init__(self, bot: discord.Bot):
@@ -22,7 +23,7 @@ class Moderation(commands.Cog):
                 'info',
                 ctx.author
             )
-            await ctx.respond(embed=initial_embed)
+            await ctx.respond(view=build_view(initial_embed))
 
             await asyncio.sleep(1.5)
 
@@ -39,20 +40,17 @@ class Moderation(commands.Cog):
             )
 
             if missing_perms:
-                result_embed.add_field(
-                    name="🚨 Missing Permissions",
-                    value="\n".join([f"• {perm.capitalize()}" for perm in missing_perms]),
-                    inline=False
-                )
-                result_embed.description += "\n\n⚠️ **Warning:** Bot functionality may be limited!"
+                result_embed.add_item(discord.ui.TextDisplay(
+                    "**🚨 Missing Permissions**\n"
+                    + "\n".join([f"• {perm.capitalize()}" for perm in missing_perms])
+                ))
+                result_embed.add_item(discord.ui.TextDisplay("⚠️ **Warning:** Bot functionality may be limited!"))
             else:
-                result_embed.add_field(
-                    name="✅ All Permissions Granted",
-                    value="Bot has full administrative access",
-                    inline=False
-                )
+                result_embed.add_item(discord.ui.TextDisplay(
+                    "**✅ All Permissions Granted**\nBot has full administrative access"
+                ))
 
-            await ctx.interaction.edit_original_response(embed=result_embed)
+            await ctx.interaction.edit_original_response(view=build_view(result_embed))
             LogDebug(f"Permission check completed for {ctx.guild.id}")
 
             # Owner report
@@ -66,18 +64,14 @@ class Moderation(commands.Cog):
                 enabled_perms = [perm.replace('_', ' ').title() for perm, value in bot_perms if value]
                 disabled_perms = [perm.replace('_', ' ').title() for perm, value in bot_perms if not value]
 
-                owner_embed.add_field(
-                    name="🟢 Enabled Permissions",
-                    value=", ".join(enabled_perms) or "None",
-                    inline=False
-                )
-                owner_embed.add_field(
-                    name="🔴 Disabled Permissions",
-                    value=", ".join(disabled_perms) or "None",
-                    inline=False
-                )
+                owner_embed.add_item(discord.ui.TextDisplay(
+                    f"**🟢 Enabled Permissions**\n{', '.join(enabled_perms) or 'None'}"
+                ))
+                owner_embed.add_item(discord.ui.TextDisplay(
+                    f"**🔴 Disabled Permissions**\n{', '.join(disabled_perms) or 'None'}"
+                ))
 
-                await ctx.guild.owner.send(embed=owner_embed)
+                await ctx.guild.owner.send(view=build_view(owner_embed))
                 LogModeration(f"Sent owner report to {ctx.guild.owner.id}")
             except discord.Forbidden:
                 warning_embed = create_mod_embed(
@@ -86,15 +80,15 @@ class Moderation(commands.Cog):
                     'warning',
                     ctx.author
                 )
-                await ctx.followup.send(embed=warning_embed, ephemeral=True)
+                await ctx.followup.send(view=build_view(warning_embed), ephemeral=True)
                 LogError(f"Failed to DM owner {ctx.guild.owner.id}")
 
         except Exception as e:
             LogError(f"Checkperms error: {str(e)}")
-            await ctx.followup.send(embed=create_mod_embed(
+            await ctx.followup.send(view=build_view(create_mod_embed(
                 "⚠️ Error",
                 f"An error occurred while checking permissions: {str(e)}",
-                'error', ctx.author), ephemeral=True)
+                'error', ctx.author)), ephemeral=True)
     
     @commands.slash_command(name="purge-onlymessages", description="🧹 Purge only messages in a channel without deleting images")
     @commands.cooldown(1, 10, commands.BucketType.user)
@@ -116,36 +110,43 @@ class Moderation(commands.Cog):
             )
 
             deleted_count = len(deleted)
-            color = discord.Color.green() if deleted_count > 0 else discord.Color.orange()
+            color = 'success' if deleted_count > 0 else 'warning'
             description = (
                 f"🗑️ **{deleted_count}** purged!" 
                 if deleted_count > 0 
                 else "❌ No deletable messages found!"
             )
 
-            embed = discord.Embed(
+            embed = build_container(
                 title="Channel Purged" + (" ✅" if deleted_count > 0 else " ⚠️"),
                 description=description,
-                color=color
+                color=color,
+                fields=[
+                    ("Checking Messages", f"`{limit}`", True),
+                    ("Pinned Ignored", "✅", True),
+                ],
+                footer_text="Maggi Bot • Deletion takes about 1 Minute",
+                footer_icon=ctx.guild.icon.url if ctx.guild and ctx.guild.icon else None,
+                timestamp=True,
+                bot_user=self.bot.user,
             )
-            embed.add_field(name="Checking Messages", value=f"`{limit}`", inline=True)
-            embed.add_field(name="Pinned Ignored", value="✅", inline=True)
-            embed.set_footer(text="Maggi Bot • Deletion takes about 1 Minute", icon_url=ctx.guild.icon.url)
 
         except discord.HTTPException as e:
-            embed = discord.Embed(
+            embed = build_container(
                 title="⚠️ Error Purge",
                 description=f"API-Error: `{e}`",
-                color=discord.Color.red()
+                color='error',
+                bot_user=self.bot.user,
             )
         except Exception as e:
-            embed = discord.Embed(
+            embed = build_container(
                 title="❌ Critical Error",
                 description=f"Unexpected error: `{str(e)}`",
-                color=discord.Color.dark_red()
+                color=discord.Color.dark_red().value,
+                bot_user=self.bot.user,
             )
 
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        await ctx.followup.send(view=build_view(embed), ephemeral=True)
 
 def setup(bot: discord.Bot):
     bot.add_cog(Moderation(bot))

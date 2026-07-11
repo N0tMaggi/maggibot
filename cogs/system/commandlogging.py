@@ -4,17 +4,12 @@ from datetime import datetime
 import os
 from handlers.debug import LogDebug, LogError
 from typing import Optional
+from utils.components import build_container, build_view
 
 class CommandLogging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log_channel_id = int(os.getenv('COMMAND_LOG_CHANNEL_ID', 0))
-        self.colors = {
-            'normal': discord.Color.blue(),
-            'dm': discord.Color.dark_grey(),
-            'error': discord.Color.red()
-        }
-
     async def get_log_channel(self) -> Optional[discord.TextChannel]:
         try:
             return await self.bot.fetch_channel(self.log_channel_id)
@@ -38,28 +33,15 @@ class CommandLogging(commands.Cog):
         
         return f"{activity_type}: {activity.name}" if activity.name else activity_type
 
-    async def create_command_embed(self, ctx: discord.ApplicationContext) -> discord.Embed:
+    async def create_command_embed(self, ctx: discord.ApplicationContext) -> discord.ui.Container:
         is_dm = isinstance(ctx.channel, discord.DMChannel)
-        color = self.colors['dm'] if is_dm else self.colors['normal']
-
-        embed = discord.Embed(
-            title="📝 Command Execution Log",
-            color=color,
-            timestamp=datetime.utcnow()
-        )
+        color = discord.Color.dark_grey().value if is_dm else 'info'
 
         user = ctx.author
-        embed.set_author(
-            name=f"{user} ({user.id})",
-            icon_url=user.display_avatar.url
-        )
-
-        embed.add_field(
-            name="👤 User Info",
-            value=f"• Bot: {'✅' if user.bot else '❌'}\n"
-                 f"• Created: {user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-                 f"• Status: {str(user.status).title() if hasattr(user, 'status') else 'N/A'}",
-            inline=False
+        user_info = (
+            f"• Bot: {'✅' if user.bot else '❌'}\n"
+            f"• Created: {user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            f"• Status: {str(user.status).title() if hasattr(user, 'status') else 'N/A'}"
         )
 
         command_info = f"• Name: `/{ctx.command.qualified_name if ctx.command else 'Unknown'}`\n"
@@ -67,12 +49,6 @@ class CommandLogging(commands.Cog):
             command_info += "• Options: ```json\n" + "\n".join(
                 [f"{opt['name']}: {opt['value']}" for opt in ctx.selected_options]
             ) + "```"
-
-        embed.add_field(
-            name="⚙️ Command Details",
-            value=command_info,
-            inline=False
-        )
 
         context_info = []
         if ctx.guild:
@@ -87,29 +63,38 @@ class CommandLogging(commands.Cog):
         context_info.append(f"• Channel: {channel_mention} ({channel_id})")
         context_info.append(f"• Shard: {ctx.guild.shard_id if ctx.guild else 0}")
 
-        embed.add_field(
-            name="🌐 Context",
-            value="\n".join(context_info),
-            inline=False
+        fields = [
+            ("👤 User Info", user_info, False),
+            ("⚙️ Command Details", command_info, False),
+            ("🌐 Context", "\n".join(context_info), False),
+        ]
+
+        if hasattr(user, 'activity') and user.activity:
+            fields.append(("🎮 Current Activity", self.format_activity(user), True))
+
+        description = ""
+        if ctx.interaction and ctx.interaction.response.is_done():
+            description = (
+                f"[Jump to Interaction]"
+                f"(https://discord.com/channels/{ctx.guild.id if ctx.guild else '@me'}/{ctx.channel.id}/{ctx.interaction.id})"
+            )
+
+        container = build_container(
+            title="📝 Command Execution Log",
+            description=description,
+            color=color,
+            author=user,
+            fields=fields,
+            timestamp=True,
+            bot_user=self.bot.user,
         )
 
         if ctx.command:
-            embed.set_footer(
-                text=f"Command ID: {ctx.command.qualified_name} | Cooldown: {ctx.command.cooldown}",
-                icon_url=self.bot.user.display_avatar.url
-            )
+            container.add_item(discord.ui.TextDisplay(
+                f"-# Command ID: {ctx.command.qualified_name} | Cooldown: {ctx.command.cooldown}"
+            ))
 
-        if hasattr(user, 'activity') and user.activity:
-            embed.add_field(
-                name="🎮 Current Activity",
-                value=self.format_activity(user),
-                inline=True
-            )
-
-        if ctx.interaction and ctx.interaction.response.is_done():
-            embed.description = f"[Jump to Interaction](https://discord.com/channels/{ctx.guild.id if ctx.guild else '@me'}/{ctx.channel.id}/{ctx.interaction.id})"
-
-        return embed
+        return container
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx: discord.ApplicationContext):
@@ -124,7 +109,7 @@ class CommandLogging(commands.Cog):
                 LogError(f"Missing permissions to send messages in {log_channel.name}")
                 return
 
-            await log_channel.send(embed=embed)
+            await log_channel.send(view=build_view(embed))
             
         except Exception as e:
             LogError(f"Failed to log command: {str(e)}")

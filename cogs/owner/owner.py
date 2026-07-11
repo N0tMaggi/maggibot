@@ -7,6 +7,7 @@ import asyncio
 from typing import Optional
 from handlers.debug import LogDebug, LogSystem, LogError
 from handlers.env import get_owner
+from utils.components import build_container, build_view
 
 class OwnerCommands(commands.Cog):
     def __init__(self, bot):
@@ -14,57 +15,64 @@ class OwnerCommands(commands.Cog):
         self.shutdown_in_progress = False
         self.reboot_in_progress = False
         self.owner_id = get_owner()
-        self.embed_colors = {
-            "info": 0x3498db,
-            "status": 0x2ecc71,
-            "error": 0xe74c3c
-        }
 
     async def check_running_tasks(self) -> bool:
         # Work in progress
         return True
 
     def create_embed(self, title, description, color_name="info"):
-        embed = discord.Embed(
+        return build_container(
             title=title,
             description=description,
-            color=self.embed_colors.get(color_name, 0x3498db),
-            timestamp=datetime.utcnow()
+            color=color_name,
+            thumbnail=self.bot.user.display_avatar.url if self.bot.user else None,
+            footer_text="Maggi Dev System",
+            footer_icon="https://maggi.dev/favicon/favicon.ico",
+            timestamp=True,
+            bot_user=self.bot.user,
         )
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-        embed.set_footer(
-            text="Maggi Dev System",
-            icon_url="https://maggi.dev/favicon/favicon.ico"
-        )
-        return embed
     
 
     async def shutdown_sequence(self, ctx: discord.ApplicationContext):
-        embed = discord.Embed(
+        embed = build_container(
             title="🛑 Bot Shutdown",
             description="Shutdown sequence initiated...",
-            color=discord.Color.red()
+            color='error',
+            bot_user=self.bot.user,
         )
-        msg = await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(embed))
+        msg = await ctx.interaction.original_response()
         
         for i in range(1, 6):
             progress = "▰" * i + "▱" * (5 - i)
-            embed.description = f"Shutting down... [{progress}] ({i*20}%)"
-            await msg.edit(embed=embed)
+            embed = build_container(
+                title="🛑 Bot Shutdown",
+                description=f"Shutting down... [{progress}] ({i*20}%)",
+                color='error',
+                bot_user=self.bot.user,
+            )
+            await msg.edit(view=build_view(embed))
             await asyncio.sleep(0.5)
 
     async def reboot_sequence(self, ctx: discord.ApplicationContext):
-        embed = discord.Embed(
+        embed = build_container(
             title="🔄 Bot Reboot",
             description="Reboot sequence initiated...",
-            color=discord.Color.blue()
+            color='info',
+            bot_user=self.bot.user,
         )
-        msg = await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(embed))
+        msg = await ctx.interaction.original_response()
         
         for i in range(1, 6):
             progress = "▰" * i + "▱" * (5 - i)
-            embed.description = f"Rebooting... [{progress}] ({i*20}%)"
-            await msg.edit(embed=embed)
+            embed = build_container(
+                title="🔄 Bot Reboot",
+                description=f"Rebooting... [{progress}] ({i*20}%)",
+                color='info',
+                bot_user=self.bot.user,
+            )
+            await msg.edit(view=build_view(embed))
             await asyncio.sleep(0.5)
 
     @commands.slash_command(name="stop", description="[Owner only] Stop the bot 🛑")
@@ -78,22 +86,24 @@ class OwnerCommands(commands.Cog):
         authorised = int(os.getenv('OWNER_ID'))
         
         if ctx.author.id != authorised:
-            embed = discord.Embed(
+            embed = build_container(
                 title="🚫 Access Denied",
                 description="Only the bot owner can perform this action",
-                color=discord.Color.brand_red()
+                color='error',
+                bot_user=self.bot.user,
             )
             LogSystem(f" Access denied for {ctx.author} to stop the bot")
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
         
         if not await self.check_running_tasks():
-            embed = discord.Embed(
+            embed = build_container(
                 title="⚠️ Safety Check Failed",
                 description="There are still active tasks running. Please try again later.",
-                color=discord.Color.yellow()
+                color='warning',
+                bot_user=self.bot.user,
             )
             LogError(f" Safety check failed, stopping...")
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
         
         LogSystem(f" Stopping the bot...")
         await self.shutdown_sequence(ctx)
@@ -102,11 +112,12 @@ class OwnerCommands(commands.Cog):
             await self.bot.close()
         except Exception as e:
             LogError(f"Shutdown failed: {str(e)}")
-            await ctx.edit(embed=discord.Embed(
+            await ctx.edit(view=build_view(build_container(
                 title="❌ Shutdown Failed",
                 description="An error occurred during shutdown",
-                color=discord.Color.dark_red()
-            ))
+                color=discord.Color.dark_red().value,
+                bot_user=self.bot.user,
+            )))
 
     @commands.slash_command(name="reboot", description="[Owner only] Reboot the bot 🔄")
     @commands.is_owner()
@@ -119,21 +130,23 @@ class OwnerCommands(commands.Cog):
         authorised = int(os.getenv('OWNER_ID'))
         
         if ctx.author.id != authorised:
-            embed = discord.Embed(
+            embed = build_container(
                 title="🚫 Access Denied",
                 description="Only the bot owner can perform this action",
-                color=discord.Color.brand_red()
+                color='error',
+                bot_user=self.bot.user,
             )
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
         
         if not await self.check_running_tasks():
-            embed = discord.Embed(
+            embed = build_container(
                 title="⚠️ Safety Check Failed",
                 description="There are still active tasks running. Please try again later.",
-                color=discord.Color.yellow()
+                color='warning',
+                bot_user=self.bot.user,
             )
             LogError(f" Safety check failed, skipping...")
-            return await ctx.respond(embed=embed, ephemeral=True)
+            return await ctx.respond(view=build_view(embed), ephemeral=True)
         
         await self.reboot_sequence(ctx)
         
@@ -142,11 +155,12 @@ class OwnerCommands(commands.Cog):
             
         except Exception as e:
             LogError(f"Reboot failed: {str(e)}")
-            await ctx.edit(embed=discord.Embed(
+            await ctx.edit(view=build_view(build_container(
                 title="❌ Reboot Failed",
                 description="An error occurred during reboot",
-                color=discord.Color.dark_red()
-            ))
+                color=discord.Color.dark_red().value,
+                bot_user=self.bot.user,
+            )))
 
 def setup(bot):
     bot.add_cog(OwnerCommands(bot))

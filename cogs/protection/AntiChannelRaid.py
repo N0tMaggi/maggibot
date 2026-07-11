@@ -4,6 +4,7 @@ from handlers.config import loadserverconfig
 from handlers.debug import LogDebug, LogError
 from collections import defaultdict
 import asyncio
+from utils.components import build_container, build_view
 
 class ChannelProtectionCog(commands.Cog):
     def __init__(self, bot):
@@ -90,18 +91,21 @@ class ChannelProtectionCog(commands.Cog):
         if not log_channel:
             return
 
-        embed = discord.Embed(
+        fields = [
+            ("Server", guild.name, True),
+            ("Server ID", str(guild.id), True),
+        ]
+        container = build_container(
             title=title,
             description=description,
-            color=color,
-            timestamp=discord.utils.utcnow()
+            color=color.value,
+            thumbnail=guild.icon.url if guild.icon else None,
+            fields=fields,
+            timestamp=True,
         )
-        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
-        embed.add_field(name="Server", value=guild.name, inline=True)
-        embed.add_field(name="Server ID", value=guild.id, inline=True)
 
         try:
-            await log_channel.send(embed=embed)
+            await log_channel.send(view=build_view(container))
         except Exception as e:
             LogError(f"Failed to send log message: {str(e)}")
 

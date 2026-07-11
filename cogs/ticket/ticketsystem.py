@@ -8,6 +8,7 @@ import io
 import html
 import handlers.config as config
 from handlers.debug import LogDebug, LogError
+from utils.components import build_container, build_view
 
 
 def NoPrivateMessage(ctx):
@@ -25,9 +26,9 @@ class TicketSystem(Cog):
         self.tickets = config.load_ticket_data()
         self.save_ticket_data = config.save_ticket_data
 
-    class TicketOpenView(discord.ui.View):
+    class TicketOpenView(discord.ui.ActionRow):
         def __init__(self, cog):
-            super().__init__(timeout=None)
+            super().__init__()
             self.cog = cog
 
         @discord.ui.button(label="Open Ticket", style=discord.ButtonStyle.success, emoji="🎫", custom_id="ticket_open_button")
@@ -61,9 +62,9 @@ class TicketSystem(Cog):
         config.saveserverconfig(self.serverconfig)
         await self.ensure_forum_tags(forum)
 
-    class TicketControlView(discord.ui.View):
+    class TicketControlView(discord.ui.ActionRow):
         def __init__(self, cog, guild_id: str, user_id: str):
-            super().__init__(timeout=None)
+            super().__init__()
             self.cog = cog
             self.guild_id = guild_id
             self.user_id = user_id
@@ -318,29 +319,22 @@ class TicketSystem(Cog):
             guild_id = str(ctx.guild.id)
             LogDebug(f"Updated server config for guild {guild_id}: {self.serverconfig[guild_id]}")
 
-            embed = discord.Embed(
+            container = build_container(
                 title="Ticket System Setup",
                 description="The Ticket System has been successfully set up.",
-                color=0x00FF00,
-                timestamp=datetime.datetime.utcnow(),
+                color="success",
+                author=ctx.guild,
+                footer_text=f"Requested by {ctx.author.display_name}",
+                footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
+                fields=[
+                    ("Ticket Role", role.mention, True),
+                    ("Ticket Log Channel", logchannel.mention, True),
+                    ("Ticket Forum", forum.name, True),
+                    ("Guild ID", str(ctx.guild.id), False),
+                ],
             )
-            embed.set_author(
-                name=ctx.guild.name,
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-            )
-            embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
-            )
-            embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed.add_field(name="Ticket Role", value=role.mention, inline=True)
-            embed.add_field(
-                name="Ticket Log Channel", value=logchannel.mention, inline=True
-            )
-            embed.add_field(name="Ticket Forum", value=forum.name, inline=True)
-            embed.add_field(name="Guild ID", value=ctx.guild.id, inline=False)
 
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
 
         except Exception as e:
             LogError(f"An error occurred while setting up the Ticket System: {e}")
@@ -358,12 +352,13 @@ class TicketSystem(Cog):
     ):
         try:
             view = self.TicketOpenView(self)
-            embed = discord.Embed(
+            container = build_container(
                 title="Create a Ticket",
                 description="Press the button below to open a support ticket.",
-                color=0x3498DB,
+                color="info",
+                timestamp=False,
             )
-            await channel.send(embed=embed, view=view)
+            await channel.send(view=build_view(container, view, timeout=None))
             await ctx.respond("Ticket panel sent.", ephemeral=True)
         except Exception as e:
             LogError(f"Failed to send ticket panel: {e}")
@@ -383,21 +378,15 @@ class TicketSystem(Cog):
                 guild_id not in self.serverconfig
                 or "ticketrole" not in self.serverconfig[guild_id]
             ):
-                embed = discord.Embed(
+                container = build_container(
                     title="Ticket System Setup Deletion",
                     description="No Ticket System configuration found for this server.",
-                    color=0xFF0000,
-                    timestamp=datetime.datetime.utcnow(),
+                    color="error",
+                    author=ctx.guild,
+                    footer_text=f"Requested by {ctx.author.display_name}",
+                    footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
                 )
-                embed.set_author(
-                    name=ctx.guild.name,
-                    icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-                )
-                embed.set_footer(
-                    text=f"Requested by {ctx.author.display_name}",
-                    icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
-                )
-                await ctx.respond(embed=embed)
+                await ctx.respond(view=build_view(container))
                 return
 
             self.serverconfig[guild_id].pop("ticketrole", None)
@@ -409,22 +398,16 @@ class TicketSystem(Cog):
 
             config.saveserverconfig(self.serverconfig)
 
-            embed = discord.Embed(
+            container = build_container(
                 title="Ticket System Setup Deletion",
                 description="The Ticket System configuration entries have been successfully deleted.",
-                color=0xFF0000,
-                timestamp=datetime.datetime.utcnow(),
-            )
-            embed.set_author(
-                name=ctx.guild.name,
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-            )
-            embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
+                color="error",
+                author=ctx.guild,
+                footer_text=f"Requested by {ctx.author.display_name}",
+                footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
             )
 
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
 
         except Exception as e:
             LogError(
@@ -506,68 +489,58 @@ class TicketSystem(Cog):
         self.tickets[guild_id][str(ctx.author.id)] = ticket_data
         self.save_ticket_data(self.tickets)
 
-        embed_channel = discord.Embed(
+        container_channel = build_container(
             title="🎟️ Support Ticket Created",
             description=(
                 f"{ctx.author.mention}, your ticket has been opened. "
                 "A member of our team will be with you shortly."
             ),
-            color=0x00FF00,
-            timestamp=datetime.datetime.utcnow(),
+            color="success",
+            author=ctx.guild,
+            footer_text="Use the buttons below to manage this ticket.",
+            fields=[
+                ("Ticket ID", ticket_id, True),
+                ("Status", "Open", True),
+                ("Created At", now_iso, False),
+            ],
         )
-        embed_channel.set_author(
-            name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None
-        )
-        embed_channel.add_field(name="Ticket ID", value=ticket_id, inline=True)
-        embed_channel.add_field(name="Status", value="Open", inline=True)
-        embed_channel.add_field(name="Created At", value=now_iso, inline=False)
-        embed_channel.set_footer(text="Use the buttons below to manage this ticket.")
         view = self.TicketControlView(self, guild_id, str(ctx.author.id))
-        await ticket_thread.send(embed=embed_channel, view=view)
+        await ticket_thread.send(view=build_view(container_channel, view, timeout=None))
 
         # Log embed for ticket creation
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
         log_channel = ctx.guild.get_channel(log_channel_id)
         if log_channel:
-            embed_log = discord.Embed(
+            container_log = build_container(
                 title="Ticket Created",
                 description=f"Ticket created by {ctx.author.mention} in {ticket_thread.mention}.",
-                color=0x00FF00,
-                timestamp=datetime.datetime.utcnow(),
+                color="success",
+                author=ctx.guild,
+                fields=[
+                    ("Ticket ID", ticket_id, True),
+                    ("User", f"{ctx.author} ({ctx.author.id})", True),
+                    ("Channel", ticket_thread.mention, True),
+                ],
             )
-            embed_log.set_author(
-                name=ctx.guild.name,
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-            )
-            embed_log.add_field(name="Ticket ID", value=ticket_id, inline=True)
-            embed_log.add_field(
-                name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True
-            )
-            embed_log.add_field(
-                name="Channel", value=ticket_thread.mention, inline=True
-            )
-            await log_channel.send(embed=embed_log)
+            await log_channel.send(view=build_view(container_log))
 
         # DM embed for ticket creation
-        embed_dm = discord.Embed(
+        container_dm = build_container(
             title="Ticket Opened",
             description=(
                 f"Your ticket in **{ctx.guild.name}** has been successfully opened.\n"
                 "Our support team will reply soon. Keep the Ticket ID below for reference."
             ),
-            color=0x00FF00,
-            timestamp=datetime.datetime.utcnow(),
+            color="success",
+            author=ctx.guild,
+            footer_text="Thank you for contacting support!",
+            fields=[
+                ("Ticket ID", ticket_id, True),
+                ("Ticket Thread", ticket_thread.mention, True),
+            ],
         )
-        embed_dm.set_author(
-            name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None
-        )
-        embed_dm.add_field(name="Ticket ID", value=ticket_id, inline=True)
-        embed_dm.add_field(
-            name="Ticket Thread", value=ticket_thread.mention, inline=True
-        )
-        embed_dm.set_footer(text="Thank you for contacting support!")
         try:
-            await ctx.author.send(embed=embed_dm)
+            await ctx.author.send(view=build_view(container_dm))
         except Exception as e:
             LogError(f"Failed to send DM to {ctx.author.id}: {e}")
 
@@ -614,39 +587,29 @@ class TicketSystem(Cog):
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
         log_channel = ctx.guild.get_channel(log_channel_id)
         if log_channel:
-            embed_log = discord.Embed(
+            container_log = build_container(
                 title="Ticket Closed",
                 description=f"Ticket for {ctx.author.mention} has been closed. Transcript attached.",
-                color=0xFF0000,
-                timestamp=datetime.datetime.utcnow(),
+                color="error",
+                author=ctx.guild,
+                fields=[
+                    ("Ticket ID", ticket_data["ticket_id"], True),
+                    ("User", f"{ctx.author} ({ctx.author.id})", True),
+                ],
             )
-            embed_log.set_author(
-                name=ctx.guild.name,
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-            )
-            embed_log.add_field(
-                name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-            )
-            embed_log.add_field(
-                name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True
-            )
-            await log_channel.send(embed=embed_log, file=transcript_file)
+            await log_channel.send(view=build_view(container_log), file=transcript_file)
 
         try:
-            dm_embed = discord.Embed(
+            container_dm = build_container(
                 title="Ticket Closed",
                 description=f"Your ticket in **{ctx.guild.name}** has been closed.\nPlease provide feedback using `/ticket-feedback`.",
-                color=0xFF0000,
-                timestamp=datetime.datetime.utcnow(),
+                color="error",
+                author=ctx.guild,
+                fields=[
+                    ("Ticket ID", ticket_data["ticket_id"], True),
+                ],
             )
-            dm_embed.set_author(
-                name=ctx.guild.name,
-                icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
-            )
-            dm_embed.add_field(
-                name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-            )
-            await ctx.author.send(embed=dm_embed)
+            await ctx.author.send(view=build_view(container_dm))
         except Exception as e:
             LogError(f"Failed to send DM to {ctx.author.id}: {e}")
 
@@ -693,18 +656,17 @@ class TicketSystem(Cog):
         ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
         self.save_ticket_data(self.tickets)
 
-        embed_assign = discord.Embed(
+        container_assign = build_container(
             title="Ticket Assigned",
             description=f"Ticket {ticket_data['ticket_id']} has been assigned to {agent.mention}.",
             color=0x0000FF,
-            timestamp=datetime.datetime.utcnow(),
+            footer_text="Ticket status updated to In Progress.",
+            fields=[
+                ("Ticket ID", ticket_data["ticket_id"], True),
+                ("Assigned To", agent.mention, True),
+            ],
         )
-        embed_assign.add_field(
-            name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-        )
-        embed_assign.add_field(name="Assigned To", value=agent.mention, inline=True)
-        embed_assign.set_footer(text="Ticket status updated to In Progress.")
-        await ticket_thread.send(embed=embed_assign)
+        await ticket_thread.send(view=build_view(container_assign))
         await ctx.respond("Ticket assignment updated.", ephemeral=True)
 
     @commands.slash_command(
@@ -721,19 +683,16 @@ class TicketSystem(Cog):
             await ctx.respond("Rating must be between 1 and 5.", ephemeral=True)
             return
 
-        feedback_embed = discord.Embed(
+        feedback_container = build_container(
             title="Ticket Feedback Received",
             description=f"Feedback for Ticket ID: {ticket_id}",
-            color=0x00FF00,
-            timestamp=datetime.datetime.utcnow(),
+            color="success",
+            footer_text=f"Feedback submitted by {ctx.author}",
+            fields=[
+                ("Rating", str(rating), True),
+                ("Comment", comment if comment else "No comment provided", False),
+            ],
         )
-        feedback_embed.add_field(name="Rating", value=str(rating), inline=True)
-        feedback_embed.add_field(
-            name="Comment",
-            value=comment if comment else "No comment provided",
-            inline=False,
-        )
-        feedback_embed.set_footer(text=f"Feedback submitted by {ctx.author}")
 
         sent = False
         for guild_id, conf in self.serverconfig.items():
@@ -743,7 +702,7 @@ class TicketSystem(Cog):
                 if guild:
                     log_channel = guild.get_channel(log_channel_id)
                     if log_channel:
-                        await log_channel.send(embed=feedback_embed)
+                        await log_channel.send(view=build_view(feedback_container))
                         sent = True
 
         if sent:
@@ -817,50 +776,53 @@ class TicketSystem(Cog):
         self.tickets[guild_id][str(user.id)] = data
         self.save_ticket_data(self.tickets)
 
-        embed_channel = discord.Embed(
+        container_channel = build_container(
             title="🎟️ Support Ticket Created",
             description=(f"{user.mention}, your ticket has been opened. A member of our team will be with you shortly."),
-            color=0x00FF00,
-            timestamp=datetime.datetime.utcnow(),
+            color="success",
+            author=ctx.guild,
+            footer_text="Use the buttons below to manage this ticket.",
+            fields=[
+                ("Ticket ID", ticket_id, True),
+                ("Status", "Open", True),
+                ("Created At", now_iso, False),
+            ],
         )
-        embed_channel.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-        embed_channel.add_field(name="Ticket ID", value=ticket_id, inline=True)
-        embed_channel.add_field(name="Status", value="Open", inline=True)
-        embed_channel.add_field(name="Created At", value=now_iso, inline=False)
-        embed_channel.set_footer(text="Use the buttons below to manage this ticket.")
         view = self.TicketControlView(self, guild_id, str(user.id))
-        await ticket_thread.send(embed=embed_channel, view=view)
+        await ticket_thread.send(view=build_view(container_channel, view, timeout=None))
 
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
         log_channel = ctx.guild.get_channel(log_channel_id)
         if log_channel:
-            embed_log = discord.Embed(
+            container_log = build_container(
                 title="Ticket Created",
                 description=f"Ticket created by {user.mention} in {ticket_thread.mention}.",
-                color=0x00FF00,
-                timestamp=datetime.datetime.utcnow(),
+                color="success",
+                author=ctx.guild,
+                fields=[
+                    ("Ticket ID", ticket_id, True),
+                    ("User", f"{user} ({user.id})", True),
+                    ("Channel", ticket_thread.mention, True),
+                ],
             )
-            embed_log.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed_log.add_field(name="Ticket ID", value=ticket_id, inline=True)
-            embed_log.add_field(name="User", value=f"{user} ({user.id})", inline=True)
-            embed_log.add_field(name="Channel", value=ticket_thread.mention, inline=True)
-            await log_channel.send(embed=embed_log)
+            await log_channel.send(view=build_view(container_log))
 
         try:
-            embed_dm = discord.Embed(
+            container_dm = build_container(
                 title="Ticket Opened",
                 description=(
                     f"Your ticket in **{ctx.guild.name}** has been successfully opened.\n"
                     "Our support team will reply soon. Keep the Ticket ID below for reference."
                 ),
-                color=0x00FF00,
-                timestamp=datetime.datetime.utcnow(),
+                color="success",
+                author=ctx.guild,
+                footer_text="Thank you for contacting support!",
+                fields=[
+                    ("Ticket ID", ticket_id, True),
+                    ("Ticket Thread", ticket_thread.mention, True),
+                ],
             )
-            embed_dm.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed_dm.add_field(name="Ticket ID", value=ticket_id, inline=True)
-            embed_dm.add_field(name="Ticket Thread", value=ticket_thread.mention, inline=True)
-            embed_dm.set_footer(text="Thank you for contacting support!")
-            await user.send(embed=embed_dm)
+            await user.send(view=build_view(container_dm))
         except Exception as e:
             LogError(f"Failed to send DM to {user.id}: {e}")
 
@@ -884,14 +846,15 @@ class TicketSystem(Cog):
         ticket_data["last_activity"] = datetime.datetime.utcnow().isoformat()
         self.save_ticket_data(self.tickets)
 
-        embed = discord.Embed(
+        container = build_container(
             title="Ticket Claimed",
             description=f"{interaction.user.mention} has claimed this ticket.",
-            color=0x3498DB,
-            timestamp=datetime.datetime.utcnow(),
+            color="info",
+            fields=[
+                ("Ticket ID", ticket_data["ticket_id"], True),
+            ],
         )
-        embed.add_field(name="Ticket ID", value=ticket_data["ticket_id"], inline=True)
-        await ticket_thread.send(embed=embed)
+        await ticket_thread.send(view=build_view(container))
         await interaction.followup.send("Ticket claimed.", ephemeral=True)
 
     async def button_close_ticket(
@@ -925,33 +888,29 @@ class TicketSystem(Cog):
         log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
         log_channel = interaction.guild.get_channel(log_channel_id)
         if log_channel:
-            embed_log = discord.Embed(
+            container_log = build_container(
                 title="Ticket Closed",
                 description=f"Ticket for <@{user_id}> has been closed. Transcript attached.",
-                color=0xFF0000,
-                timestamp=datetime.datetime.utcnow(),
+                color="error",
+                fields=[
+                    ("Ticket ID", ticket_data["ticket_id"], True),
+                    ("Closed By", interaction.user.mention, True),
+                ],
             )
-            embed_log.add_field(
-                name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-            )
-            embed_log.add_field(
-                name="Closed By", value=interaction.user.mention, inline=True
-            )
-            await log_channel.send(embed=embed_log, file=transcript_file)
+            await log_channel.send(view=build_view(container_log), file=transcript_file)
 
         try:
-            dm_embed = discord.Embed(
+            dm_container = build_container(
                 title="Ticket Closed",
                 description=f"Your ticket in **{interaction.guild.name}** has been closed.\nPlease provide feedback using `/ticket-feedback`.",
-                color=0xFF0000,
-                timestamp=datetime.datetime.utcnow(),
-            )
-            dm_embed.add_field(
-                name="Ticket ID", value=ticket_data["ticket_id"], inline=True
+                color="error",
+                fields=[
+                    ("Ticket ID", ticket_data["ticket_id"], True),
+                ],
             )
             user = interaction.guild.get_member(int(user_id))
             if user:
-                await user.send(embed=dm_embed)
+                await user.send(view=build_view(dm_container))
         except Exception as e:
             LogError(f"Failed to send DM to {user_id}: {e}")
 
@@ -992,19 +951,16 @@ class TicketSystem(Cog):
                     ticket_data["status"] == "Open"
                     and reminder_threshold < inactivity < escalation_threshold
                 ):
-                    embed_reminder = discord.Embed(
+                    container_reminder = build_container(
                         title="Ticket Reminder",
                         description="There has been no activity in this ticket for over 1 hour. Please update your ticket or a support agent will follow up shortly.",
                         color=0xFFA500,
-                        timestamp=datetime.datetime.utcnow(),
+                        fields=[
+                            ("Ticket ID", ticket_data["ticket_id"], True),
+                            ("Status", ticket_data["status"], True),
+                        ],
                     )
-                    embed_reminder.add_field(
-                        name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-                    )
-                    embed_reminder.add_field(
-                        name="Status", value=ticket_data["status"], inline=True
-                    )
-                    await ticket_thread.send(embed=embed_reminder)
+                    await ticket_thread.send(view=build_view(container_reminder))
                 elif (
                     ticket_data["status"] == "Open"
                     and inactivity >= escalation_threshold
@@ -1012,23 +968,16 @@ class TicketSystem(Cog):
                     log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
                     log_channel = guild.get_channel(log_channel_id)
                     if log_channel:
-                        embed_escalation = discord.Embed(
+                        container_escalation = build_container(
                             title="Ticket Escalation",
                             description=f"Ticket {ticket_data['ticket_id']} has been inactive for over 2 hours and is being escalated.",
-                            color=0xFF0000,
-                            timestamp=datetime.datetime.utcnow(),
+                            color="error",
+                            fields=[
+                                ("Ticket ID", ticket_data["ticket_id"], True),
+                                ("Last Activity", ticket_data["last_activity"], True),
+                            ],
                         )
-                        embed_escalation.add_field(
-                            name="Ticket ID",
-                            value=ticket_data["ticket_id"],
-                            inline=True,
-                        )
-                        embed_escalation.add_field(
-                            name="Last Activity",
-                            value=ticket_data["last_activity"],
-                            inline=True,
-                        )
-                        await log_channel.send(embed=embed_escalation)
+                        await log_channel.send(view=build_view(container_escalation))
                 ticket_data["status"] = "Escalated"
                 self.save_ticket_data(self.tickets)
 
@@ -1048,36 +997,28 @@ class TicketSystem(Cog):
                 log_channel_id = self.serverconfig[guild_id]["ticketlogchannel"]
                 log_channel = guild.get_channel(log_channel_id)
                 if log_channel:
-                    embed_log = discord.Embed(
+                    container_log = build_container(
                         title="Ticket Closed",
                         description=f"Ticket for {member.mention} has been closed because the user left the server.",
                         color=0xFFA500,
-                        timestamp=datetime.datetime.utcnow(),
+                        author=guild,
+                        fields=[
+                            ("Ticket ID", ticket_data["ticket_id"], True),
+                            ("User", f"{member} ({member.id})", True),
+                        ],
                     )
-                    embed_log.set_author(
-                        name=guild.name, icon_url=guild.icon.url if guild.icon else None
-                    )
-                    embed_log.add_field(
-                        name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-                    )
-                    embed_log.add_field(
-                        name="User", value=f"{member} ({member.id})", inline=True
-                    )
-                    await log_channel.send(embed=embed_log)
+                    await log_channel.send(view=build_view(container_log))
                 try:
-                    dm_embed = discord.Embed(
+                    dm_container = build_container(
                         title="Ticket Closed",
                         description=f"Your ticket in **{guild.name}** has been closed as you left the server.",
                         color=0xFFA500,
-                        timestamp=datetime.datetime.utcnow(),
+                        author=guild,
+                        fields=[
+                            ("Ticket ID", ticket_data["ticket_id"], True),
+                        ],
                     )
-                    dm_embed.set_author(
-                        name=guild.name, icon_url=guild.icon.url if guild.icon else None
-                    )
-                    dm_embed.add_field(
-                        name="Ticket ID", value=ticket_data["ticket_id"], inline=True
-                    )
-                    await member.send(embed=dm_embed)
+                    await member.send(view=build_view(dm_container))
                 except Exception as e:
                     LogError(f"Failed to send DM to {member.id}: {e}")
                 try:
@@ -1161,7 +1102,7 @@ def setup(bot):
     bot.add_cog(cog)
     async def startup():
         await bot.wait_until_ready()
-        bot.add_view(cog.TicketOpenView(cog))
+        bot.add_view(build_view(cog.TicketOpenView(cog), timeout=None))
         cog.ticket_check_loop.start()
 
     bot.loop.create_task(startup())

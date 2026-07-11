@@ -6,7 +6,7 @@ import platform
 import os
 from datetime import datetime
 from handlers.debug import LogSystem, LogError, LogDebug
-from utils.embed_helpers import create_info_embed
+from utils.components import build_info_container, build_view
 
 def get_host_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
@@ -22,9 +22,9 @@ class InfoSystem(commands.Cog):
         self.owner_id = os.getenv("OWNER_ID")
         self.bot.version = os.getenv("BOT_VERSION")
 
-    class SupportView(discord.ui.View):
+    class SupportView(discord.ui.ActionRow):
         def __init__(self):
-            super().__init__(timeout=None)
+            super().__init__()
             self.add_item(discord.ui.Button(
                 label="Support Server",
                 url="https://discord.maggi.dev",
@@ -45,12 +45,14 @@ class InfoSystem(commands.Cog):
                 emoji="💻"
             ))
 
-    def create_embed(self, title, description, color_name="info"):
-        """Create an info embed using centralized utility"""
-        return create_info_embed(
+    def create_embed(self, title, description, color_name="info", fields=None, **kwargs):
+        """Create an info container using centralized utility"""
+        return build_info_container(
             title=title,
             description=description,
-            bot_user=self.bot.user
+            bot_user=self.bot.user,
+            fields=fields,
+            **kwargs,
         )
 
     @commands.slash_command(name="info", description="📚 Get detailed bot information")
@@ -63,25 +65,27 @@ class InfoSystem(commands.Cog):
             main_embed = self.create_embed(
                 "🤖 Advanced Bot Information",
                 "```diff\n+ Operational\n+ System Status: Nominal```",
-                "info"
-            )
-            main_embed.add_field(
-                name="🔍 Core Details",
-                value=f"```yaml\n"
-                      f"Name: {self.bot.user.name}\n"
-                      f"ID: {self.bot.user.id}\n"
-                      f"Version: {self.bot.version}```",
-                inline=False
-            )
-            main_embed.add_field(
-                name="👑 Ownership",
-                value=f"```{self.bot.get_user(int(self.owner_id)).name}```\n<@{self.owner_id}>",
-                inline=True
-            )
-            main_embed.add_field(
-                name="📆 Creation Date",
-                value=f"```{self.bot.user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}```",
-                inline=True
+                "info",
+                fields=[
+                    (
+                        "🔍 Core Details",
+                        f"```yaml\n"
+                        f"Name: {self.bot.user.name}\n"
+                        f"ID: {self.bot.user.id}\n"
+                        f"Version: {self.bot.version}```",
+                        False,
+                    ),
+                    (
+                        "👑 Ownership",
+                        f"```{self.bot.get_user(int(self.owner_id)).name}```\n<@{self.owner_id}>",
+                        True,
+                    ),
+                    (
+                        "📆 Creation Date",
+                        f"```{self.bot.user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}```",
+                        True,
+                    ),
+                ],
             )
 
             support_embed = self.create_embed(
@@ -92,8 +96,7 @@ class InfoSystem(commands.Cog):
             )
 
             await ctx.followup.send(
-                embeds=[main_embed, support_embed],
-                view=self.SupportView()
+                view=build_view(main_embed, support_embed, self.SupportView(), timeout=None)
             )
 
         except Exception as e:
@@ -106,19 +109,38 @@ class InfoSystem(commands.Cog):
         await ctx.defer()
         LogSystem(f"Status check by {ctx.author.id}")
 
-        class RefreshView(discord.ui.View):
-            def __init__(self, cog):
+        class RefreshView(discord.ui.DesignerView):
+            def __init__(self, cog, status_container):
                 super().__init__(timeout=120)
                 self.cog = cog
+                self.status_container = status_container
+                self.add_item(self.status_container)
 
-            @discord.ui.button(label="Refresh", style=discord.ButtonStyle.grey, emoji="🔄")
-            async def refresh_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+                self.refresh_row = discord.ui.ActionRow()
+                self.refresh_button = discord.ui.Button(
+                    label="Refresh",
+                    style=discord.ButtonStyle.grey,
+                    emoji="🔄",
+                )
+                self.refresh_button.callback = self.refresh_button_callback
+                self.refresh_row.add_item(self.refresh_button)
+                self.add_item(self.refresh_row)
+
+            async def refresh_button_callback(self, interaction: discord.Interaction):
                 try:
                     await interaction.response.defer()
-                    await self.cog.update_status_embed(interaction)
+                    await self.cog.update_status_embed(interaction, self)
                 except Exception as e:
                     LogError(f"Refresh failed: {str(e)}")
                     await interaction.followup.send("❌ Could not refresh status", ephemeral=True)
+
+            def update_status_container(self, new_container: discord.ui.Container):
+                try:
+                    self.remove_item(self.status_container)
+                except Exception:
+                    pass
+                self.status_container = new_container
+                self.add_item(self.status_container)
 
             async def on_timeout(self):
                 try:
@@ -131,9 +153,9 @@ class InfoSystem(commands.Cog):
                     LogError(f"Failed to clear status view: {str(e)}")
 
         try:
-            view = RefreshView(self)
+            status_container = await self.create_status_embed()
+            view = RefreshView(self, status_container)
             view.message = await ctx.followup.send(
-                embed=await self.create_status_embed(),
                 view=view
             )
 
@@ -142,61 +164,58 @@ class InfoSystem(commands.Cog):
             raise
 
     async def create_status_embed(self):
-        """Helper method to create status embed"""
+        """Helper method to create status container"""
         process = psutil.Process()
         memory_info = process.memory_full_info()
 
-        embed = self.create_embed(
+        return self.create_embed(
             "📈 Real-Time System Telemetry",
             "```diff\n+ Live System Metrics\n+ Updated: " + datetime.utcnow().strftime("%H:%M:%S UTC") + "```",
-            "status"
-        )
-        
-        embed.add_field(
-            name="🤖 Bot Metrics",
-            value=f"```yaml\n"
-                  f"Uptime: {get_bot_uptime()}\n"
-                  f"Latency: {round(self.bot.latency * 1000)}ms\n"
-                  f"Guilds: {len(self.bot.guilds)}\n"
-                  f"Users: {len(self.bot.users)}```",
-            inline=True
-        )
-
-        embed.add_field(
-            name="🖥️ System Health",
-            value=f"```yaml\n"
-                  f"Host Uptime: {get_host_uptime()}\n"
-                  f"CPU Usage: {psutil.cpu_percent()}%\n"
-                  f"Memory: {psutil.virtual_memory().percent}%\n"
-                  f"Disk: {psutil.disk_usage('/').percent}%```",
-            inline=True
-        )
-
-        embed.add_field(
-            name="⚙️ Technical Specifications",
-            value=f"```yaml\n"
-                  f"Python: {platform.python_version()}\n"
-                  f"Pycord: {discord.__version__}\n"
-                  f"OS: {platform.system()} {platform.release()}```",
-            inline=False
-        )
-
-        embed.add_field(
-            name="🔍 Process Details",
-            value=f"```yaml\n"
-                  f"Threads: {process.num_threads()}\n"
-                  f"Handles: {process.num_handles()}\n"
-                  f"Memory: {memory_info.rss / 1024 ** 2:.2f} MB```",
-            inline=True
+            "status",
+            fields=[
+                (
+                    "🤖 Bot Metrics",
+                    f"```yaml\n"
+                    f"Uptime: {get_bot_uptime()}\n"
+                    f"Latency: {round(self.bot.latency * 1000)}ms\n"
+                    f"Guilds: {len(self.bot.guilds)}\n"
+                    f"Users: {len(self.bot.users)}```",
+                    True,
+                ),
+                (
+                    "🖥️ System Health",
+                    f"```yaml\n"
+                    f"Host Uptime: {get_host_uptime()}\n"
+                    f"CPU Usage: {psutil.cpu_percent()}%\n"
+                    f"Memory: {psutil.virtual_memory().percent}%\n"
+                    f"Disk: {psutil.disk_usage('/').percent}%```",
+                    True,
+                ),
+                (
+                    "⚙️ Technical Specifications",
+                    f"```yaml\n"
+                    f"Python: {platform.python_version()}\n"
+                    f"Pycord: {discord.__version__}\n"
+                    f"OS: {platform.system()} {platform.release()}```",
+                    False,
+                ),
+                (
+                    "🔍 Process Details",
+                    f"```yaml\n"
+                    f"Threads: {process.num_threads()}\n"
+                    f"Handles: {process.num_handles()}\n"
+                    f"Memory: {memory_info.rss / 1024 ** 2:.2f} MB```",
+                    True,
+                ),
+            ],
         )
 
-        return embed
-
-    async def update_status_embed(self, interaction: discord.Interaction):
-        """Update the status embed for refresh"""
+    async def update_status_embed(self, interaction: discord.Interaction, view: discord.ui.DesignerView):
+        """Update the status container for refresh"""
         try:
-            embed = await self.create_status_embed()
-            await interaction.edit_original_response(embed=embed)
+            container = await self.create_status_embed()
+            view.update_status_container(container)
+            await interaction.edit_original_response(view=view)
         except Exception as e:
             LogError(f"Update status failed: {str(e)}")
             await interaction.followup.send("❌ Could not update status", ephemeral=True)

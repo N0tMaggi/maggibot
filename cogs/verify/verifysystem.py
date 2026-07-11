@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import handlers.config as config
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem
-from utils.embed_helpers import create_embed as utils_create_embed
+from utils.components import build_container, build_view
 
 class TicketVerify(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -12,16 +12,15 @@ class TicketVerify(commands.Cog):
         # Dynamic emoji icons for titles
         title_icon = "✅" if color_type == "success" else "❌" if color_type == "error" else "ℹ️"
         
-        embed = utils_create_embed(
+        normalized_color = "verify" if color_type == "success" else color_type
+        return build_container(
             title=f"{title_icon} {title}",
             description=description,
-            color=color_type,
+            color=normalized_color,
             thumbnail=thumbnail if thumbnail else None,
             footer_text="Maggi Verification System",
-            footer_icon="https://maggi.dev/favicon/favicon.ico",
             timestamp=True
         )
-        return embed
 
     def format_role(self, role):
         """Hilfsfunktion für konsistente Formatierung von Rollen"""
@@ -67,9 +66,9 @@ class TicketVerify(commands.Cog):
             ]
             
             for name, value, inline in fields:
-                embed.add_field(name=name, value=value, inline=inline)
+                embed.add_item(discord.ui.TextDisplay(f"**{name}**\n{value}"))
             
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(embed), ephemeral=True)
             LogDebug(f"Verification system configured for guild {guild_id}")
             
         except Exception as e:
@@ -92,7 +91,7 @@ class TicketVerify(commands.Cog):
                     color_type="error",
                     thumbnail=ctx.guild.icon.url if ctx.guild.icon else ""
                 )
-                await ctx.respond(embed=embed, ephemeral=True)
+                await ctx.respond(view=build_view(embed), ephemeral=True)
                 return
             
             guild_config = cfg[guild_id]
@@ -105,7 +104,7 @@ class TicketVerify(commands.Cog):
                     color_type="error",
                     thumbnail=modrole.display_icon.url if modrole.display_icon else ""
                 )
-                await ctx.respond(embed=embed, ephemeral=True)
+                await ctx.respond(view=build_view(embed), ephemeral=True)
                 return
             
             member = ctx.guild.get_member(user.id)
@@ -115,7 +114,7 @@ class TicketVerify(commands.Cog):
                     description="User not found in this server!",
                     color_type="error"
                 )
-                await ctx.respond(embed=embed, ephemeral=True)
+                await ctx.respond(view=build_view(embed), ephemeral=True)
                 return
             
             role_to_remove = ctx.guild.get_role(guild_config["role_to_remove"])
@@ -133,13 +132,17 @@ class TicketVerify(commands.Cog):
                     description="Bot can't manage roles!",
                     color_type="error"
                 )
-                await ctx.respond(embed=embed, ephemeral=True)
+                await ctx.respond(view=build_view(embed), ephemeral=True)
                 return
             
             if ghostping_channel:
                 try:
                     await ghostping_channel.send(
-                        content=f"{member.mention}\n```diff\n- Verification ping - Do not respond\n```",
+                        view=build_view(
+                            discord.ui.TextDisplay(
+                                f"{member.mention}\n```diff\n- Verification ping - Do not respond\n```"
+                            )
+                        ),
                         delete_after=0.5
                     )
                 except Exception as e:
@@ -152,9 +155,9 @@ class TicketVerify(commands.Cog):
                     color_type="success",
                     thumbnail=ctx.guild.icon.url
                 )
-                user_embed.add_field(name="Verification Time", value=discord.utils.utcnow().strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-                user_embed.add_field(name="Verified By", value=ctx.author.mention, inline=False)
-                await member.send(embed=user_embed)
+                user_embed.add_item(discord.ui.TextDisplay(f"**Verification Time**\n{discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"))
+                user_embed.add_item(discord.ui.TextDisplay(f"**Verified By**\n{ctx.author.mention}"))
+                await member.send(view=build_view(user_embed))
             except discord.Forbidden:
                 pass  
             
@@ -164,14 +167,15 @@ class TicketVerify(commands.Cog):
                 color_type="success",
                 thumbnail=ctx.guild.icon.url
             )
-            confirm_embed.add_field(
-                name="Role Changes",
-                value=f"• Added: {role_to_give.mention if role_to_give else 'None'}\n"
-                      f"• Removed: {role_to_remove.mention if role_to_remove else 'None'}",
-                inline=False
+            confirm_embed.add_item(
+                discord.ui.TextDisplay(
+                    f"**Role Changes**\n"
+                    f"• Added: {role_to_give.mention if role_to_give else 'None'}\n"
+                    f"• Removed: {role_to_remove.mention if role_to_remove else 'None'}"
+                )
             )
             
-            await ctx.respond(embed=confirm_embed, ephemeral=True)
+            await ctx.respond(view=build_view(confirm_embed), ephemeral=True)
             
         except Exception as e:
             raise Exception(f"Verify error: {str(e)}")
@@ -179,7 +183,11 @@ class TicketVerify(commands.Cog):
     async def ghost_ping(self, member, channel):
         try:
             await channel.send(
-                content=f"{member.mention}\n```diff\n- Verification ping - Do not respond\n```",
+                view=build_view(
+                    discord.ui.TextDisplay(
+                        f"{member.mention}\n```diff\n- Verification ping - Do not respond\n```"
+                    )
+                ),
                 delete_after=0.5
             )
         except discord.HTTPException as e:

@@ -5,6 +5,7 @@ import datetime
 import handlers.config as config
 from handlers.debug import LogError
 from extensions.loggingextension import create_log_embed
+from utils.components import build_container, build_view
 
 
 class Logging(commands.Cog):
@@ -64,13 +65,13 @@ class Logging(commands.Cog):
             self.serverconfig[guild_id].setdefault("logging_events", self.DEFAULT_EVENT_FLAGS.copy())
             config.saveserverconfig(self.serverconfig)
 
-            embed = discord.Embed(
+            container = build_container(
                 title="Logging Configured",
                 description=f"Logs will be posted in {forum.mention}",
-                color=discord.Color.green(),
-                timestamp=datetime.datetime.utcnow(),
+                color="success",
+                timestamp=True,
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(container), ephemeral=True)
         except Exception as e:
             LogError(f"Failed to configure logging forum: {e}")
             await ctx.respond("Error configuring logging forum.", ephemeral=True)
@@ -105,7 +106,7 @@ class Logging(commands.Cog):
     async def post_log(
         self,
         guild: discord.Guild,
-        embed: discord.Embed,
+        embed: discord.ui.Container,
         title: str,
         user_id: int | None = None,
     ):
@@ -115,7 +116,7 @@ class Logging(commands.Cog):
         try:
             thread_name = f"{title}-{user_id}" if user_id else title
             thread_name = self._trim(thread_name, max_len=95)
-            await forum.create_thread(name=thread_name, embed=embed)
+            await forum.create_thread(name=thread_name, view=build_view(embed))
         except Exception as e:
             LogError(f"Failed to post log in guild {guild.id}: {e}")
 

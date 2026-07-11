@@ -3,6 +3,7 @@ import datetime
 import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
+from utils.components import build_container, build_view
 
 
 class CentralSetup(commands.Cog):
@@ -65,22 +66,17 @@ class CentralSetup(commands.Cog):
         flags = cog._get_event_flags(guild_id)
         forum = ctx.guild.get_channel(cog.serverconfig.get(guild_id, {}).get("logging_forum"))
 
-        embed = discord.Embed(
+        container = build_container(
             title="Logging Configuration",
-            color=discord.Color.blurple(),
-            timestamp=datetime.datetime.utcnow(),
-        )
-        embed.add_field(
-            name="Forum",
-            value=forum.mention if forum else "Not configured",
-            inline=False,
+            color="info",
         )
         formatted = "\n".join(
             f"• `{name}`: {'✅ Enabled' if state else '❌ Disabled'}"
             for name, state in flags.items()
         )
-        embed.add_field(name="Event Flags", value=formatted, inline=False)
-        await ctx.respond(embed=embed, ephemeral=True)
+        container.add_item(discord.ui.TextDisplay(f"**Forum**\n{forum.mention if forum else 'Not configured'}"))
+        container.add_item(discord.ui.TextDisplay(f"**Event Flags**\n{formatted}"))
+        await ctx.respond(view=build_view(container), ephemeral=True)
 
     # ------------------------------
     # Existing setup wrappers
@@ -171,16 +167,17 @@ class CentralSetup(commands.Cog):
         forum_id = serverconfig.get("ticketforum")
         forum_channel = ctx.guild.get_channel(forum_id) if forum_id else None
 
-        embed = discord.Embed(
+        container = build_container(
             title="Ticket System Configuration",
-            color=0x9B59B6,
-            timestamp=datetime.datetime.utcnow(),
+            color="stats",
+            fields=[
+                ("Ticket Role", f"<@&{serverconfig.get('ticketrole', 'N/A')}>", False),
+                ("Log Channel", f"<#{serverconfig.get('ticketlogchannel', 'N/A')}>", False),
+                ("Forum", forum_channel.name if forum_channel else "N/A", False),
+            ],
+            footer_text="Use /setup ticketsystem-setup to change settings or /setup-sendticket to post a panel.",
         )
-        embed.add_field(name="Ticket Role", value=f"<@&{serverconfig.get('ticketrole', 'N/A')}>", inline=False)
-        embed.add_field(name="Log Channel", value=f"<#{serverconfig.get('ticketlogchannel', 'N/A')}>", inline=False)
-        embed.add_field(name="Forum", value=forum_channel.name if forum_channel else "N/A", inline=False)
-        embed.set_footer(text="Use /setup ticketsystem-setup to change settings or /setup-sendticket to post a panel.")
-        await ctx.respond(embed=embed, ephemeral=True)
+        await ctx.respond(view=build_view(container), ephemeral=True)
 
     @setup.command(name="deleteticketconfig", description="Delete ticket system configuration entries for the server")
     @commands.has_permissions(administrator=True)

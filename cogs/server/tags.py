@@ -5,6 +5,7 @@ import json
 import asyncio
 from handlers.config import load_tags, save_tags
 from handlers.debug import LogDebug, LogError
+from utils.components import build_container, build_view
 
 class Tags(commands.Cog):
     def __init__(self, bot):
@@ -15,12 +16,12 @@ class Tags(commands.Cog):
     async def tag(self, ctx, tag: str, user: discord.Member = None):
         guild_id = str(ctx.guild.id)
         if guild_id not in self.tags or tag not in self.tags[guild_id]:
-            embed = discord.Embed(
+            container = build_container(
                 title="❓ Tag Not Found",
                 description=f"The tag **{tag}** does not exist in this server.",
                 color=0xFF5733
             )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
             LogDebug(f"Tag not found: {tag} in guild {guild_id}")
             return
         
@@ -40,34 +41,34 @@ class Tags(commands.Cog):
         guild_id = str(ctx.guild.id)
         
         if tag in self.tags.get(guild_id, {}):
-            embed = discord.Embed(
+            container = build_container(
                 title="❗ Tag Already Exists",
                 description=f"The tag **{tag}** already exists in this server.",
                 color=0xFF5733
             )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
             LogDebug(f"Duplicate tag attempt: {tag} in guild {guild_id}")
             return
 
         def check(msg):
             return msg.author == ctx.author and msg.channel == ctx.channel
 
-        embed = discord.Embed(
+        container = build_container(
             title="📝 Provide Tag Content",
             description="Please enter the content for the tag.",
-            color=0x00FF00
+            color="success"
         )
-        await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(container))
 
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60)
         except asyncio.TimeoutError:
-            embed = discord.Embed(
+            container = build_container(
                 title="⌛ Timeout",
                 description="Tag creation canceled due to inactivity.",
-                color=0xFF0000
+                color="error"
             )
-            await ctx.send(embed=embed)
+            await ctx.send(view=build_view(container))
             LogDebug(f"Tag creation timeout in guild {guild_id}")
             return
 
@@ -77,12 +78,12 @@ class Tags(commands.Cog):
         self.tags[guild_id][tag] = msg.content
 
         save_tags(self.tags)
-        embed = discord.Embed(
+        container = build_container(
             title="✅ Tag Added",
             description=f"The tag **{tag}** has been added to this server.",
-            color=0x00FF00
+            color="success"
         )
-        await ctx.send(embed=embed)
+        await ctx.send(view=build_view(container))
         LogDebug(f"Tag {tag} added in guild {guild_id} by {ctx.author}")
 
     @slash_command(name="tag-remove", description="Delete a server tag")
@@ -91,12 +92,12 @@ class Tags(commands.Cog):
         guild_id = str(ctx.guild.id)
         
         if guild_id not in self.tags or tag not in self.tags[guild_id]:
-            embed = discord.Embed(
+            container = build_container(
                 title="❓ Tag Not Found",
                 description=f"The tag **{tag}** does not exist in this server.",
                 color=0xFF5733
             )
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(container))
             LogDebug(f"Tag removal attempt for non-existing tag {tag} in guild {guild_id}")
             return
 
@@ -105,12 +106,12 @@ class Tags(commands.Cog):
             del self.tags[guild_id]
 
         save_tags(self.tags)
-        embed = discord.Embed(
+        container = build_container(
             title="🗑️ Tag Removed",
             description=f"The tag **{tag}** has been removed from this server.",
-            color=0x00FF00
+            color="success"
         )
-        await ctx.respond(embed=embed)
+        await ctx.respond(view=build_view(container))
         LogDebug(f"Tag {tag} removed from guild {guild_id} by {ctx.author}")
 
     @tag.error
@@ -118,12 +119,12 @@ class Tags(commands.Cog):
     @tag_remove.error
     async def error_handler(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
+            container = build_container(
                 title="🔒 Access Denied",
                 description="You need **Administrator** permissions to use this command.",
-                color=0xFF0000
+                color="error"
             )
-            await ctx.respond(embed=embed, ephemeral=True)
+            await ctx.respond(view=build_view(container), ephemeral=True)
             LogError(f"Permission denied for {ctx.author} in guild {ctx.guild.id}")
         else:
             LogError(f"Unexpected error in tag commands: {str(error)}")

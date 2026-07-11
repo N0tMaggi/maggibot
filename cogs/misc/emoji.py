@@ -7,14 +7,15 @@ import shutil
 from datetime import datetime
 from io import BytesIO
 import asyncio
+from utils.components import build_container, build_view
 
 class EmojiUpload(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     def progress_bar(self, percentage: float, length: int = 12) -> str:
-        filled = '▰'
-        empty = '▱'
+        filled = 'â–°'
+        empty = 'â–±'
         progress = round(percentage * length)
         return f"[{filled * progress}{empty * (length - progress)}] {round(percentage * 100)}%"
 
@@ -57,21 +58,24 @@ class EmojiUpload(commands.Cog):
         """Upload emojis from a RAR file (Admin only)"""
         await ctx.defer()
         
+        init_container = build_container(
+            title="Emoji Upload Initialized",
+            description="Starting processing...",
+            color="info",
+            footer_text=f"Server: {ctx.guild.name} | User: {ctx.author}",
+        )
         await ctx.interaction.edit_original_response(
-            embed=discord.Embed(
-                title="Emoji Upload Initialized",
-                description="Starting processing...",
-                color=discord.Color.blue()
-            ).set_footer(text=f"Server: {ctx.guild.name} | User: {ctx.author}")
+            view=build_view(init_container)
         )
 
         if not rar_file.filename.lower().endswith('.rar'):
+            invalid_file_container = build_container(
+                title="Invalid File Type",
+                description="Please upload a **.rar** file!",
+                color="error",
+            )
             return await ctx.interaction.edit_original_response(
-                embed=discord.Embed(
-                    title="Invalid File Type",
-                    description="Please upload a **.rar** file!",
-                    color=discord.Color.red()
-                )
+                view=build_view(invalid_file_container)
             )
 
         guild = ctx.guild
@@ -80,16 +84,16 @@ class EmojiUpload(commands.Cog):
         available_slots = max_emojis - current_emojis
         
         if available_slots <= 0:
+            server_full_container = build_container(
+                title="Server Full",
+                description=f"{max_emojis}/{max_emojis} emoji slots used!",
+                color="error",
+                fields=[
+                    ("Solutions", "- Boost the server\n- Remove old emojis", False),
+                ],
+            )
             return await ctx.interaction.edit_original_response(
-                embed=discord.Embed(
-                    title="Server Full",
-                    description=f"{max_emojis}/{max_emojis} emoji slots used!",
-                    color=discord.Color.red()
-                ).add_field(
-                    name="Solutions",
-                    value="- Boost the server\n- Remove old emojis",
-                    inline=False
-                )
+                view=build_view(server_full_container)
             )
 
         try:
@@ -102,31 +106,34 @@ class EmojiUpload(commands.Cog):
                 ]
 
                 if not valid_files:
+                    no_valid_files_container = build_container(
+                        title="No Valid Files",
+                        description="The archive contains no valid files!",
+                        color="error",
+                    )
                     return await ctx.interaction.edit_original_response(
-                        embed=discord.Embed(
-                            title="No Valid Files",
-                            description="The archive contains no valid files!",
-                            color=discord.Color.red()
-                        )
+                        view=build_view(no_valid_files_container)
                     )
 
                 upload_count = min(len(valid_files), available_slots)
                 total_files = len(valid_files)
                 skipped_files = total_files - upload_count
 
-                progress_embed = discord.Embed(
+                progress_container = build_container(
                     title="Starting Upload...",
                     description=f"Processing **{upload_count}** emojis\n{self.progress_bar(0)}",
-                    color=discord.Color.green()
+                    color="success",
+                    fields=[
+                        (
+                            "Statistics",
+                            f"â€¢ Server Capacity: {current_emojis}/{max_emojis}\n"
+                            f"â€¢ Valid Files: {total_files}\n"
+                            f"â€¢ To be Skipped: {skipped_files}",
+                            False,
+                        )
+                    ],
                 )
-                progress_embed.add_field(
-                    name="Statistics",
-                    value=f"• Server Capacity: {current_emojis}/{max_emojis}\n"
-                          f"• Valid Files: {total_files}\n"
-                          f"• To be Skipped: {skipped_files}",
-                    inline=False
-                )
-                await ctx.interaction.edit_original_response(embed=progress_embed)
+                await ctx.interaction.edit_original_response(view=build_view(progress_container))
 
                 success = 0
                 skipped = 0
@@ -145,20 +152,17 @@ class EmojiUpload(commands.Cog):
 
                         if (idx + 1) % 2 == 0 or (idx + 1) == upload_count:
                             progress = (idx + 1) / upload_count
-                            embed = discord.Embed(
+                            progress_update_container = build_container(
                                 title=f"Progress ({idx + 1}/{upload_count})",
                                 description=f"{self.progress_bar(progress)}\n"
                                             f"Success: **{success}**\n"
                                             f"Skipped: **{skipped}**",
-                                color=discord.Color.green()
+                                color="success",
+                                fields=[
+                                    ("Recent Errors", "\n".join(errors[-3:]), False),
+                                ] if errors[-5:] else None,
                             )
-                            if errors[-5:]:
-                                embed.add_field(
-                                    name="Recent Errors",
-                                    value="\n".join(errors[-3:]),
-                                    inline=False
-                                )
-                            await ctx.interaction.edit_original_response(embed=embed)
+                            await ctx.interaction.edit_original_response(view=build_view(progress_update_container))
                         
                         await asyncio.sleep(1)  
 
@@ -167,45 +171,53 @@ class EmojiUpload(commands.Cog):
                         errors.append(f"`{file_info.filename}`: {str(e)}")
                         continue
 
-                result_embed = discord.Embed(
+                result_container = build_container(
                     title="Upload Complete",
                     description=f"Added **{success}** new emojis!",
-                    color=discord.Color.green() if success > 0 else discord.Color.red()
-                )
-                result_embed.add_field(
-                    name="Statistics",
-                    value=f"• Successful: {success}\n"
-                          f"• Skipped: {skipped}\n"
-                          f"• New Total: {current_emojis + success}/{max_emojis}",
-                    inline=False
+                    color="success" if success > 0 else "error",
+                    fields=[
+                        (
+                            "Statistics",
+                            f"â€¢ Successful: {success}\n"
+                            f"â€¢ Skipped: {skipped}\n"
+                            f"â€¢ New Total: {current_emojis + success}/{max_emojis}",
+                            False,
+                        )
+                    ],
                 )
                 
                 if errors:
-                    result_embed.add_field(
-                        name="Error Summary",
-                        value="\n".join(errors[-5:]) + f"\n...and {len(errors)-5} more" if len(errors) > 5 else "\n".join(errors),
-                        inline=False
+                    if len(errors) > 5:
+                        error_summary = "\n".join(errors[-5:]) + f"\n...and {len(errors) - 5} more"
+                    else:
+                        error_summary = "\n".join(errors)
+                    result_container.add_item(
+                        discord.ui.TextDisplay(
+                            f"**Error Summary**\n{error_summary}"
+                        )
                     )
 
-                await ctx.interaction.edit_original_response(embed=result_embed)
+                await ctx.interaction.edit_original_response(view=build_view(result_container))
 
                 shutil.rmtree(temp_dir)
 
         except rarfile.BadRarFile:
+            corrupted_container = build_container(
+                title="Corrupted RAR File",
+                description="The provided RAR file is invalid or corrupted!",
+                color="error",
+            )
             await ctx.interaction.edit_original_response(
-                embed=discord.Embed(
-                    title="Corrupted RAR File",
-                    description="The provided RAR file is invalid or corrupted!",
-                    color=discord.Color.red()
-                )
+                view=build_view(corrupted_container)
             )
         except Exception as e:
+            critical_error_container = build_container(
+                title="Critical Error",
+                description=f"```{str(e)[:1000]}```",
+                color="error",
+            )
             await ctx.interaction.edit_original_response(
-                embed=discord.Embed(
-                    title="Critical Error",
-                    description=f"```{str(e)[:1000]}```",
-                    color=discord.Color.red()
-                )
+                view=build_view(critical_error_container)
             )
 
 
@@ -222,43 +234,36 @@ class EmojiUpload(commands.Cog):
         animated_emojis = total_emojis - static_emojis
         
         progress = total_emojis / max_emojis if max_emojis > 0 else 0
-        color = discord.Color.green() if progress < 0.9 else discord.Color.orange() if progress < 1 else discord.Color.red()
-        
-        embed = discord.Embed(
-            title=f"Emoji Statistics for {guild.name}",
-            color=color,
-            timestamp=datetime.now()
-        )
-        
-        embed.add_field(
-            name="Counters",
-            value=f"• Total: **{total_emojis}/{max_emojis}**\n"
-                  f"• Static: **{static_emojis}**\n"
-                  f"• Animated: **{animated_emojis}**",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="Usage",
-            value=f"{self.progress_bar(progress)}\n{round(progress * 100)}% used",
-            inline=False
-        )
-        
+        color_name = "success" if progress < 0.9 else "warning" if progress < 1 else "error"
+
+        fields = [
+            (
+                "Counters",
+                f"â€¢ Total: **{total_emojis}/{max_emojis}**\n"
+                f"â€¢ Static: **{static_emojis}**\n"
+                f"â€¢ Animated: **{animated_emojis}**",
+                False,
+            ),
+            (
+                "Usage",
+                f"{self.progress_bar(progress)}\n{round(progress * 100)}% used",
+                False,
+            ),
+        ]
+
         if total_emojis >= max_emojis:
-            embed.add_field(
-                name="Limit Reached",
-                value="No available emoji slots remaining!",
-                inline=False
-            )
+            fields.append(("Limit Reached", "No available emoji slots remaining!", False))
         else:
-            embed.add_field(
-                name="Free Slots",
-                value=f"**{max_emojis - total_emojis}** available",
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
-        await ctx.respond(embed=embed)
+            fields.append(("Free Slots", f"**{max_emojis - total_emojis}** available", False))
+
+        container = build_container(
+            title=f"Emoji Statistics for {guild.name}",
+            color=color_name,
+            fields=fields,
+            footer_text=f"Requested by {ctx.author}",
+            timestamp=True,
+        )
+        await ctx.respond(view=build_view(container))
 
 def setup(bot):
     bot.add_cog(EmojiUpload(bot))

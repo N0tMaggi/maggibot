@@ -9,6 +9,7 @@ from colorama import Fore, Style, init
 from handlers.debug import LogError
 from handlers.env import get_owner
 import uuid 
+from utils.components import build_container, build_view
 
 init(autoreset=True)
 
@@ -66,33 +67,41 @@ class ErrorHandling(commands.Cog):
         traceback_text = traceback.format_exc()
         error_uid = str(uuid.uuid4())
         
-        embed = discord.Embed(
-            title="Unhandled Global Exception",
-            description=f"An unhandled error occurred in event `{event}`.",
-            color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="Error Details", value=f"```\n{error.__class__.__name__}: {error}\n```", inline=False)
-        embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)
+        fields = [
+            ("Error Details", f"```\n{error.__class__.__name__}: {error}\n```", False),
+            ("Error ID", f"`{error_uid}`", True),
+        ]
         
         if len(traceback_text) > 1024:
             traceback_file = await self.create_traceback_file(traceback_text)
-            embed.add_field(name="🔍 Traceback", value="See attached file", inline=False)
+            container = build_container(
+                title="Unhandled Global Exception",
+                description=f"An unhandled error occurred in event `{event}`.",
+                color='error',
+                timestamp=True,
+                fields=fields + [("🔍 Traceback", "See attached file", False)],
+            )
             try:
                 if error_log_channel_id:
                     log_channel = self.bot.get_channel(int(error_log_channel_id))
                     if log_channel:
-                        await log_channel.send(embed=embed, file=traceback_file)
+                        await log_channel.send(view=build_view(container), file=traceback_file)
             except Exception as e:
                 print(Fore.RED + Style.BRIGHT + f"Error logging global error: {e}")
                 traceback.print_exc()
         else:
-            embed.add_field(name="🔍 Traceback", value=traceback_text, inline=False)
+            container = build_container(
+                title="Unhandled Global Exception",
+                description=f"An unhandled error occurred in event `{event}`.",
+                color='error',
+                timestamp=True,
+                fields=fields + [("🔍 Traceback", traceback_text, False)],
+            )
             try:
                 if error_log_channel_id:
                     log_channel = self.bot.get_channel(int(error_log_channel_id))
                     if log_channel:
-                        await log_channel.send(embed=embed)
+                        await log_channel.send(view=build_view(container))
             except Exception as e:
                 print(Fore.RED + Style.BRIGHT + f"Error logging global error: {e}")
                 traceback.print_exc()
@@ -107,47 +116,65 @@ class ErrorHandling(commands.Cog):
         tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
         traceback_text = "".join(tb_lines)
 
-        embed = discord.Embed(
+        fields = [
+            ("Error Details", f"```\n{error_info}\n```", False),
+            ("Error ID", f"`{error_uid}`", True),
+            ("User", f"{ctx.author} ({ctx.author.id})", True),
+            ("Channel", f"{ctx.channel} ({ctx.channel.id})", True),
+        ]
+        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
+        fields.append(("Server", guild_info, True))
+
+        container = build_container(
             title=error_type,
             description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
-            color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
-        embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
-        embed.add_field(name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
-        embed.add_field(name="Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
-        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
-        embed.add_field(name="Server", value=guild_info, inline=True)
-        embed.set_footer(
-            text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            color='error',
+            timestamp=True,
+            fields=fields,
+            footer_text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+            footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
         )
 
         try:
             if isinstance(ctx, discord.ApplicationContext):
                 try:
                     if not ctx.response.is_done():
-                        await ctx.response.send_message(embed=embed, ephemeral=True)
+                        await ctx.response.send_message(view=build_view(container), ephemeral=True)
                     else:
-                        await ctx.followup.send(embed=embed, ephemeral=True)
+                        await ctx.followup.send(view=build_view(container), ephemeral=True)
                 except (discord.NotFound, discord.HTTPException) as e:
                     LogError(f"Interaction expired for error response: {str(e)}")
             else:
-                await ctx.send(embed=embed)
+                await ctx.send(view=build_view(container))
         except Exception as e:
             await self.fatal_error(f"Failed to send error response: {str(e)}", e)
             return
 
         if len(traceback_text) > 1024:
             traceback_file = await self.create_traceback_file(traceback_text)
-            log_embed = embed.copy()
-            log_embed.add_field(name="🔍 Traceback", value="See attached file", inline=False)
-            await self.log_error(ctx, error, log_embed, traceback_file, error_uid)
+            log_fields = fields + [("🔍 Traceback", "See attached file", False)]
+            log_container = build_container(
+                title=error_type,
+                description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
+                color='error',
+                timestamp=True,
+                fields=log_fields,
+                footer_text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+                footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
+            )
+            await self.log_error(ctx, error, log_container, traceback_file)
         else:
-            log_embed = embed.copy()
-            log_embed.add_field(name="🔍 Traceback", value=traceback_text, inline=False)
-            await self.log_error(ctx, error, log_embed, error_uid=error_uid)
+            log_fields = fields + [("🔍 Traceback", traceback_text, False)]
+            log_container = build_container(
+                title=error_type,
+                description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
+                color='error',
+                timestamp=True,
+                fields=log_fields,
+                footer_text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+                footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
+            )
+            await self.log_error(ctx, error, log_container)
 
     async def handle_error_without_log(self, ctx, error, error_type):
         error_uid = str(uuid.uuid4())  
@@ -155,31 +182,33 @@ class ErrorHandling(commands.Cog):
 
         error_info = f"{error.__class__.__name__}: {error}"
 
-        embed = discord.Embed(
+        fields = [
+            ("Error Details", f"```\n{error_info}\n```", False),
+            ("Error ID", f"`{error_uid}`", True),
+            ("User", f"{ctx.author} ({ctx.author.id})", True),
+            ("Channel", f"{ctx.channel} ({ctx.channel.id})", True),
+        ]
+        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
+        fields.append(("Server", guild_info, True))
+
+        container = build_container(
             title=error_type,
             description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
-            color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
-        embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
-        embed.add_field(name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
-        embed.add_field(name="Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
-        guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
-        embed.add_field(name="Server", value=guild_info, inline=True)
-        embed.set_footer(
-            text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            color='error',
+            timestamp=True,
+            fields=fields,
+            footer_text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+            footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
         )
 
         try:
             if isinstance(ctx, discord.ApplicationContext):
                 if ctx.response.is_done():
-                    await ctx.followup.send(embed=embed, ephemeral=True)
+                    await ctx.followup.send(view=build_view(container), ephemeral=True)
                 else:
-                    await ctx.response.send_message(embed=embed, ephemeral=True)
+                    await ctx.response.send_message(view=build_view(container), ephemeral=True)
             else:
-                await ctx.send(embed=embed)
+                await ctx.send(view=build_view(container))
         except discord.Forbidden:
             await self.fatal_error("Bot has no permission to send messages in this channel.", "ForbiddenError")
         except discord.HTTPException:
@@ -192,37 +221,39 @@ class ErrorHandling(commands.Cog):
         missing_perms = ", ".join(error.missing_permissions)  
         error_info = f"Missing Permissions: `{missing_perms}`"
 
-        embed = discord.Embed(
-            title=error_type,
-            description=f"You are missing the required permissions to execute this command.",
-            color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
-        embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
-        embed.add_field(name="User", value=f"{ctx.author} ({ctx.author.id})", inline=True)
-        embed.add_field(name="Channel", value=f"{ctx.channel} ({ctx.channel.id})", inline=True)
+        fields = [
+            ("Error Details", f"```\n{error_info}\n```", False),
+            ("Error ID", f"`{error_uid}`", True),
+            ("User", f"{ctx.author} ({ctx.author.id})", True),
+            ("Channel", f"{ctx.channel} ({ctx.channel.id})", True),
+        ]
         guild_info = f"{ctx.guild} ({ctx.guild.id})" if ctx.guild else "Direct Message"
-        embed.add_field(name="Server", value=guild_info, inline=True)
-        embed.set_footer(
-            text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        fields.append(("Server", guild_info, True))
+
+        container = build_container(
+            title=error_type,
+            description="You are missing the required permissions to execute this command.",
+            color='error',
+            timestamp=True,
+            fields=fields,
+            footer_text=f"Error in command: {ctx.command.name if ctx.command else 'Unknown'}",
+            footer_icon=ctx.author.avatar.url if ctx.author.avatar else None,
         )
 
         try:
             if isinstance(ctx, discord.ApplicationContext):
                 if ctx.response.is_done():
-                    await ctx.followup.send(embed=embed, ephemeral=True)
+                    await ctx.followup.send(view=build_view(container), ephemeral=True)
                 else:
-                    await ctx.response.send_message(embed=embed, ephemeral=True)
+                    await ctx.response.send_message(view=build_view(container), ephemeral=True)
             else:
-                await ctx.send(embed=embed)
+                await ctx.send(view=build_view(container))
         except discord.Forbidden:
             await self.fatal_error("Bot has no permission to send messages in this channel.", "ForbiddenError")
         except discord.HTTPException:
             await self.fatal_error("Failed to send error message.", "HTTPError")
 
-    async def log_error(self, ctx, error, embed, traceback_file=None, error_uid=None):
+    async def log_error(self, ctx, error, container, traceback_file=None):
         if not error_log_channel_id:
             await self.fatal_error("No error log channel ID set.", "MissingConfig")
             return
@@ -230,12 +261,10 @@ class ErrorHandling(commands.Cog):
         try:
             log_channel = self.bot.get_channel(int(error_log_channel_id))
             if log_channel:
-                if error_uid:
-                    embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=False)  
                 if traceback_file:
-                    await log_channel.send(embed=embed, file=traceback_file)
+                    await log_channel.send(view=build_view(container), file=traceback_file)
                 else:
-                    await log_channel.send(embed=embed)
+                    await log_channel.send(view=build_view(container))
             else:
                 await self.fatal_error(f"Could not find the log channel with ID: {error_log_channel_id}", "InvalidChannel")
         except Exception as e:
@@ -260,20 +289,20 @@ class ErrorHandling(commands.Cog):
         print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
         traceback.print_exc()
 
-        fatal_embed = discord.Embed(
+        fatal_container = build_container(
             title="FATAL EXCEPTION",
             description=f"A **FATAL** error occurred in the system: {error_message}",
-            color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            color='error',
+            timestamp=True,
+            fields=[("📝 Error Details", f"{error.__class__.__name__}: {error}\n", False)],
+            footer_text="FATAL System Failure",
         )
-        fatal_embed.add_field(name="📝 Error Details", value=f"{error.__class__.__name__}: {error}\n", inline=False)
-        fatal_embed.set_footer(text="FATAL System Failure")
 
         try:
             if error_log_channel_id:
                 log_channel = self.bot.get_channel(int(error_log_channel_id))
                 if log_channel:
-                    await log_channel.send(embed=fatal_embed)
+                    await log_channel.send(view=build_view(fatal_container))
         except Exception as e:
             print(Fore.RED + Style.BRIGHT + f"-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
             print(Fore.RED + Style.BRIGHT + "FATAL ERROR while logging fatal error")
@@ -289,11 +318,10 @@ class ErrorHandling(commands.Cog):
         sys.exit()
 
     def create_embed(self, title, description, style):
-        from utils.embed_helpers import create_embed as utils_create_embed
-        return utils_create_embed(
+        return build_container(
             title=title,
             description=description,
-            color=discord.Color.brand_red(),
+            color='error',
             timestamp=True
         )
 

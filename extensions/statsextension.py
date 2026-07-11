@@ -1,26 +1,20 @@
 import discord
-import datetime
+from utils.components import build_container
 
-def create_stats_embed(title, description="", color_type="stats", author=None):
-    embed_colors = {
-        "stats": 0x3498DB,
-        "leaderboard": 0xF1C40F,
-        "system": 0x2ECC71,
-        "error": 0xE74C3C,
-        "mod": 0x992D22
+def create_stats_embed(title, description="", color_type="stats", author=None) -> discord.ui.Container:
+    """Create a standardized stats container (Components V2)."""
+    color_map = {
+        "system": "status",
+        "mod": "mod_action",
     }
 
-    embed = discord.Embed(
+    resolved_color = color_map.get(color_type, color_type)
+    return build_container(
         title=title,
         description=description,
-        color=embed_colors.get(color_type, 0x3498DB),
-        timestamp=datetime.datetime.now()
+        color=resolved_color,
+        author=author,
+        footer_text="Maggi Stats System",
+        footer_icon="https://maggi.dev/favicon/favicon.ico",
+        timestamp=True,
     )
-    embed.set_footer(
-        text="Maggi Stats System",
-        icon_url="https://maggi.dev/favicon/favicon.ico"
-    )
-
-    if author:
-        embed.set_author(name=str(author), icon_url=author.avatar.url)
-    return embed

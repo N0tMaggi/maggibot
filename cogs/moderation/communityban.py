@@ -2,20 +2,20 @@ import discord
 from discord.ext import commands
 from discord.commands import slash_command
 from handlers.debug import LogError, LogModeration
-from utils.embed_helpers import create_mod_embed
+from extensions.modextensions import create_mod_embed
+from utils.components import build_view
 
 class ModCommunityBan(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
 
     def create_embed(self, title, description, color_type='mod_action', author=None):
-        """Create a moderation embed using centralized utility"""
+        """Create a moderation container using centralized utility"""
         return create_mod_embed(
             title=title,
             description=description,
             color_type=color_type,
-            author=author,
-            bot_user=self.bot.user
+            author=author
         )
 
     @slash_command(name="mod-community-ban", description="Start community ban vote (Admin only)")
@@ -24,12 +24,12 @@ class ModCommunityBan(commands.Cog):
         try:
             if user == ctx.author:
                 return await ctx.respond(
-                    embed=self.create_embed(
+                    view=build_view(self.create_embed(
                         "❌ Invalid Target",
                         "You cannot start a ban vote against yourself",
                         'error',
                         ctx.author
-                    ), ephemeral=True
+                    )), ephemeral=True
                 )
 
             description = (
@@ -49,19 +49,24 @@ class ModCommunityBan(commands.Cog):
                 'mod_action',
                 ctx.author
             )
-            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.add_item(
+                discord.ui.Section(
+                    discord.ui.TextDisplay("\u200b"),
+                    accessory=discord.ui.Thumbnail(user.display_avatar.url),
+                )
+            )
 
-            view = self.BanVoteView(self, user, reason, ctx.author)  # [[3]][[4]]
-            await ctx.respond(embed=embed, view=view)
+            row = self.BanVoteRow(self, user, reason, ctx.author)
+            await ctx.respond(view=build_view(embed, row, timeout=None))
             LogModeration(f"Community ban started for {user.id} in {ctx.guild.id}")
 
         except Exception as e:
             LogError(f"Community ban init error: {str(e)}")
             await ctx.respond("🚨 Failed to start ban vote", ephemeral=True)
 
-    class BanVoteView(discord.ui.View):
+    class BanVoteRow(discord.ui.ActionRow):
         def __init__(self, cog, target, reason, initiator):
-            super().__init__(timeout=None)
+            super().__init__()
             self.cog = cog 
             self.target = target
             self.reason = reason
@@ -90,9 +95,14 @@ class ModCommunityBan(commands.Cog):
                     'success',
                     interaction.user
                 )
-                new_embed.set_thumbnail(url=self.target.display_avatar.url)
+                new_embed.add_item(
+                    discord.ui.Section(
+                        discord.ui.TextDisplay("\u200b"),
+                        accessory=discord.ui.Thumbnail(self.target.display_avatar.url),
+                    )
+                )
                 
-                await interaction.message.edit(embed=new_embed, view=self)
+                await interaction.message.edit(view=build_view(new_embed, self, timeout=None))
                 await interaction.response.send_message(f"✅ Ban confirmed by {interaction.user.mention}!", ephemeral=False)
 
                 try:
@@ -104,7 +114,7 @@ class ModCommunityBan(commands.Cog):
                         "This action was community-confirmed",
                         'error'
                     )
-                    await self.target.send(embed=dm_embed)
+                    await self.target.send(view=build_view(dm_embed))
                 except discord.Forbidden:
                     LogError(f"Could not send DM to {self.target.id} - DMs disabled")
                 except Exception as e:

@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, Button, button
+from discord.ui import ActionRow, Button, button
 import datetime
 import asyncio
 from dateutil.parser import parse as parse_duration
@@ -8,44 +8,34 @@ from dateutil.parser import parse as parse_duration
 import handlers.config as cfg
 from extensions.modextensions import create_mod_embed, send_mod_log
 from handlers.debug import LogDebug, LogError, LogModeration
+from utils.components import build_container, build_view
 
-class ModerationView(View):
+class ModerationView:
     def __init__(self, user: discord.Member, moderator: discord.Member):
-        super().__init__(timeout=60)
         self.user = user
         self.moderator = moderator
         self.ctx = None
         self.bot = None
+        self.rows = []
+        self.designer_view = None
 
-    @button(label="Ban", style=discord.ButtonStyle.red, emoji="🔨", row=0)
-    async def ban_button(self, button: Button, interaction: discord.Interaction):
-        await self.handle_action(interaction, "ban")
+    def set_panel(self, designer_view: discord.ui.DesignerView, rows):
+        self.designer_view = designer_view
+        self.rows = rows
 
-    @button(label="Kick", style=discord.ButtonStyle.primary, emoji="⚠️", row=0)
-    async def kick_button(self, button: Button, interaction: discord.Interaction):
-        await self.handle_action(interaction, "kick")
+    def disable_rows(self):
+        for row in self.rows:
+            for child in row.children:
+                child.disabled = True
 
-    @button(label="Timeout", style=discord.ButtonStyle.grey, emoji="🔇", row=0)
-    async def timeout_button(self, button: Button, interaction: discord.Interaction):
-        await self.handle_action(interaction, "timeout")
-
-    @button(label="Warn", style=discord.ButtonStyle.primary, emoji="⚠️", row=1)
-    async def warn_button(self, button: Button, interaction: discord.Interaction):
-        await self.handle_action(interaction, "warn")
-
-    @button(label="History", style=discord.ButtonStyle.secondary, emoji="📚", row=1)
-    async def history_button(self, button: Button, interaction: discord.Interaction):
-        await self.show_history(interaction)
-
-    @button(label="Refresh", style=discord.ButtonStyle.grey, emoji="🔄", row=1)
-    async def refresh_button(self, button: Button, interaction: discord.Interaction):
-        await self.refresh_info(interaction)
-
-    @button(label="Close", style=discord.ButtonStyle.red, emoji="✖️", row=2)
-    async def close_button(self, button: Button, interaction: discord.Interaction):
-        self.disable_all_items()
-        await interaction.response.edit_message(view=self)
-        self.stop()
+    async def refresh_info(self, interaction: discord.Interaction):
+        new_container = await self.generate_user_embed()
+        row_one = ModerationPrimaryRow(self)
+        row_two = ModerationSecondaryRow(self)
+        row_three = ModerationCloseRow(self)
+        new_view = build_view(new_container, row_one, row_two, row_three, timeout=60)
+        self.set_panel(new_view, [row_one, row_two, row_three])
+        await interaction.response.edit_message(view=new_view)
 
     async def handle_action(self, interaction: discord.Interaction, action_type: str):
         if not self.ctx:
@@ -70,9 +60,9 @@ class ModerationView(View):
                 interaction.user
             )
             if not interaction.response.is_done():
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+                await interaction.response.send_message(view=build_view(embed), ephemeral=True)
             else:
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await interaction.followup.send(view=build_view(embed), ephemeral=True)
             return
 
         duration = None
@@ -85,9 +75,9 @@ class ModerationView(View):
                 interaction.user
             )
             if not interaction.response.is_done():
-                await interaction.response.send_message(embed=timeout_embed, ephemeral=True)
+                await interaction.response.send_message(view=build_view(timeout_embed), ephemeral=True)
             else:
-                await interaction.followup.send(embed=timeout_embed, ephemeral=True)
+                await interaction.followup.send(view=build_view(timeout_embed), ephemeral=True)
             try:
                 msg = await self.bot.wait_for(
                     'message',
@@ -108,9 +98,9 @@ class ModerationView(View):
             interaction.user
         )
         if not interaction.response.is_done():
-            await interaction.response.send_message(embed=reason_embed, ephemeral=True)
+            await interaction.response.send_message(view=build_view(reason_embed), ephemeral=True)
         else:
-            await interaction.followup.send(embed=reason_embed, ephemeral=True)
+            await interaction.followup.send(view=build_view(reason_embed), ephemeral=True)
         try:
             msg = await self.bot.wait_for(
                 'message',
@@ -137,7 +127,7 @@ class ModerationView(View):
         try:
             dm_description = f"You have been {action_text} for the following reason: {reason}."
             dm_embed = create_mod_embed("Moderation Notice", dm_description, "info", self.moderator)
-            await self.user.send(embed=dm_embed)
+            await self.user.send(view=build_view(dm_embed))
         except Exception as e:
             LogError(f"Failed to send DM to user {self.user.id}: {e}")
 
@@ -149,7 +139,7 @@ class ModerationView(View):
                         "Cannot ban server administrators",
                         'error'
                     )
-                    await interaction.followup.send(embed=safety_embed, ephemeral=True)
+                    await interaction.followup.send(view=build_view(safety_embed), ephemeral=True)
                     return
                 await self.user.ban(reason=f"{self.moderator}: {reason}")
             elif action_type == "kick":
@@ -166,9 +156,9 @@ class ModerationView(View):
                 self.moderator
             )
             if not interaction.response.is_done():
-                await interaction.response.send_message(embed=success_embed, ephemeral=True)
+                await interaction.response.send_message(view=build_view(success_embed), ephemeral=True)
             else:
-                await interaction.followup.send(embed=success_embed, ephemeral=True)
+                await interaction.followup.send(view=build_view(success_embed), ephemeral=True)
 
             log_data = {
                 "title": "Moderation Action",
@@ -193,9 +183,9 @@ class ModerationView(View):
             )
             try:
                 if not interaction.response.is_done():
-                    await interaction.response.send_message(embed=error_embed, ephemeral=True)
+                    await interaction.response.send_message(view=build_view(error_embed), ephemeral=True)
                 else:
-                    await interaction.followup.send(embed=error_embed, ephemeral=True)
+                    await interaction.followup.send(view=build_view(error_embed), ephemeral=True)
             except discord.errors.NotFound:
                 LogError("Webhook not found while sending error message.")
 
@@ -205,21 +195,9 @@ class ModerationView(View):
             f"**User:** {self.user.mention}\nNo recent actions found",
             'info'
         )
-        await interaction.response.send_message(embed=history_embed, ephemeral=True)
-
-    async def refresh_info(self, interaction: discord.Interaction):
-        new_embed = await self.generate_user_embed()
-        await interaction.message.edit(embed=new_embed)
-        await interaction.response.defer()
+        await interaction.response.send_message(view=build_view(history_embed), ephemeral=True)
 
     async def generate_user_embed(self):
-        embed = discord.Embed(
-            title=f"User Information: {self.user}",
-            color=0x3498DB,
-            timestamp=datetime.datetime.utcnow()
-        )
-        embed.set_thumbnail(url=self.user.display_avatar.url)
-        
         status_emojis = {
             'online': '🟢',
             'idle': '🌙',
@@ -227,33 +205,89 @@ class ModerationView(View):
             'offline': '⚪'
         }
         status = status_emojis.get(str(self.user.status), '⚪')
-        embed.description = f"{status} **Status:** {self.user.status}"
-        
-        embed.add_field(name="User ID", value=self.user.id, inline=False)
-        embed.add_field(name="Nickname", value=self.user.nick or "None", inline=True)
-        embed.add_field(name="Bot Account", value="Yes" if self.user.bot else "No", inline=True)
-        embed.add_field(name="Pending Verification", value="Yes" if self.user.pending else "No", inline=True)
-        embed.add_field(name="Joined Server", value=f"<t:{int(self.user.joined_at.timestamp())}:R>")
-        embed.add_field(name="Account Created", value=f"<t:{int(self.user.created_at.timestamp())}:R>")
-        
+
         roles = [role.mention for role in self.user.roles[1:]]
-        embed.add_field(name=f"Roles ({len(roles)})", 
-                        value=", ".join(roles) if roles else "None", 
-                        inline=False)
-        
+
         perms = []
         if self.user.guild_permissions.administrator:
             perms.append("Administrator")
         else:
-            if self.user.guild_permissions.manage_messages: perms.append("Manage Messages")
-            if self.user.guild_permissions.ban_members: perms.append("Ban Members")
-            if self.user.guild_permissions.kick_members: perms.append("Kick Members")
-            if self.user.guild_permissions.moderate_members: perms.append("Timeout Members")
-        
-        embed.add_field(name="Key Permissions", 
-                        value=", ".join(perms) if perms else "No special permissions",
-                        inline=False)
-        return embed
+            if self.user.guild_permissions.manage_messages:
+                perms.append("Manage Messages")
+            if self.user.guild_permissions.ban_members:
+                perms.append("Ban Members")
+            if self.user.guild_permissions.kick_members:
+                perms.append("Kick Members")
+            if self.user.guild_permissions.moderate_members:
+                perms.append("Timeout Members")
+
+        return build_container(
+            title=f"User Information: {self.user}",
+            description=f"{status} **Status:** {self.user.status}",
+            color='info',
+            thumbnail=self.user.display_avatar.url,
+            fields=[
+                ("User ID", str(self.user.id), False),
+                ("Nickname", self.user.nick or "None", True),
+                ("Bot Account", "Yes" if self.user.bot else "No", True),
+                ("Pending Verification", "Yes" if self.user.pending else "No", True),
+                ("Joined Server", f"<t:{int(self.user.joined_at.timestamp())}:R>", False),
+                ("Account Created", f"<t:{int(self.user.created_at.timestamp())}:R>", False),
+                (f"Roles ({len(roles)})", ", ".join(roles) if roles else "None", False),
+                ("Key Permissions", ", ".join(perms) if perms else "No special permissions", False),
+            ],
+            timestamp=True,
+            bot_user=self.bot.user,
+        )
+
+
+class ModerationPrimaryRow(ActionRow):
+    def __init__(self, panel: ModerationView):
+        super().__init__()
+        self.panel = panel
+
+    @button(label="Ban", style=discord.ButtonStyle.red, emoji="🔨")
+    async def ban_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.handle_action(interaction, "ban")
+
+    @button(label="Kick", style=discord.ButtonStyle.primary, emoji="⚠️")
+    async def kick_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.handle_action(interaction, "kick")
+
+    @button(label="Timeout", style=discord.ButtonStyle.grey, emoji="🔇")
+    async def timeout_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.handle_action(interaction, "timeout")
+
+
+class ModerationSecondaryRow(ActionRow):
+    def __init__(self, panel: ModerationView):
+        super().__init__()
+        self.panel = panel
+
+    @button(label="Warn", style=discord.ButtonStyle.primary, emoji="⚠️")
+    async def warn_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.handle_action(interaction, "warn")
+
+    @button(label="History", style=discord.ButtonStyle.secondary, emoji="📚")
+    async def history_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.show_history(interaction)
+
+    @button(label="Refresh", style=discord.ButtonStyle.grey, emoji="🔄")
+    async def refresh_button(self, button: Button, interaction: discord.Interaction):
+        await self.panel.refresh_info(interaction)
+
+
+class ModerationCloseRow(ActionRow):
+    def __init__(self, panel: ModerationView):
+        super().__init__()
+        self.panel = panel
+
+    @button(label="Close", style=discord.ButtonStyle.red, emoji="✖️")
+    async def close_button(self, button: Button, interaction: discord.Interaction):
+        self.panel.disable_rows()
+        await interaction.response.edit_message(view=self.panel.designer_view)
+        if self.panel.designer_view:
+            self.panel.designer_view.stop()
 
 class UserModerationCog(commands.Cog):
     def __init__(self, bot: discord.Bot):
@@ -266,9 +300,15 @@ class UserModerationCog(commands.Cog):
             view = ModerationView(user, ctx.author)
             view.bot = self.bot
             view.ctx = ctx
-            
-            embed = await view.generate_user_embed()
-            await ctx.respond(embed=embed, view=view)
+
+            container = await view.generate_user_embed()
+            row_one = ModerationPrimaryRow(view)
+            row_two = ModerationSecondaryRow(view)
+            row_three = ModerationCloseRow(view)
+            designer_view = build_view(container, row_one, row_two, row_three, timeout=60)
+            view.set_panel(designer_view, [row_one, row_two, row_three])
+
+            await ctx.respond(view=designer_view)
             LogModeration(f"User info requested for {user.id} by {ctx.author.id}")
         except Exception as e:
             LogError(f"User info command error: {str(e)}")
@@ -278,7 +318,7 @@ class UserModerationCog(commands.Cog):
                 'error',
                 ctx.author
             )
-            await ctx.respond(embed=error_embed, ephemeral=True)
+            await ctx.respond(view=build_view(error_embed), ephemeral=True)
 
 def setup(bot: discord.Bot):
     bot.add_cog(UserModerationCog(bot))

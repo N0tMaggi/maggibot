@@ -2,6 +2,7 @@ from discord.ext import commands
 import discord
 import datetime
 from extensions.statsextension import create_stats_embed
+from utils.components import build_view
 from handlers.debug import LogDebug, LogError
 from handlers.config import load_stats, save_stats, MESSAGE_XP_COUNT, ATTACHMENT_XP_COUNT, VOICE_XP_COUNT, load_multiplier_config
 
@@ -16,24 +17,21 @@ class Leaderboards(commands.Cog):
         try:
             user = user or ctx.author
             stats = load_stats().get(str(user.id), {})
-            embed = create_stats_embed(f"📈 {user.display_name}'s Statistics", color_type="stats")
-            embed.set_thumbnail(url=user.display_avatar.url)
+            container = create_stats_embed(f"📈 {user.display_name}'s Statistics", color_type="stats")
+            container.add_item(
+                discord.ui.Section(
+                    discord.ui.TextDisplay("\u200b"),
+                    accessory=discord.ui.Thumbnail(user.display_avatar.url),
+                )
+            )
 
             if stats:
                 xp = stats.get("xp", 0.0)
                 level = stats.get("level", int(xp // 20))
                 server_stats = stats.get("servers", {})
                 
-                embed.add_field(
-                    name="🌟 Level",
-                    value=f"```yaml\nLevel: {level}```",
-                    inline=False
-                )
-                embed.add_field(
-                    name="🌟 Total XP", 
-                    value=f"```yaml\n{xp:.2f} XP```", 
-                    inline=False
-                )
+                container.add_item(discord.ui.TextDisplay(f"**🌟 Level**\n```yaml\nLevel: {level}```"))
+                container.add_item(discord.ui.TextDisplay(f"**🌟 Total XP**\n```yaml\n{xp:.2f} XP```"))
 
                 server_info = []
                 for guild_id, data in server_stats.items():
@@ -46,15 +44,16 @@ class Leaderboards(commands.Cog):
                         f"🎧 Voice Minutes: {data.get('voiceminutes', 0)}"
                     )
 
-                embed.add_field(
-                    name="🌐 Server Breakdown", 
-                    value="\n".join(server_info) or "No data", 
-                    inline=False
+                server_breakdown = "\n".join(server_info) or "No data"
+                container.add_item(
+                    discord.ui.TextDisplay(
+                        f"**🌐 Server Breakdown**\n{server_breakdown}"
+                    )
                 )
             else:
-                embed.description = "```diff\n- No statistics available```"
+                container.add_item(discord.ui.TextDisplay("```diff\n- No statistics available```"))
             
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
         except Exception as e:
             LogError(f"Stats error: {str(e)}")
             raise
@@ -65,7 +64,7 @@ class Leaderboards(commands.Cog):
         LogDebug(f"Leaderboard viewed by {ctx.author.id}")
         try:
             stats = load_stats()
-            embed = create_stats_embed(
+            container = create_stats_embed(
                 "🌍 Global XP Leaderboard",
                 "```diff\n+ Top Performers Across All Servers\n+ Updated: " + datetime.datetime.now().strftime("%Y-%m-%d") + "```",
                 "leaderboard"
@@ -82,18 +81,19 @@ class Leaderboards(commands.Cog):
                     total_media = sum(s['media'] for s in data['servers'].values())
                     total_voice = sum(s.get('voiceminutes', 0) for s in data['servers'].values())
                     
-                    embed.add_field(
-                        name=f"{self.get_rank_emoji(rank)} {getattr(member, 'name', f'User {user_id}')}", 
-                        value=f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
-                              f"Messages: {total_messages}\n"
-                              f"Media: {total_media}\n"
-                              f"Voice: {total_voice}m```", 
-                        inline=False
+                    container.add_item(
+                        discord.ui.TextDisplay(
+                            f"**{self.get_rank_emoji(rank)} {getattr(member, 'name', f'User {user_id}')}**\n"
+                            f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
+                            f"Messages: {total_messages}\n"
+                            f"Media: {total_media}\n"
+                            f"Voice: {total_voice}m```"
+                        )
                     )
             else:
-                embed.description = "```diff\n- No data available```"
+                container.add_item(discord.ui.TextDisplay("```diff\n- No data available```"))
 
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
         except Exception as e:
             LogError(f"Leaderboard error: {str(e)}")
             raise
@@ -109,7 +109,7 @@ class Leaderboards(commands.Cog):
         try:
             stats = load_stats()
             current_guild = str(ctx.guild.id)
-            embed = create_stats_embed(
+            container = create_stats_embed(
                 f"📊 {ctx.guild.name} Leaderboard",
                 "```diff\n+ Top Members In This Server\n+ Updated: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + "```",
                 "server_leaderboard"
@@ -135,18 +135,19 @@ class Leaderboards(commands.Cog):
                     member = ctx.guild.get_member(int(user_id))
                     display_name = getattr(member, "display_name", f"User {user_id}")
                     
-                    embed.add_field(
-                        name=f"{self.get_rank_emoji(rank)} {display_name}",
-                        value=f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
-                              f"Messages: {messages}\n" 
-                              f"Media: {media}\n"
-                              f"Voice: {voice}m```",
-                        inline=False
+                    container.add_item(
+                        discord.ui.TextDisplay(
+                            f"**{self.get_rank_emoji(rank)} {display_name}**\n"
+                            f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
+                            f"Messages: {messages}\n" 
+                            f"Media: {media}\n"
+                            f"Voice: {voice}m```"
+                        )
                     )
             else:
-                embed.description = "```diff\n- No server statistics available```"
+                container.add_item(discord.ui.TextDisplay("```diff\n- No server statistics available```"))
 
-            await ctx.followup.send(embed=embed)
+            await ctx.followup.send(view=build_view(container))
         except Exception as e:
             LogError(f"Server leaderboard error: {str(e)}")
             raise
@@ -158,7 +159,7 @@ class Leaderboards(commands.Cog):
         """Displays XP reward system information"""
         try:
             config = load_multiplier_config()
-            embed = create_stats_embed("💡 XP System Overview", color_type="info")
+            container = create_stats_embed("💡 XP System Overview", color_type="info")
             
             base_xp = (
                 f"• Messages: {MESSAGE_XP_COUNT} XP\n"
@@ -175,12 +176,13 @@ class Leaderboards(commands.Cog):
                 channel_boosts = "\n".join([f"<#{cid}>" for cid in config["channels"]])
                 multipliers.append(f"**Boosted Channels:**\n{channel_boosts}")
             
-            embed.add_field(name="Base Rewards", value=base_xp, inline=False)
+            container.add_item(discord.ui.TextDisplay(f"**Base Rewards**\n{base_xp}"))
             if multipliers:
-                embed.add_field(name="Multipliers", value="\n\n".join(multipliers), inline=False)
+                multiplier_text = "\n\n".join(multipliers)
+                container.add_item(discord.ui.TextDisplay(f"**Multipliers**\n{multiplier_text}"))
             
-            embed.set_footer(text="XP can stack with multiple multipliers")
-            await ctx.respond(embed=embed)
+            container.add_item(discord.ui.TextDisplay("-# XP can stack with multiple multipliers"))
+            await ctx.respond(view=build_view(container))
         except Exception as e:
             LogError(f"XP info error: {str(e)}")
             raise

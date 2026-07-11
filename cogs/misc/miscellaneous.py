@@ -7,6 +7,7 @@ import time
 import random
 import os
 import asyncio
+from utils.components import build_container, build_view
 
 class Miscellaneous(commands.Cog):
         def __init__(self, bot):
@@ -40,71 +41,46 @@ class Miscellaneous(commands.Cog):
             categories = len(server.categories)
             channels_str = f"💬 Text: {text_channels}\n🔊 Voice: {voice_channels}\n📁 Categories: {categories}"
 
-            embed = discord.Embed(
+            server_container = build_container(
                 title=f"📊  𝚂𝙴𝚁𝚅𝙴𝚁 𝙸𝙽𝙵𝙾: {server.name}",
                 description=f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n{server.description or '*No description*'}",
-                color=0x5865F2
+                color=0x5865F2,
+                thumbnail=thumbnail_url,
+                image=server.banner.url if server.banner else None,
+                footer_text=f"🔮 Requested by {ctx.author}",
+                timestamp=True,
+                fields=[
+                    ("\n👑  𝙾𝚠𝚗𝚎𝚛", f"» {owner.mention if owner else 'Unknown'}\n{'-'*18}", False),
+                    ("🆔  𝚂𝚎𝚛𝚟𝚎𝚛 𝙸𝙳", f"```{server.id}```", True),
+                    (
+                        "📆  𝙲𝚛𝚎𝚊𝚝𝚎𝚍 𝙾𝚗",
+                        f"» {discord.utils.format_dt(server.created_at, 'D')}\n» ({discord.utils.format_dt(server.created_at, 'R')})",
+                        True,
+                    ),
+                    (
+                        "\n👥  𝙼𝚎𝚖𝚋𝚎𝚛𝚜",
+                        f"▹ **Total:** {server.member_count}\n"
+                        f"▹ **Online:** {server.approximate_presence_count if hasattr(server, 'approximate_presence_count') else 'N/A'}\n"
+                        f"{'-'*30}",
+                        False,
+                    ),
+                    ("🚀  𝙱𝚘𝚘𝚜𝚝𝚜", f"» Level {boost_level}\n» {boosts} Boosts", True),
+                    ("🛡️  𝚅𝚎𝚛𝚒𝚏𝚒𝚌𝚊𝚝𝚒𝚘𝚗", f"» {verification_level}", True),
+                    (
+                        "\n📚  𝙲𝚑𝚊𝚗𝚗𝚎𝚕𝚜",
+                        f"▹ 💬 Text: {text_channels}\n"
+                        f"▹ 🔊 Voice: {voice_channels}\n"
+                        f"▹ 📁 Categories: {categories}\n"
+                        f"{'-'*30}",
+                        False,
+                    ),
+                    ("🎭  𝚁𝚘𝚕𝚎𝚜", f"» {len(server.roles)}", True),
+                    ("😄  𝙴𝚖𝚘𝚓𝚒𝚜", f"» {len(server.emojis)}", True),
+                    ("\n✨  𝙵𝚎𝚊𝚝𝚞𝚛𝚎𝚜", f"```{features_str}```\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", False),
+                ],
             )
 
-            if thumbnail_url:
-                embed.set_thumbnail(url=thumbnail_url)
-            if server.banner:
-                embed.set_image(url=server.banner.url)
-
-            embed.add_field(name="\n👑  𝙾𝚠𝚗𝚎𝚛", 
-                            value=f"» {owner.mention if owner else 'Unknown'}\n{'-'*18}", 
-                            inline=False)
-
-            embed.add_field(name="🆔  𝚂𝚎𝚛𝚟𝚎𝚛 𝙸𝙳", 
-                            value=f"```{server.id}```",
-                            inline=True)
-
-            embed.add_field(name="📆  𝙲𝚛𝚎𝚊𝚝𝚎𝚍 𝙾𝚗", 
-                            value=f"» {discord.utils.format_dt(server.created_at, 'D')}\n» ({discord.utils.format_dt(server.created_at, 'R')})",
-                            inline=True)
-
-            embed.add_field(name="\n👥  𝙼𝚎𝚖𝚋𝚎𝚛𝚜", 
-                            value=f"▹ **Total:** {server.member_count}\n"
-                                  f"▹ **Online:** {server.approximate_presence_count if hasattr(server, 'approximate_presence_count') else 'N/A'}\n"
-                                  f"{'-'*30}",
-                            inline=False)
-
-            embed.add_field(name="🚀  𝙱𝚘𝚘𝚜𝚝𝚜", 
-                            value=f"» Level {boost_level}\n"
-                                  f"» {boosts} Boosts", 
-                            inline=True)
-
-            embed.add_field(name="🛡️  𝚅𝚎𝚛𝚒𝚏𝚒𝚌𝚊𝚝𝚒𝚘𝚗", 
-                            value=f"» {verification_level}", 
-                            inline=True)
-
-            embed.add_field(name="\n📚  𝙲𝚑𝚊𝚗𝚗𝚎𝚕𝚜", 
-                            value=f"▹ 💬 Text: {text_channels}\n"
-                                  f"▹ 🔊 Voice: {voice_channels}\n"
-                                  f"▹ 📁 Categories: {categories}\n"
-                                  f"{'-'*30}",
-                            inline=False)
-
-            embed.add_field(name="🎭  𝚁𝚘𝚕𝚎𝚜", 
-                            value=f"» {len(server.roles)}", 
-                            inline=True)
-
-            embed.add_field(name="😄  𝙴𝚖𝚘𝚓𝚒𝚜", 
-                            value=f"» {len(server.emojis)}", 
-                            inline=True)
-
-            embed.add_field(name="\n✨  𝙵𝚎𝚊𝚝𝚞𝚛𝚎𝚜", 
-                            value=f"```{features_str}```\n"
-                                  f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", 
-                            inline=False)
-
-            embed.set_footer(
-                text=f"🔮 Requested by {ctx.author}",
-                icon_url=ctx.author.display_avatar.url
-            )
-            embed.timestamp = server.created_at
-
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(server_container))
 
 
 
@@ -151,21 +127,10 @@ class Miscellaneous(commands.Cog):
             roles = [role.mention for role in target.roles[1:]]  
             roles_str = " ".join(roles) if roles else "No special roles"
             
-            embed = discord.Embed(
-                title=f"📋  𝚄𝚂𝙴𝚁 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽 - {target.display_name}",
-                color=target.color if target.color.value != 0 else 0x5865F2,
-                timestamp=discord.utils.utcnow()
-            )
-
-            embed.set_author(name=f"{target}", icon_url=target.display_avatar.url)
-            embed.set_thumbnail(url=target.display_avatar.url)
-
-            if target.banner:
-                embed.set_image(url=target.banner.url)
-
-            embed.add_field(
-                name="\n🔖  𝙱𝙰𝚂𝙸𝙲 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽",
-                value=f"""
+            fields = [
+                (
+                    "\n🔖  𝙱𝙰𝚂𝙸𝙲 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽",
+                    f"""
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
             » **Name:** {target.name}
             » **ID:** `{target.id}`
@@ -178,12 +143,11 @@ class Miscellaneous(commands.Cog):
             {joined_at}
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                 """,
-                inline=False
-            )
-
-            embed.add_field(
-                name="\n🏰  𝚂𝙴𝚁𝚅𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴",
-                value=f"""
+                    False,
+                ),
+                (
+                    "\n🏰  𝚂𝙴𝚁𝚅𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴",
+                    f"""
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
             » **Top Role:** {target.top_role.mention if target.top_role else 'None'}
             » **Boosting Since:**  
@@ -194,57 +158,69 @@ class Miscellaneous(commands.Cog):
             {'📱 Mobile' if target.is_on_mobile() else '💻 Desktop'}
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                 """,
-                inline=False
-            )
+                    False,
+                ),
+            ]
 
             if activity:
-                embed.add_field(
-                    name="\n📡  𝙲𝚄𝚁𝚁𝙴𝙽𝚃 𝙰𝙲𝚃𝙸𝚅𝙸𝚃𝚈",
-                    value=f"""
+                fields.append(
+                    (
+                        "\n📡  𝙲𝚄𝚁𝚁𝙴𝙽𝚃 𝙰𝙲𝚃𝙸𝚅𝙸𝚃𝚈",
+                        f"""
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
             {activity}
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                     """,
-                    inline=False
+                        False,
+                    )
                 )
 
             if badges:
-                embed.add_field(
-                    name="\n🏆  𝙱𝙰𝙳𝙶𝙴𝚂",
-                    value=f"""
+                fields.append(
+                    (
+                        "\n🏆  𝙱𝙰𝙳𝙶𝙴𝚂",
+                        f"""
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
             {'  '.join(badges)}
             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                     """,
-                    inline=False
+                        False,
+                    )
                 )
 
-            embed.add_field(
-                name=f"\n🤝  𝙼𝚄𝚃𝚄𝙰𝙻 𝚂𝙴𝚁𝚅𝙴𝚁𝚂 ({user_guilds_count})",
-                value=f"""
+            fields.extend([
+                (
+                    f"\n🤝  𝙼𝚄𝚃𝚄𝙰𝙻 𝚂𝙴𝚁𝚅𝙴𝚁𝚂 ({user_guilds_count})",
+                    f"""
             ▬▬▬▬▬▬▬▬▬▬
             {mutual_guilds_str if mutual_guilds else 'None'}
             ▬▬▬▬▬▬▬▬▬▬
                 """,
-                inline=True
-            )
-
-            embed.add_field(
-                name=f"\n🎭  𝚁𝙾𝙻𝙴𝚂 ({len(roles)})",
-                value=f"""
+                    True,
+                ),
+                (
+                    f"\n🎭  𝚁𝙾𝙻𝙴𝚂 ({len(roles)})",
+                    f"""
             ▬▬▬▬▬▬▬▬▬▬
             {roles_str}
             ▬▬▬▬▬▬▬▬▬▬
                 """,
-                inline=True
+                    True,
+                ),
+            ])
+
+            user_container = build_container(
+                title=f"📋  𝚄𝚂𝙴𝚁 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽 - {target.display_name}",
+                color=target.color if target.color.value != 0 else 0x5865F2,
+                timestamp=True,
+                author=target,
+                thumbnail=target.display_avatar.url,
+                image=target.banner.url if target.banner else None,
+                footer_text=f"🔮  𝚁𝙴𝚀𝚄𝙴𝚂𝚃𝙴𝙳 𝙱𝚈 {ctx.author}  •  𝚄𝚂𝙴𝚁 𝙸𝙳: {target.id}",
+                fields=fields,
             )
 
-            embed.set_footer(
-                text=f"🔮  𝚁𝙴𝚀𝚄𝙴𝚂𝚃𝙴𝙳 𝙱𝚈 {ctx.author}  •  𝚄𝚂𝙴𝚁 𝙸𝙳: {target.id}",
-                icon_url=ctx.author.display_avatar.url
-            )
-
-            await ctx.respond(embed=embed)
+            await ctx.respond(view=build_view(user_container))
 
         @commands.slash_command(name="test", description='TEST COMMAND')
         async def test(self, ctx):
@@ -252,23 +228,23 @@ class Miscellaneous(commands.Cog):
 
         @commands.slash_command(name="ping", description="Check the bot's latency")
         async def ping(self, ctx):
-            loading_embed = discord.Embed(
+            loading_container = build_container(
                 title="🏓 Pong!",
                 description="Calculating latency... ⏳",
-                color=discord.Color.blue()
+                color="info",
             )
-            loading_message = await ctx.respond(embed=loading_embed)
+            loading_message = await ctx.respond(view=build_view(loading_container))
 
             latency = self.bot.latency * 1000
             await asyncio.sleep(1)
 
-            embed = discord.Embed(
+            pong_container = build_container(
                 title="🏓 Pong!",
                 description=f"Latency: `{latency:.2f} ms`",
-                color=discord.Color.green()
+                color="success",
+                footer_text=f"Requested by {ctx.author}",
             )
-            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-            await loading_message.edit(embed=embed)
+            await loading_message.edit(view=build_view(pong_container))
 
 
 
@@ -294,8 +270,12 @@ class Miscellaneous(commands.Cog):
                 await message.delete()
 
             except asyncio.TimeoutError:
-                embed = discord.Embed(title="🚫 Timed out!", description="You took too long to respond.", color=discord.Color.red())
-                await ctx.author.send(embed=embed)
+                timeout_container = build_container(
+                    title="🚫 Timed out!",
+                    description="You took too long to respond.",
+                    color="error",
+                )
+                await ctx.author.send(view=build_view(timeout_container))
 
             except Exception as e:
                 LogError(f" An error occurred: {e}")

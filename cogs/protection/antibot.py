@@ -5,6 +5,7 @@ import datetime
 from handlers.debug import LogDebug, LogError
 import handlers.config as config
 from extensions.protectionextension import create_antibot_protection_embed
+from utils.components import build_container, build_view
 
 class Antibot(commands.Cog):
     def __init__(self, bot):
@@ -50,35 +51,65 @@ class Antibot(commands.Cog):
 
         if member.public_flags.verified_bot:
             LogDebug(f"Verified bot allowed: {member}")
-            embed = await create_antibot_protection_embed(member, inviter, is_verified=True)
-            await log_channel.send(embed=embed)
+            container = await create_antibot_protection_embed(member, inviter, is_verified=True)
+            await log_channel.send(view=build_view(container))
             return
 
         if serverconfig[str(member.guild.id)].get("protection"):
             try:
                 await member.kick(reason="Unverified bot protection")
                 LogDebug(f"Successfully kicked unverified bot: {member}")
-                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=True)
+                container = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=True)
             except discord.Forbidden:
                 LogError(f"Missing permissions to kick {member} in {member.guild.name}")
-                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
-                embed.color = discord.Color.orange()
-                embed.title = "⚠️ Protection Action Failed"
+                fields = [
+                    ("Bot Account", f"{member.mention}\n{member.name}#{member.discriminator}", False),
+                    ("Bot ID", f"`{member.id}`", True),
+                    ("Account Created", f"<t:{int(member.created_at.timestamp())}:R>", True),
+                ]
+                if inviter:
+                    fields.append(("Invited By", f"{inviter.mention}\n({inviter.name}#{inviter.discriminator})", False))
+
+                container = build_container(
+                    title="⚠️ Protection Action Failed",
+                    description="⚠️ Failed to kick unverified bot! Please check permissions.",
+                    color='warning',
+                    author=member.guild,
+                    fields=fields,
+                    footer_text="Protection System • Action: Not Kicked",
+                    timestamp=True,
+                )
             except Exception as e:
                 LogError(f"Error kicking bot: {str(e)}")
-                embed = discord.Embed(
+                container = build_container(
                     title="⚠️ Critical Protection Error",
                     description=f"Unexpected error handling bot: {str(e)}",
-                    color=discord.Color.dark_red()
+                    color='error',
+                    author=member.guild,
+                    timestamp=True,
                 )
         else:
             LogDebug(f"Protection disabled - allowing unverified bot: {member}")
-            embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
-            embed.color = discord.Color.orange()
-            embed.title = "⚠️ Unverified Bot Allowed"
+            fields = [
+                ("Bot Account", f"{member.mention}\n{member.name}#{member.discriminator}", False),
+                ("Bot ID", f"`{member.id}`", True),
+                ("Account Created", f"<t:{int(member.created_at.timestamp())}:R>", True),
+            ]
+            if inviter:
+                fields.append(("Invited By", f"{inviter.mention}\n({inviter.name}#{inviter.discriminator})", False))
+
+            container = build_container(
+                title="⚠️ Unverified Bot Allowed",
+                description="An **unverified bot** was detected, but protection is currently disabled.",
+                color='warning',
+                author=member.guild,
+                fields=fields,
+                footer_text="Protection System • Action: Allowed",
+                timestamp=True,
+            )
 
         try:
-            await log_channel.send(embed=embed)
+            await log_channel.send(view=build_view(container))
         except Exception as e:
             LogError(f"Failed to send log message: {str(e)}")
 

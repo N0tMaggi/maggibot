@@ -4,6 +4,7 @@ import datetime
 from handlers.debug import LogDebug, LogError
 import handlers.config as config
 from extensions.protectionextension import create_alert_embed
+from utils.components import build_view
 
 class AntiSpam(commands.Cog):
     def __init__(self, bot):
@@ -42,8 +43,8 @@ class AntiSpam(commands.Cog):
                 LogError(f"No send permissions in {log_channel.name}")
                 return
 
-            embed = await create_alert_embed(message, mention_count)
-            await log_channel.send(embed=embed)
+            container = await create_alert_embed(message, mention_count)
+            await log_channel.send(view=build_view(container))
             LogDebug(f"Logged mass mention by {message.author} ({mention_count} mentions)")
 
         except discord.NotFound:

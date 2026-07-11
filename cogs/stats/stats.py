@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import datetime
+from utils.components import build_container, build_view
 from handlers.debug import LogError, LogDebug
 from handlers.config import (
     load_stats,
@@ -71,16 +72,21 @@ class UserStats(commands.Cog):
             if new_level > old_level:
                 stats[user_id]["level"] = new_level
                 try:
-                    embed = discord.Embed(
+                    container = build_container(
                         title="🎉 Level Up!",
                         description=f"Congratulations, **{message.author.display_name}**!\n\nYou have reached **Level {new_level}**!",
-                        color=discord.Color.gold()
+                        color=discord.Color.gold().value,
+                        thumbnail=message.author.display_avatar.url,
+                        footer_text="Maggibot Level System",
+                        footer_icon=message.guild.icon.url if message.guild.icon else None,
+                        timestamp=True,
+                        bot_user=self.bot.user,
+                        fields=[
+                            ("Total XP", f"{stats[user_id]['xp']:.2f} XP", False),
+                            ("Keep it up!", "Stay active and climb even higher!", False),
+                        ]
                     )
-                    embed.add_field(name="Total XP", value=f"{stats[user_id]['xp']:.2f} XP", inline=False)
-                    embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
-                    embed.set_thumbnail(url=message.author.display_avatar.url)
-                    embed.set_footer(text="Maggibot Level System", icon_url=message.guild.icon.url if message.guild.icon else discord.Embed.Empty)
-                    await message.author.send(embed=embed)
+                    await message.author.send(view=build_view(container))
                 except Exception as dm_error:
                     LogError(f"[LEVEL-UP] Could not send DM to {message.author}: {dm_error}")
 
@@ -144,16 +150,21 @@ class UserStats(commands.Cog):
                         if new_level > old_level:
                             user_stats["level"] = new_level
                             try:
-                                embed = discord.Embed(
+                                container = build_container(
                                     title="🎉 Level Up!",
                                     description=f"Congratulations, **{member.display_name}**!\n\nYou have reached **Level {new_level}**!",
-                                    color=discord.Color.gold()
+                                    color=discord.Color.gold().value,
+                                    thumbnail=member.display_avatar.url,
+                                    footer_text="Maggibot Level System",
+                                    footer_icon=member.guild.icon.url if member.guild.icon else None,
+                                    timestamp=True,
+                                    bot_user=self.bot.user,
+                                    fields=[
+                                        ("Total XP", f"{user_stats['xp']:.2f} XP", False),
+                                        ("Keep it up!", "Stay active and climb even higher!", False),
+                                    ]
                                 )
-                                embed.add_field(name="Total XP", value=f"{user_stats['xp']:.2f} XP", inline=False)
-                                embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
-                                embed.set_thumbnail(url=member.display_avatar.url)
-                                embed.set_footer(text="Maggibot Level System", icon_url=member.guild.icon.url if member.guild.icon else discord.Embed.Empty)
-                                await member.send(embed=embed)
+                                await member.send(view=build_view(container))
                             except Exception as dm_error:
                                 LogError(f"[LEVEL-UP] Could not send DM to {member}: {dm_error}")
 

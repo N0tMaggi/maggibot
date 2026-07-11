@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from handlers.config import loadserverconfig 
 from handlers.debug import LogDebug, LogError
+from utils.components import build_container, build_view
 
 
 class AntiGhostPing(commands.Cog):
@@ -22,7 +23,12 @@ class AntiGhostPing(commands.Cog):
 
         LogDebug(f"Ghost ping detected in {message.guild.name} (ID: {message.guild.id})")
 
-        embed = discord.Embed(
+        fields = [
+            ("Guild ID", f"`{message.guild.id}`", True),
+            ("Channel ID", f"`{message.channel.id}`", True),
+            ("Message ID", f"`{message.id}`", True),
+        ]
+        container = build_container(
             title="⚠️ Ghost Ping Alert",
             description=(
                 f"You were mentioned in a message that was quickly deleted in **{message.guild.name}**\n\n"
@@ -30,17 +36,15 @@ class AntiGhostPing(commands.Cog):
                 f"**Channel:** {message.channel.mention}\n"
                 f"**Message Content:** {message.content or '*No text content*'}"
             ),
-            color=discord.Color.brand_red()
+            color='error',
+            thumbnail=message.author.display_avatar.url,
+            fields=fields,
+            timestamp=True,
         )
-        embed.set_thumbnail(url=message.author.display_avatar.url)
-        embed.add_field(name="Guild ID", value=f"`{message.guild.id}`", inline=True)
-        embed.add_field(name="Channel ID", value=f"`{message.channel.id}`", inline=True)
-        embed.add_field(name="Message ID", value=f"`{message.id}`", inline=True)
-        embed.timestamp = discord.utils.utcnow()
 
         for user in message.mentions:
             try:
-                await user.send(embed=embed)
+                await user.send(view=build_view(container))
                 LogDebug(f"Successfully alerted {user} (ID: {user.id})")
             except discord.Forbidden:
                 LogError(f"Could not send DM to {user} (ID: {user.id}) - DMs disabled")
