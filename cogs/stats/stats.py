@@ -1,3 +1,4 @@
+from utils.embed_helpers import create_embed
 from discord.ext import commands
 import discord
 import datetime
@@ -79,7 +80,7 @@ class UserStats(commands.Cog):
                     embed.add_field(name="Total XP", value=f"{stats[user_id]['xp']:.2f} XP", inline=False)
                     embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
                     embed.set_thumbnail(url=message.author.display_avatar.url)
-                    embed.set_footer(text="Maggibot Level System", icon_url=message.guild.icon.url if message.guild.icon else discord.Embed.Empty)
+                    embed.set_footer(text="Maggibot Level System", icon_url=message.guild.icon.url if message.guild.icon else None)
                     await message.author.send(embed=embed)
                 except Exception as dm_error:
                     LogError(f"[LEVEL-UP] Could not send DM to {message.author}: {dm_error}")
@@ -152,7 +153,7 @@ class UserStats(commands.Cog):
                                 embed.add_field(name="Total XP", value=f"{user_stats['xp']:.2f} XP", inline=False)
                                 embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
                                 embed.set_thumbnail(url=member.display_avatar.url)
-                                embed.set_footer(text="Maggibot Level System", icon_url=member.guild.icon.url if member.guild.icon else discord.Embed.Empty)
+                                embed.set_footer(text="Maggibot Level System", icon_url=member.guild.icon.url if member.guild.icon else None)
                                 await member.send(embed=embed)
                             except Exception as dm_error:
                                 LogError(f"[LEVEL-UP] Could not send DM to {member}: {dm_error}")

@@ -1,40 +1,56 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-import json
-import os
-import datetime
 import uuid 
-from handlers.debug import LogDebug, LogError, LogSystem
+from handlers.debug import LogDebug, LogError
 from handlers.config import load_admin_feedback, save_admin_feedback
+from utils.embed_helpers import create_embed, create_success_embed, create_error_embed, create_info_embed, create_warning_embed
+
+
 class AdminFeedback(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot):
         self.bot = bot
         self.admin_feedback = load_admin_feedback()
 
-
-    @commands.slash_command(name="feedback", description="📩 Send feedback to an admin")
-    async def feedback(self, ctx, admin_user: discord.Member, *, feedback: str):
+    @commands.slash_command(
+        name="feedback",
+        description="📩 Send feedback to an administrator",
+        guild_only=True
+    )
+    async def feedback(self, ctx: discord.ApplicationContext, admin_user: discord.Member, *, feedback: str):
         try:
-            if str(ctx.guild.id) in self.admin_feedback["configs"]:
-                team_role = ctx.guild.get_role(self.admin_feedback["configs"][str(ctx.guild.id)]["team_role"])
-                if admin_user in team_role.members:
+            guild_id_str = str(ctx.guild.id)
+            if guild_id_str in self.admin_feedback["configs"]:
+                team_role_id = self.admin_feedback["configs"][guild_id_str]["team_role"]
+                team_role = ctx.guild.get_role(team_role_id)
+                if team_role and admin_user in team_role.members:
                     if admin_user.id != ctx.author.id:
-                        embed = discord.Embed(
-                            title="📩 New feedback received!",
-                            description=feedback,
-                            color=discord.Color.blue()
-                        )
-                        embed.add_field(name="👤 From", value=ctx.author.mention, inline=False)
-                        embed.add_field(name="🏠 Server", value=ctx.guild.name, inline=False)
-                        embed.add_field(name="📌 Channel", value=ctx.channel.mention, inline=False)
                         current_time = discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-                        embed.add_field(name="⏰ Time", value=current_time, inline=False)
-                        embed.set_footer(text="Feedback system by Maggi Bot")
-                        await admin_user.send(embed=embed)
+                        dm_embed = create_embed(
+                            title="📩 Neues Feedback erhalten!",
+                            description=feedback,
+                            color="info",
+                            author=ctx.author,
+                            fields=[
+                                ("👤 Von", ctx.author.mention, True),
+                                ("🏠 Server", ctx.guild.name, True),
+                                ("📌 Channel", ctx.channel.mention, True),
+                                ("⏰ Gesendet am", current_time, False)
+                            ],
+                            footer_text="MaggiBot Feedback-System"
+                        )
+                        try:
+                            await admin_user.send(embed=dm_embed)
+                        except discord.Forbidden:
+                            await ctx.respond(
+                                embed=create_error_embed("Fehler", "Der Administrator hat Direktnachrichten (DMs) deaktiviert."),
+                                ephemeral=True
+                            )
+                            return
 
-                        feedback_id = str(uuid.uuid4())
+                        feedback_id = str(uuid.uuid4())[:8]
                         entry = {
-                            "server": str(ctx.guild.id),
+                            "server": guild_id_str,
                             "channel": str(ctx.channel.id),
                             "time": current_time,
                             "from": str(ctx.author.id),
@@ -44,141 +60,143 @@ class AdminFeedback(commands.Cog):
                         self.admin_feedback["feedbacks"][feedback_id] = entry
                         save_admin_feedback(self.admin_feedback)
 
-                        embed_response = discord.Embed(
-                            title="✅ Feedback sent!",
-                            description=f"Your feedback has been sent to {admin_user.mention}.\nFeedback ID: `{feedback_id}`",
-                            color=discord.Color.green()
+                        resp_embed = create_success_embed(
+                            "Feedback gesendet!",
+                            f"Dein Feedback wurde an {admin_user.mention} übermittelt.\n**Feedback ID:** `{feedback_id}`"
                         )
-                        embed_response.set_footer(text="Thank you for your feedback!")
-                        await ctx.respond(embed=embed_response)
+                        await ctx.respond(embed=resp_embed, ephemeral=True)
                     else:
-                        await ctx.respond(embed=discord.Embed(
-                            title="❌ Error",
-                            description="You cannot send feedback to yourself!",
-                            color=discord.Color.red()
-                        ))
+                        await ctx.respond(
+                            embed=create_error_embed("Ungültig", "Du kannst dir selbst kein Feedback senden!"),
+                            ephemeral=True
+                        )
                 else:
-                    await ctx.respond(embed=discord.Embed(
-                        title="❌ Error",
-                        description="The selected admin is not part of the team role.",
-                        color=discord.Color.red()
-                    ))
+                    await ctx.respond(
+                        embed=create_error_embed("Ungültiges Team-Mitglied", "Der ausgewählte Nutzer besitzt nicht die Team-Rolle."),
+                        ephemeral=True
+                    )
             else:
-                await ctx.respond(embed=discord.Embed(
-                    title="❌ Error",
-                    description="Admin feedback has not been set up on this server yet!",
-                    color=discord.Color.red()
-                ))
+                await ctx.respond(
+                    embed=create_warning_embed("Nicht eingerichtet", "Admin-Feedback wurde auf diesem Server noch nicht über `/setup` konfiguriert."),
+                    ephemeral=True
+                )
         except Exception as e:
             LogError(f"❌ Error sending feedback: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while sending your feedback.",
-                color=discord.Color.red()
-            ))
-            raise RuntimeError(f"❌ Error sending feedback: {e}")
-
-    @commands.slash_command(name="view-feedbacks-from", description="🔍 View feedbacks from a specific user across all servers")
-    async def view_feedbacks_from(self, ctx, user: discord.Member):
-        try:
-            feedback_entries = []
-            for fid, entry in self.admin_feedback["feedbacks"].items():
-                if entry["from"] == str(user.id):
-                    feedback_entries.append((fid, entry))
-            if not feedback_entries:
-                await ctx.respond(embed=discord.Embed(
-                    title="ℹ️ No Feedback Found",
-                    description=f"No feedbacks found from {user.mention}.",
-                    color=discord.Color.orange()
-                ))
-                return
-            description = ""
-            for fid, entry in feedback_entries:
-                description += (f"**ID:** `{fid}`\n"
-                                f"**Server:** <@{entry['server']}>\n"
-                                f"**Channel:** <#{entry['channel']}>\n"
-                                f"**Time:** {entry['time']}\n"
-                                f"**To:** <@{entry['to']}>\n"
-                                f"**Feedback:** {entry['feedback']}\n"
-                                "——————————————\n")
-            embed = discord.Embed(
-                title=f"📋 Feedbacks from {user}",
-                description=description,
-                color=discord.Color.blue()
+            await ctx.respond(
+                embed=create_error_embed("Fehler", "Beim Senden des Feedbacks ist ein Fehler aufgetreten."),
+                ephemeral=True
             )
-            await ctx.respond(embed=embed)
+
+    @commands.slash_command(
+        name="view-feedbacks-from",
+        description="🔍 Feedbacks eines bestimmten Nutzers anzeigen",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    @commands.has_permissions(administrator=True)
+    async def view_feedbacks_from(self, ctx: discord.ApplicationContext, user: discord.Member):
+        try:
+            feedback_entries = [
+                (fid, entry) for fid, entry in self.admin_feedback.get("feedbacks", {}).items()
+                if entry.get("from") == str(user.id)
+            ]
+            if not feedback_entries:
+                await ctx.respond(
+                    embed=create_info_embed("Kein Feedback gefunden", f"Keine Feedbacks von {user.mention} vorhanden."),
+                    ephemeral=True
+                )
+                return
+
+            desc = []
+            for fid, entry in feedback_entries[:15]:
+                desc.append(
+                    f"**ID:** `{fid}` | **Zeit:** `{entry.get('time', 'N/A')}`\n"
+                    f"• **An:** <@{entry.get('to')}>\n"
+                    f"• **Inhalt:** {entry.get('feedback')}\n"
+                    f"───────────────────────────────"
+                )
+
+            embed = create_info_embed(
+                f"📋 Feedbacks von {user.display_name}",
+                "\n".join(desc),
+                bot_user=self.bot.user
+            )
+            await ctx.respond(embed=embed, ephemeral=True)
         except Exception as e:
             LogError(f"❌ Error viewing feedbacks: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while retrieving feedbacks.",
-                color=discord.Color.red()
-            ))
+            await ctx.respond(
+                embed=create_error_embed("Fehler", "Fehler beim Abrufen der Feedbacks."),
+                ephemeral=True
+            )
 
-    @commands.slash_command(name="owner-deletefeedback", description="🚫 (Owner Only) Delete a feedback by its ID")
+    @commands.slash_command(
+        name="owner-deletefeedback",
+        description="🚫 (Owner Only) Feedback anhand der ID löschen"
+    )
     @commands.is_owner()
-    async def owner_deletefeedback(self, ctx, feedback_id: str):
+    async def owner_deletefeedback(self, ctx: discord.ApplicationContext, feedback_id: str):
         try:
-            if feedback_id in self.admin_feedback["feedbacks"]:
+            if feedback_id in self.admin_feedback.get("feedbacks", {}):
                 del self.admin_feedback["feedbacks"][feedback_id]
                 save_admin_feedback(self.admin_feedback)
-                embed = discord.Embed(
-                    title="✅ Feedback Deleted",
-                    description=f"Feedback with ID `{feedback_id}` has been deleted.",
-                    color=discord.Color.green()
+                await ctx.respond(
+                    embed=create_success_embed("Gelöscht", f"Feedback `{feedback_id}` wurde erfolgreich entfernt."),
+                    ephemeral=True
                 )
-                await ctx.respond(embed=embed)
             else:
-                await ctx.respond(embed=discord.Embed(
-                    title="❌ Error",
-                    description=f"No feedback found with ID `{feedback_id}`.",
-                    color=discord.Color.red()
-                ))
+                await ctx.respond(
+                    embed=create_error_embed("Nicht gefunden", f"Kein Feedback mit der ID `{feedback_id}` gefunden."),
+                    ephemeral=True
+                )
         except Exception as e:
             LogError(f"❌ Error deleting feedback: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while deleting the feedback.",
-                color=discord.Color.red()
-            ))
-
-    @commands.slash_command(name="view-feedbacks", description="🔍 View feedbacks from a specific user across all servers")
-    async def view_feedbacks(self, ctx, user: discord.Member):
-        try:
-            feedback_entries = []
-            for fid, entry in self.admin_feedback["feedbacks"].items():
-                if entry["to"] == str(user.id):
-                    feedback_entries.append((fid, entry))
-            if not feedback_entries:
-                await ctx.respond(embed=discord.Embed(
-                    title="ℹ️ No Feedback Found",
-                    description=f"No feedbacks found for {user.mention}.",
-                    color=discord.Color.orange()
-                ))
-                return
-            description = ""
-            for fid, entry in feedback_entries:
-                description += (f"**ID:** `{fid}`\n"
-                                f"**Server:** <@{entry['server']}>\n"
-                                f"**Channel:** <#{entry['channel']}>\n"
-                                f"**Time:** {entry['time']}\n"
-                                f"**To:** <@{entry['to']}>\n"
-                                f"**From :** <@{entry['from']}>\n"
-                                f"**Feedback:** {entry['feedback']}\n"
-                                "——————————————\n")
-            embed = discord.Embed(
-                title=f"📋 Feedbacks from {user}",
-                description=description,
-                color=discord.Color.blue()
+            await ctx.respond(
+                embed=create_error_embed("Fehler", "Beim Löschen des Feedbacks ist ein Fehler aufgetreten."),
+                ephemeral=True
             )
-            await ctx.respond(embed=embed)
+
+    @commands.slash_command(
+        name="view-feedbacks",
+        description="🔍 Feedbacks an einen Administrator anzeigen",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    @commands.has_permissions(administrator=True)
+    async def view_feedbacks(self, ctx: discord.ApplicationContext, user: discord.Member):
+        try:
+            feedback_entries = [
+                (fid, entry) for fid, entry in self.admin_feedback.get("feedbacks", {}).items()
+                if entry.get("to") == str(user.id)
+            ]
+            if not feedback_entries:
+                await ctx.respond(
+                    embed=create_info_embed("Kein Feedback gefunden", f"Keine Feedbacks für {user.mention} vorhanden."),
+                    ephemeral=True
+                )
+                return
+
+            desc = []
+            for fid, entry in feedback_entries[:15]:
+                desc.append(
+                    f"**ID:** `{fid}` | **Zeit:** `{entry.get('time', 'N/A')}`\n"
+                    f"• **Von:** <@{entry.get('from')}>\n"
+                    f"• **Inhalt:** {entry.get('feedback')}\n"
+                    f"───────────────────────────────"
+                )
+
+            embed = create_info_embed(
+                f"📋 Feedbacks für {user.display_name}",
+                "\n".join(desc),
+                bot_user=self.bot.user
+            )
+            await ctx.respond(embed=embed, ephemeral=True)
         except Exception as e:
             LogError(f"❌ Error viewing feedbacks: {e}")
-            await ctx.respond(embed=discord.Embed(
-                title="❌ Error",
-                description="An error occurred while retrieving feedbacks.",
-                color=discord.Color.red()
-            ))
+            await ctx.respond(
+                embed=create_error_embed("Fehler", "Fehler beim Abrufen der Feedbacks."),
+                ephemeral=True
+            )
 
-def setup(bot):
+
+def setup(bot: discord.Bot):
     bot.add_cog(AdminFeedback(bot))

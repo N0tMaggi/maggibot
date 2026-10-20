@@ -4,21 +4,18 @@ from discord.commands import slash_command
 import random
 import datetime
 from handlers.debug import LogError, LogModeration
-from utils.embed_helpers import create_mod_embed
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 
 class ModCommunityMute(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-
-    def create_embed(self, title, description, color_type='mod_action', author=None):
-        """Create a moderation embed using centralized utility"""
-        return create_mod_embed(
-            title=title,
-            description=description,
-            color_type=color_type,
-            author=author,
-            bot_user=self.bot.user
-        )
 
     @slash_command(name="mod-community-mute", description="Start community mute vote (Admin only)")
     @commands.has_permissions(administrator=True)
@@ -26,11 +23,10 @@ class ModCommunityMute(commands.Cog):
         try:
             if user == ctx.author:
                 return await ctx.respond(
-                    embed=self.create_embed(
-                        "❌ Invalid Target",
+                    embed=create_error_embed(
+                        "Invalid Target",
                         "You cannot start a mute vote against yourself",
-                        'error',
-                        ctx.author
+                        author=ctx.author
                     ), ephemeral=True
                 )
             
@@ -50,15 +46,16 @@ class ModCommunityMute(commands.Cog):
                 f"🕒 **Vote End:** {vote_end_str}"
             )
 
-            embed = self.create_embed(
+            embed = create_mod_embed(
                 "🗳️ Community Mute Vote",
                 description,
-                'vote',
-                ctx.author
+                color_type='vote',
+                author=ctx.author,
+                bot_user=self.bot.user,
+                thumbnail=user.display_avatar.url
             )
-            embed.set_thumbnail(url=user.display_avatar.url)
 
-            view = self.MuteVoteView(user, reason, ctx.author, self.create_embed, vote_end)
+            view = self.MuteVoteView(user, reason, ctx.author, vote_end, bot_user=self.bot.user)
             await ctx.respond(embed=embed, view=view)
             view.message = await ctx.interaction.original_response()
             LogModeration(f"Community mute started for {user.id} in {ctx.guild.id}")
@@ -68,13 +65,13 @@ class ModCommunityMute(commands.Cog):
             await ctx.respond("🚨 Failed to start mute vote", ephemeral=True)
 
     class MuteVoteView(discord.ui.View):
-        def __init__(self, target, reason, initiator, create_embed_func, vote_end):
+        def __init__(self, target, reason, initiator, vote_end, bot_user=None):
             super().__init__(timeout=30)
             self.target = target
             self.reason = reason
             self.initiator = initiator
-            self.create_embed = create_embed_func
             self.vote_end = vote_end
+            self.bot_user = bot_user
             self.votes = {
                 '1h': set(),
                 '3h': set(),
@@ -122,7 +119,7 @@ class ModCommunityMute(commands.Cog):
                 vote_counts = {option: len(self.votes[option]) for option in self.vote_options}
                 vote_end_now = f"<t:{int(discord.utils.utcnow().timestamp())}:F>"
 
-                new_embed = self.create_embed(
+                new_embed = create_mod_embed(
                     "🔇 Mute Executed",
                     f"**Target:** {self.target.mention}\n\n"
                     f"**Duration:** {chosen}\n\n"
@@ -137,10 +134,11 @@ class ModCommunityMute(commands.Cog):
                     f"7d: {vote_counts['7d']}\n\n"
                     f"**Vote Ended at:** {vote_end_now}\n\n"
                     f"**Reason:** {self.reason}",
-                    'success',
-                    self.initiator
+                    color_type='success',
+                    author=self.initiator,
+                    bot_user=self.bot_user,
+                    thumbnail=self.target.display_avatar.url
                 )
-                new_embed.set_thumbnail(url=self.target.display_avatar.url)
 
                 for child in self.children:
                     child.disabled = True
@@ -157,13 +155,14 @@ class ModCommunityMute(commands.Cog):
 
                 try:
                     guild_name = self.message.guild.name if self.message and self.message.guild else 'the server'
-                    dm_embed = self.create_embed(
+                    dm_embed = create_mod_embed(
                         "🔇 Community Mute",
                         f"You were muted in **{guild_name}**\n\n"
                         f"**Duration:** {chosen}\n\n"
                         f"**Reason:** {self.reason}\n\n"
                         "This action was community-voted",
-                        'error'
+                        color_type='error',
+                        bot_user=self.bot_user
                     )
                     await self.target.send(embed=dm_embed)
                 except Exception as dm_error:

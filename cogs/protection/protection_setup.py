@@ -5,7 +5,48 @@ from discord.ui import View, Button, button, channel_select, role_select
 from discord import ui
 import handlers.config as config
 from handlers.debug import LogDebug
-from extensions.protectionextension import create_protection_status_embed
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
+
+async def create_protection_status_embed(ctx_or_interaction, enabled: bool, log_channel_id: int | None) -> discord.Embed:
+    guild = getattr(ctx_or_interaction, "guild", None)
+    user = getattr(ctx_or_interaction, "user", None) or getattr(ctx_or_interaction, "author", None)
+    
+    if user:
+        name = user.name
+        discriminator = getattr(user, "discriminator", None)
+        tag = f"{name}#{discriminator}" if discriminator and discriminator != "0" else name
+        user_label = f"{user.mention}\n{tag}"
+    else:
+        user_label = "Unknown"
+
+    status = "Enabled ✅" if enabled else "Disabled ❌"
+    log_channel_value = f"<#{log_channel_id}>" if log_channel_id else "Not set"
+
+    fields = [
+        ("Action Performed By", user_label, True),
+        ("Protection Status", status, False),
+        ("Log Channel", log_channel_value, False),
+    ]
+
+    embed = create_security_embed(
+        title="Protection Configuration",
+        description="Current server protection settings.",
+        color='success' if enabled else 'error',
+        footer_text=f"Server ID: {guild.id} • Protection System" if guild else "Protection System",
+        fields=fields
+    )
+
+    if guild and guild.icon:
+        embed.set_author(name=guild.name, icon_url=guild.icon.url)
+
+    return embed
 
 class ProtectionConfigView(View):
     def __init__(self, bot, guild_id):

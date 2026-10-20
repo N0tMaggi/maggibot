@@ -2,6 +2,14 @@ import discord
 from discord.ext import commands
 from handlers.config import loadserverconfig
 from handlers.debug import LogDebug, LogError
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 
 class WebhookProtectionCog(commands.Cog):
     def __init__(self, bot):
@@ -27,23 +35,27 @@ class WebhookProtectionCog(commands.Cog):
                     LogDebug(f"Verified bot webhook allowed: {webhook.name} by {creator}")
                     continue
                     
-                embed = discord.Embed(
+                bot_icon = self.bot.user.display_avatar.url if self.bot.user else None
+                fields = [
+                    ("Webhook Name", webhook.name, True),
+                    ("Channel", channel.name, True),
+                    ("Creator", f"{creator} (`{creator.id}`)" if creator else "Unknown", False)
+                ]
+                embed = create_security_embed(
                     title="⚠️ SECURITY ALERT: Webhook Created",
                     description=f"New webhook detected in {channel.mention}",
-                    color=discord.Color.orange(),
-                    timestamp=discord.utils.utcnow()
+                    color='warning',
+                    thumbnail=guild_icon,
+                    footer_text=f"Server ID: {guild.id} • Security System",
+                    footer_icon=bot_icon,
+                    fields=fields
                 )
-                embed.set_thumbnail(url=guild_icon)
-                embed.add_field(name="Webhook Name", value=webhook.name, inline=True)
-                embed.add_field(name="Channel", value=channel.name, inline=True)
-                embed.add_field(name="Creator", value=f"{creator} (`{creator.id}`)" if creator else "Unknown", inline=False)
-                embed.set_footer(text=f"Server ID: {guild.id}", icon_url=self.bot.user.avatar.url)
 
                 if protection and creator and creator.bot:
                     try:
                         await webhook.delete(reason="Security: Bot-created webhook")
                         embed.title = "🚫 THREAT NEUTRALIZED: Webhook Deleted"
-                        embed.color = discord.Color.red()
+                        embed.color = discord.Color(0xE74C3C)
                         embed.add_field(name="Action Taken", value="Webhook automatically deleted", inline=False)
                         LogDebug(f"Deleted bot webhook in {guild.name} ({guild.id})")
                     except Exception as e:
@@ -68,24 +80,28 @@ class WebhookProtectionCog(commands.Cog):
         try:
             webhook = next((w for w in await message.channel.webhooks() if w.id == message.webhook_id), None)
             guild_icon = message.guild.icon.url if message.guild.icon else None
+            bot_icon = self.bot.user.display_avatar.url if self.bot.user else None
 
-            embed = discord.Embed(
+            fields = [
+                ("Webhook", webhook.name if webhook else "Unknown", True),
+                ("Message Content", message.content[:1000] or "*No text*", False),
+                ("Sent By", f"{webhook.user} (`{webhook.user.id}`)" if webhook and webhook.user else "Unknown", False)
+            ]
+            embed = create_security_embed(
                 title="📡 Webhook Activity Detected",
                 description=f"Message from webhook in {message.channel.mention}",
-                color=discord.Color.greyple(),
-                timestamp=discord.utils.utcnow()
+                color='default',
+                thumbnail=guild_icon,
+                footer_text=f"Server ID: {message.guild.id} • Security System",
+                footer_icon=bot_icon,
+                fields=fields
             )
-            embed.set_thumbnail(url=guild_icon)
-            embed.add_field(name="Webhook", value=webhook.name if webhook else "Unknown", inline=True)
-            embed.add_field(name="Message Content", value=message.content[:1000] or "*No text*", inline=False)
-            embed.add_field(name="Sent By", value=f"{webhook.user} (`{webhook.user.id}`)" if webhook and webhook.user else "Unknown", inline=False)
-            embed.set_footer(text=f"Server ID: {message.guild.id}", icon_url=self.bot.user.avatar.url)
 
             if protection and webhook and webhook.user and webhook.user.bot:
                 try:
                     await webhook.delete(reason="Security: Unauthorized bot webhook")
                     embed.title = "🚨 THREAT BLOCKED: Malicious Webhook"
-                    embed.color = discord.Color.red()
+                    embed.color = discord.Color(0xE74C3C)
                     embed.add_field(name="Action Taken", value="Webhook automatically terminated", inline=False)
                     LogDebug(f"Blocked malicious webhook message in {message.guild.name} ({message.guild.id})")
                 except Exception as e:

@@ -1,149 +1,130 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-import json
 import os
 from dotenv import load_dotenv
-from handlers.debug import LogSystem, LogError, LogDebug, LogNetwork
-from handlers.config import load_stats, save_stats, load_multiplier_config, save_multiplier_config
-from utils.embed_helpers import create_embed as utils_create_embed
+from handlers.debug import LogSystem, LogError, LogDebug
+from handlers.config import load_stats, load_multiplier_config, save_multiplier_config
+from utils.embed_helpers import create_embed, create_success_embed, create_error_embed, create_info_embed, create_warning_embed
 
 load_dotenv()
-MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.2))
-ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.5))
 
-STATS_FILE = "data/stats.json"
-XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 
 class XPSetup(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: discord.Bot):
         self.bot = bot
 
-    def create_embed(self, title, description="", color_type="stats"):
-        """Helper to create stats embeds"""
-        embed = utils_create_embed(
-            title=title,
-            description=description,
-            color=color_type,
-            bot_user=self.bot.user,
-            footer_text="Maggi Stats System",
-            footer_icon="https://maggi.dev/favicon/favicon.ico"
-        )
-        return embed
-
-
-
-    @commands.slash_command(name="xp-setmultiplier", description="⚖️ Set role XP multiplier")
-    @commands.is_owner()
-    async def xp_setmultiplier(self, ctx: discord.ApplicationContext, 
-                              role: discord.Role, multiplier: float):
+    @commands.slash_command(
+        name="xp-setmultiplier",
+        description="⚖️ Setzt einen XP-Multiplikator für eine Rolle",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    @commands.has_permissions(administrator=True)
+    async def xp_setmultiplier(self, ctx: discord.ApplicationContext, role: discord.Role, multiplier: float):
         await ctx.defer(ephemeral=True)
-        LogDebug(f"Multiplier set for {role.id} by {ctx.author.id}")
-        
         try:
-            config = load_multiplier_config()
-            config["multipliers"][str(role.id)] = multiplier
-            save_multiplier_config(config)
-            
-            embed = self.create_embed(
-                "⚖️ Multiplier Updated",
-                f"Role {role.mention} now grants `{multiplier}x` XP",
-                "system"
+            cfg = load_multiplier_config()
+            cfg["multipliers"][str(role.id)] = multiplier
+            save_multiplier_config(cfg)
+
+            embed = create_success_embed(
+                "Multiplikator aktualisiert",
+                f"Mitglieder mit der Rolle {role.mention} erhalten nun einen **{multiplier}x** XP-Multiplikator.",
+                bot_user=self.bot.user
             )
             await ctx.followup.send(embed=embed)
-
         except Exception as e:
-            LogError(f"Set multiplier error: {str(e)}")
-            raise
+            LogError(f"Set multiplier error: {e}")
+            await ctx.followup.send(embed=create_error_embed("Fehler", str(e)), ephemeral=True)
 
-    @commands.slash_command(name="xp-showmultiplier", description="📜 Show current multipliers")
-    @commands.is_owner()
+    @commands.slash_command(
+        name="xp-showmultiplier",
+        description="📜 Zeigt alle aktiven Rollen-Multiplikatoren",
+        guild_only=True
+    )
     async def xp_showmultiplier(self, ctx: discord.ApplicationContext):
         await ctx.defer(ephemeral=True)
-        
         try:
-            config = load_multiplier_config()
-            embed = self.create_embed(
-                "📜 Active Multipliers",
-                color_type="system"
+            cfg = load_multiplier_config()
+            embed = create_embed(
+                title="📜 Aktive XP-Multiplikatoren",
+                color="stats",
+                bot_user=self.bot.user
             )
 
-            if config["multipliers"]:
-                for role_id, mult in config["multipliers"].items():
+            if cfg.get("multipliers"):
+                for role_id, mult in cfg["multipliers"].items():
                     role = ctx.guild.get_role(int(role_id))
                     embed.add_field(
-                        name=f"⚖️ {role.name if role else 'Deleted Role'}",
-                        value=f"`{mult}x` Multiplier",
+                        name=f"⚖️ {role.name if role else f'Rolle ID {role_id}'}",
+                        value=f"`{mult}x` XP Multiplikator",
                         inline=True
                     )
             else:
-                embed.description = "```diff\n- No multipliers set```"
+                embed.description = "Keine rollenbasierten Multiplikatoren eingerichtet."
 
             await ctx.followup.send(embed=embed)
-
         except Exception as e:
-            LogError(f"Show multipliers error: {str(e)}")
-            raise
+            LogError(f"Show multipliers error: {e}")
+            await ctx.followup.send(embed=create_error_embed("Fehler", str(e)), ephemeral=True)
 
-    @commands.slash_command(name="xp-removemultiplier", description="🗑️ Remove role multiplier")
-    @commands.is_owner()
+    @commands.slash_command(
+        name="xp-removemultiplier",
+        description="🗑️ Entfernt den XP-Multiplikator einer Rolle",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+    @commands.has_permissions(administrator=True)
     async def xp_removemultiplier(self, ctx: discord.ApplicationContext, role: discord.Role):
         await ctx.defer(ephemeral=True)
-        LogDebug(f"Multiplier removed for {role.id} by {ctx.author.id}")
-        
         try:
-            config = load_multiplier_config()
+            cfg = load_multiplier_config()
             role_id = str(role.id)
-            
-            if role_id in config["multipliers"]:
-                del config["multipliers"][role_id]
-                save_multiplier_config(config)
-                embed = self.create_embed(
-                    "🗑️ Multiplier Removed",
-                    f"Removed multiplier for {role.mention}",
-                    "system"
+
+            if role_id in cfg.get("multipliers", {}):
+                del cfg["multipliers"][role_id]
+                save_multiplier_config(cfg)
+                embed = create_success_embed(
+                    "Multiplikator entfernt",
+                    f"Der Multiplikator für {role.mention} wurde gelöscht."
                 )
             else:
-                embed = self.create_embed(
-                    "⚠️ Not Found",
-                    f"No multiplier set for {role.mention}",
-                    "error"
+                embed = create_warning_embed(
+                    "Nicht vorhanden",
+                    f"Für {role.mention} war kein Multiplikator hinterlegt."
                 )
-            
             await ctx.followup.send(embed=embed)
-
         except Exception as e:
-            LogError(f"Remove multiplier error: {str(e)}")
-            raise
+            LogError(f"Remove multiplier error: {e}")
+            await ctx.followup.send(embed=create_error_embed("Fehler", str(e)), ephemeral=True)
 
-
-    @commands.slash_command(name="xp-count", description="📦 Show stats database info")
+    @commands.slash_command(
+        name="xp-count",
+        description="📦 Zeigt globale Datenbankstatistiken zum Levelsystem",
+        guild_only=True
+    )
     async def xp_count(self, ctx: discord.ApplicationContext):
         await ctx.defer()
-        
         try:
             stats = load_stats()
             total = len(stats)
-            active = sum(1 for u in stats.values() if u.get("xp", 0) > 0)
-            
-            embed = self.create_embed(
-                "📦 Database Statistics",
-                color_type="stats"
-            )
-            embed.add_field(
-                name="Total Users",
-                value=f"```yaml\n{total}```",
-                inline=True
-            )
-            embed.add_field(
-                name="Active Users",
-                value=f"```yaml\n{active}```",
-                inline=True
+            active = sum(1 for u in stats.values() if isinstance(u, dict) and u.get("xp", 0) > 0)
+
+            embed = create_embed(
+                title="📦 XP & Level-Statistiken",
+                color="stats",
+                bot_user=self.bot.user,
+                fields=[
+                    ("Erfasste Profile", f"```yaml\n{total}```", True),
+                    ("Aktive Nutzer (>0 XP)", f"```yaml\n{active}```", True)
+                ]
             )
             await ctx.followup.send(embed=embed)
-
         except Exception as e:
-            LogError(f"XP count error: {str(e)}")
-            raise
+            LogError(f"XP count error: {e}")
+            await ctx.followup.send(embed=create_error_embed("Fehler", str(e)), ephemeral=True)
 
-def setup(bot):
+
+def setup(bot: discord.Bot):
     bot.add_cog(XPSetup(bot))
