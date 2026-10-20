@@ -6,3 +6,4 @@ config/
 data/
 logs/traceback/
 venv/
+.pytest_cache/
