@@ -134,6 +134,7 @@ def temp_json_env(tmp_path, monkeypatch):
     monkeypatch.setattr("handlers.config.MAC_FILE", str(data_dir / "mac.json"))
     monkeypatch.setattr("handlers.config.MAC_BYPASS_FILE", str(data_dir / "mac_bypass.json"))
     monkeypatch.setattr("handlers.config.TEMPBANS_FILE", str(data_dir / "tempbans.json"))
+    monkeypatch.setattr("handlers.database.TEMPBANS_JSON", str(data_dir / "tempbans.json"))
 
     # Ensure backend is set to json for temp_json_env
     monkeypatch.setattr("handlers.database.db.backend", "json")

@@ -204,3 +204,65 @@ class TestDatabaseBackwardCompatibility:
             tables = {row[0] for row in cur.fetchall()}
             assert "mac_bans" in tables
             assert "mac_bypass" in tables
+
+
+class TestTempbansDatabase:
+    """Test Tempbans database operations across SQLite and JSON backends."""
+
+    def test_sqlite_tempbans_crud(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "tempbans_test.db"
+        monkeypatch.setattr(db_mod, "SQLITE_PATH", str(db_path))
+        monkeypatch.setattr(db, "backend", "sqlite")
+        db._init_sqlite_tables()
+
+        # 1. Add tempban
+        assert db_mod.add_tempban("123", "456", "2026-10-23T12:00:00", "Spam Honeypot") is True
+
+        bans = db_mod.get_tempbans()
+        assert len(bans) == 1
+        assert bans[0]["guild_id"] == "123"
+        assert bans[0]["user_id"] == "456"
+        assert bans[0]["reason"] == "Spam Honeypot"
+
+        # 2. Update existing tempban (upsert)
+        db_mod.add_tempban("123", "456", "2026-10-24T12:00:00", "Updated Reason")
+        bans = db_mod.get_tempbans()
+        assert len(bans) == 1
+        assert bans[0]["unban_at"] == "2026-10-24T12:00:00"
+        assert bans[0]["reason"] == "Updated Reason"
+
+        # 3. Add second tempban
+        db_mod.add_tempban("123", "789", "2026-10-25T12:00:00", "Second Ban")
+        assert len(db_mod.get_tempbans()) == 2
+
+        # 4. Remove tempban
+        assert db_mod.remove_tempban("123", "456") is True
+        bans = db_mod.get_tempbans()
+        assert len(bans) == 1
+        assert bans[0]["user_id"] == "789"
+
+        # 5. Bulk save_tempbans
+        db_mod.save_tempbans([
+            {"guild_id": "999", "user_id": "111", "unban_at": "2026-11-01T00:00:00", "reason": "Bulk"}
+        ])
+        bans = db_mod.get_tempbans()
+        assert len(bans) == 1
+        assert bans[0]["guild_id"] == "999"
+
+    def test_json_tempbans_crud(self, tmp_path, monkeypatch):
+        json_file = tmp_path / "data" / "tempbans.json"
+        monkeypatch.setattr(db, "backend", "json")
+        monkeypatch.setattr(db_mod, "TEMPBANS_JSON", str(json_file))
+
+        assert db_mod.get_tempbans() == []
+
+        # Add tempban
+        db_mod.add_tempban("555", "777", "2026-10-22T00:00:00", "Honeypot Trigger")
+        bans = db_mod.get_tempbans()
+        assert len(bans) == 1
+        assert bans[0]["user_id"] == "777"
+
+        # Remove tempban
+        db_mod.remove_tempban("555", "777")
+        assert db_mod.get_tempbans() == []
+

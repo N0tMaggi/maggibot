@@ -14,7 +14,11 @@ from handlers.database import (
     save_guild_config,
     get_db_connection,
     DB_TYPE,
-    SQLITE_PATH
+    SQLITE_PATH,
+    get_tempbans,
+    add_tempban,
+    remove_tempban,
+    save_tempbans as db_save_tempbans
 )
 
 load_dotenv()
@@ -244,13 +248,13 @@ def save_tags(tags):
     save_data(TAGS_CONFIG_FILE, tags, mkdir=True)
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# Tempban / Honeypot Configuration
+# Tempban / Honeypot Configuration (Database-backed for Docker / Multi-platform)
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_tempbans():
-    return load_data(TEMPBANS_FILE, default=list)
+    return get_tempbans()
 
 def save_tempbans(tempbans):
-    save_data(TEMPBANS_FILE, tempbans, mkdir=True)
+    return db_save_tempbans(tempbans)
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # MAC Ban System Configuration

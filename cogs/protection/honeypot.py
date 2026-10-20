@@ -222,19 +222,8 @@ class Honeypot(commands.Cog):
                     pass
             return
 
-        # 4. Save tempban record
-        tempbans = config.load_tempbans()
-        tempbans = [
-            tb for tb in tempbans
-            if not (tb.get("guild_id") == str(guild.id) and tb.get("user_id") == str(user.id))
-        ]
-        tempbans.append({
-            "guild_id": str(guild.id),
-            "user_id": str(user.id),
-            "unban_at": unban_time.isoformat(),
-            "reason": reason
-        })
-        config.save_tempbans(tempbans)
+        # 4. Save tempban record (Database-backed for multi-backend & Docker)
+        config.add_tempban(guild.id, user.id, unban_time.isoformat(), reason)
 
         # 5. Log incident to configured guild log channel
         log_channel_id = guild_cfg.get("logchannel")
@@ -269,7 +258,6 @@ class Honeypot(commands.Cog):
                 return
 
             now = discord.utils.utcnow()
-            remaining = []
 
             for tb in tempbans:
                 try:
@@ -277,22 +265,18 @@ class Honeypot(commands.Cog):
                     if now >= unban_at:
                         guild = self.bot.get_guild(int(tb["guild_id"]))
                         if guild:
-                            user_obj = discord.Object(id=int(tb["user_id"]))
-                            await guild.unban(user_obj, reason="Honeypot 3-day tempban expired")
-                            LogModeration(f"[HONEYPOT] Automatically unbanned {tb['user_id']} in guild {tb['guild_id']}")
-                    else:
-                        remaining.append(tb)
+                            try:
+                                user_obj = discord.Object(id=int(tb["user_id"]))
+                                await guild.unban(user_obj, reason="Honeypot 3-day tempban expired")
+                                LogModeration(f"[HONEYPOT] Automatically unbanned {tb['user_id']} in guild {tb['guild_id']}")
+                            except discord.NotFound:
+                                pass
+                            except Exception as unban_e:
+                                LogError(f"[HONEYPOT] Could not unban user {tb.get('user_id')} in guild {tb.get('guild_id')}: {unban_e}")
+                        # Remove from database
+                        config.remove_tempban(tb["guild_id"], tb["user_id"])
                 except Exception as tb_e:
-                    LogError(f"[HONEYPOT] Error unbanning user {tb.get('user_id')}: {tb_e}")
-                    if "unban_at" in tb:
-                        try:
-                            if now < datetime.datetime.fromisoformat(tb["unban_at"]):
-                                remaining.append(tb)
-                        except Exception:
-                            pass
-
-            if len(remaining) != len(tempbans):
-                config.save_tempbans(remaining)
+                    LogError(f"[HONEYPOT] Error processing unban for user {tb.get('user_id')}: {tb_e}")
 
         except Exception as loop_e:
             LogError(f"[HONEYPOT] Error in unban task: {loop_e}")
