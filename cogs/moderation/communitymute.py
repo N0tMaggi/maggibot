@@ -35,7 +35,7 @@ class ModCommunityMute(commands.Cog):
                 )
             
             vote_duration = 30  
-            vote_end = datetime.datetime.utcnow() + datetime.timedelta(seconds=vote_duration)
+            vote_end = discord.utils.utcnow() + datetime.timedelta(seconds=vote_duration)
             vote_end_str = f"<t:{int(vote_end.timestamp())}:F>"
             
             description = (
@@ -113,14 +113,14 @@ class ModCommunityMute(commands.Cog):
                     '7d': 604800
                 }[chosen]
 
-                disable_until = datetime.datetime.utcnow() + datetime.timedelta(seconds=duration_seconds)
+                disable_until = discord.utils.utcnow() + datetime.timedelta(seconds=duration_seconds)
                 await self.target.timeout(
                     until=disable_until,
                     reason=f"Community mute: {self.reason}"
                 )
 
                 vote_counts = {option: len(self.votes[option]) for option in self.vote_options}
-                vote_end_now = f"<t:{int(datetime.datetime.utcnow().timestamp())}:F>"
+                vote_end_now = f"<t:{int(discord.utils.utcnow().timestamp())}:F>"
 
                 new_embed = self.create_embed(
                     "🔇 Mute Executed",

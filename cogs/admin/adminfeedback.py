@@ -27,7 +27,7 @@ class AdminFeedback(commands.Cog):
                         embed.add_field(name="👤 From", value=ctx.author.mention, inline=False)
                         embed.add_field(name="🏠 Server", value=ctx.guild.name, inline=False)
                         embed.add_field(name="📌 Channel", value=ctx.channel.mention, inline=False)
-                        current_time = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                        current_time = discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                         embed.add_field(name="⏰ Time", value=current_time, inline=False)
                         embed.set_footer(text="Feedback system by Maggi Bot")
                         await admin_user.send(embed=embed)

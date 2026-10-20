@@ -13,7 +13,7 @@ async def create_antibot_protection_embed(member, inviter, is_verified=True, act
     embed = discord.Embed(
         title=f"{emoji} {status} Bot Detection",
         color=color,
-        timestamp=datetime.datetime.utcnow()
+        timestamp=discord.utils.utcnow()
     )
     
     embed.add_field(name="Bot Account", value=f"{member.mention}\n{member.name}#{member.discriminator}", inline=False)
@@ -45,7 +45,7 @@ async def create_alert_embed(message, mention_count):
     embed = discord.Embed(
         title=f"🚨 Mass Mention Detected ({mention_count} mentions)",
         color=discord.Color.red(),
-        timestamp=datetime.datetime.utcnow()
+        timestamp=discord.utils.utcnow()
     )
     
     embed.set_author(name=str(message.author), 
@@ -92,7 +92,7 @@ async def create_protection_config_embed(ctx, title, description, color, fields=
         title=title,
         description=description,
         color=color,
-        timestamp=datetime.datetime.utcnow()
+        timestamp=discord.utils.utcnow()
     )
 
     guild = getattr(ctx, "guild", None)

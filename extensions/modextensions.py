@@ -16,7 +16,7 @@ def create_mod_embed(title, description, color_type='info', author=None):
         title=title,
         description=description,
         color=embed_colors.get(color_type, 0x3498DB),
-        timestamp=datetime.datetime.utcnow()
+        timestamp=discord.utils.utcnow()
     )
     
     if author:

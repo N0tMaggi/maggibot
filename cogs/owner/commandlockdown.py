@@ -24,7 +24,7 @@ class CommandLockdown(commands.Cog):
             title=f"🚨 {title} 🚨",
             description=description,
             color=color,
-            timestamp=datetime.datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url="")
         embed.set_footer(
@@ -81,7 +81,7 @@ class CommandLockdown(commands.Cog):
             )
             embed.add_field(
                 name="📝 Audit Log",
-                value=f"Action performed at: {discord.utils.format_dt(datetime.datetime.utcnow(), 'F')}",
+                value=f"Action performed at: {discord.utils.format_dt(discord.utils.utcnow(), 'F')}",
                 inline=False
             )
             
@@ -106,7 +106,7 @@ async def global_lockdown_check(ctx: commands.Context):
                     "Please check back later or contact the bot owner for assistance."
                 ),
                 color=discord.Color.dark_red(),
-                timestamp=datetime.datetime.utcnow()
+                timestamp=discord.utils.utcnow()
             )
             embed.set_thumbnail(url="")
             embed.add_field(
@@ -116,7 +116,7 @@ async def global_lockdown_check(ctx: commands.Context):
             )
             embed.add_field(
                 name="🕒 Active Since",
-                value=f"```{discord.utils.format_dt(datetime.datetime.utcnow(), 'R')}```",
+                value=f"```{discord.utils.format_dt(discord.utils.utcnow(), 'R')}```",
                 inline=True
             )
             embed.add_field(

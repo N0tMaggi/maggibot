@@ -100,7 +100,7 @@ class UserStats(commands.Cog):
             guild_id = str(member.guild.id)
             user_id = str(member.id)
             key = (user_id, guild_id)
-            now = datetime.datetime.utcnow()
+            now = discord.utils.utcnow()
 
             # Log leaving a voice channel
             if before.channel:

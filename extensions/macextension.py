@@ -14,7 +14,7 @@ def create_mac_embed(title, description, color=None):
         title=title,
         description=description,
         color=embed_color,
-        timestamp=datetime.datetime.utcnow()
+        timestamp=discord.utils.utcnow()
     )
     embed.set_footer(text="MAC™ Global Ban System", icon_url="") # Removed the placeholder icon_url
     

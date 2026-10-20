@@ -137,10 +137,15 @@ class Quote(commands.Cog):
         output.seek(0)
         return output
 
-    @commands.slash_command(description="Creates a stylish quote image with a profile picture")
+    @commands.slash_command(
+        name="quote",
+        description="Creates a stylish quote image with a profile picture",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def quote(self, ctx: discord.ApplicationContext, 
                    text: str, 
-                   user: discord.Member = None,
+                   user: discord.User = None,
                    transparent: bool = False):
         await ctx.defer()
         target_user = user or ctx.author

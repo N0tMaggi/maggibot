@@ -4,7 +4,7 @@ import handlers.config as config
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem
 from utils.embed_helpers import create_embed as utils_create_embed
 
-class TicketVerify(commands.Cog):
+class VerifySystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -186,4 +186,4 @@ class TicketVerify(commands.Cog):
             LogError(f"Ghostping failed: {str(e)}")
 
 def setup(bot: commands.Bot):
-    bot.add_cog(TicketVerify(bot))
+    bot.add_cog(VerifySystem(bot))

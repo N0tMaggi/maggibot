@@ -46,7 +46,7 @@ def create_log_embed(
         title=title,
         description=description,
         color=COLOR_MAP.get(color_type, COLOR_MAP["default"]),
-        timestamp=datetime.datetime.utcnow(),
+        timestamp=discord.utils.utcnow(),
     )
 
     if user:

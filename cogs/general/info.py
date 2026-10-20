@@ -20,7 +20,7 @@ class InfoSystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.owner_id = os.getenv("OWNER_ID")
-        self.bot.version = os.getenv("BOT_VERSION")
+        self.bot.version = os.getenv("BOT_VERSION", "1.0.0")
 
     class SupportView(discord.ui.View):
         def __init__(self):
@@ -53,7 +53,12 @@ class InfoSystem(commands.Cog):
             bot_user=self.bot.user
         )
 
-    @commands.slash_command(name="info", description="📚 Get detailed bot information")
+    @commands.slash_command(
+        name="info",
+        description="📚 Get detailed bot information",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def info(self, ctx: discord.ApplicationContext):
         """Display bot information and support details"""
         await ctx.defer()
@@ -73,9 +78,14 @@ class InfoSystem(commands.Cog):
                       f"Version: {self.bot.version}```",
                 inline=False
             )
+            owner_user = None
+            if self.owner_id and str(self.owner_id).strip().isdigit():
+                owner_user = self.bot.get_user(int(self.owner_id))
+            owner_display = owner_user.name if owner_user else f"Owner ID: {self.owner_id}"
+
             main_embed.add_field(
                 name="👑 Ownership",
-                value=f"```{self.bot.get_user(int(self.owner_id)).name}```\n<@{self.owner_id}>",
+                value=f"```{owner_display}```\n<@{self.owner_id}>",
                 inline=True
             )
             main_embed.add_field(
@@ -100,7 +110,12 @@ class InfoSystem(commands.Cog):
             LogError(f"Info command failed: {str(e)}")
             raise
 
-    @commands.slash_command(name="status", description="📊 Get detailed system status metrics")
+    @commands.slash_command(
+        name="status",
+        description="📊 Get detailed system status metrics",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def status(self, ctx: discord.ApplicationContext):
         """Display detailed system status information"""
         await ctx.defer()
@@ -148,7 +163,7 @@ class InfoSystem(commands.Cog):
 
         embed = self.create_embed(
             "📈 Real-Time System Telemetry",
-            "```diff\n+ Live System Metrics\n+ Updated: " + datetime.utcnow().strftime("%H:%M:%S UTC") + "```",
+            "```diff\n+ Live System Metrics\n+ Updated: " + discord.utils.utcnow().strftime("%H:%M:%S UTC") + "```",
             "status"
         )
         

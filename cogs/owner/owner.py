@@ -29,7 +29,7 @@ class OwnerCommands(commands.Cog):
             title=title,
             description=description,
             color=self.embed_colors.get(color_name, 0x3498db),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         embed.set_footer(

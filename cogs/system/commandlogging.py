@@ -45,7 +45,7 @@ class CommandLogging(commands.Cog):
         embed = discord.Embed(
             title="📝 Command Execution Log",
             color=color,
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
 
         user = ctx.author

@@ -216,7 +216,7 @@ class ModerationView(View):
         embed = discord.Embed(
             title=f"User Information: {self.user}",
             color=0x3498DB,
-            timestamp=datetime.datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url=self.user.display_avatar.url)
         

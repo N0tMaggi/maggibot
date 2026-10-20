@@ -50,7 +50,9 @@ class EmojiUpload(commands.Cog):
 
     @commands.slash_command(
         name="asset-emoji-upload", 
-        description="Upload emojis from a RAR archive (Admin only)"
+        description="Upload emojis from a RAR archive (Admin only)",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(manage_emojis_and_stickers=True)
     )
     @commands.has_permissions(administrator=True)
     async def emoji_upload(self, ctx, rar_file: discord.Attachment):

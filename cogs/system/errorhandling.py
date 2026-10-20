@@ -70,7 +70,7 @@ class ErrorHandling(commands.Cog):
             title="Unhandled Global Exception",
             description=f"An unhandled error occurred in event `{event}`.",
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.add_field(name="Error Details", value=f"```\n{error.__class__.__name__}: {error}\n```", inline=False)
         embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)
@@ -111,7 +111,7 @@ class ErrorHandling(commands.Cog):
             title=error_type,
             description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
         embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
@@ -159,7 +159,7 @@ class ErrorHandling(commands.Cog):
             title=error_type,
             description=f"An error occurred while executing the command **{ctx.command.name if ctx.command else 'Unknown'}**.",
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
         embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
@@ -196,7 +196,7 @@ class ErrorHandling(commands.Cog):
             title=error_type,
             description=f"You are missing the required permissions to execute this command.",
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         embed.add_field(name="Error Details", value=f"```\n{error_info}\n```", inline=False)
         embed.add_field(name="Error ID", value=f"`{error_uid}`", inline=True)  
@@ -243,7 +243,7 @@ class ErrorHandling(commands.Cog):
             traceback.print_exc()
 
     async def create_traceback_file(self, traceback_text):
-        file_name = f"traceback_{datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+        file_name = f"traceback_{discord.utils.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
         file_path = os.path.join("logs/traceback", file_name)  
         os.makedirs("logs/traceback", exist_ok=True)
 
@@ -264,7 +264,7 @@ class ErrorHandling(commands.Cog):
             title="FATAL EXCEPTION",
             description=f"A **FATAL** error occurred in the system: {error_message}",
             color=discord.Color.brand_red(),
-            timestamp=datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         fatal_embed.add_field(name="📝 Error Details", value=f"{error.__class__.__name__}: {error}\n", inline=False)
         fatal_embed.set_footer(text="FATAL System Failure")

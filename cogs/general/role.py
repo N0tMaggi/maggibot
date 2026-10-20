@@ -10,7 +10,13 @@ class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(name="roles", description="Manage roles")
+    @slash_command(
+        name="roles",
+        description="Manage and inspect server roles",
+        guild_only=True,
+        default_member_permissions=discord.Permissions(manage_roles=True)
+    )
+    @commands.has_permissions(manage_roles=True)
     async def roles(self, ctx: discord.ApplicationContext):
         guild = ctx.guild
         roles = guild.roles[1:]  # Skip @everyone
