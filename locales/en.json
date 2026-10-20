@@ -213,5 +213,20 @@
     "warned": "User **{user}** has received a warning.",
     "cant_punish_self": "You cannot perform moderation actions on yourself!",
     "cant_punish_higher": "You cannot moderate members with an equal or higher role!"
+  },
+  "honeypot": {
+    "embed_title": "🍯 WARNING: HONEYPOT CHANNEL",
+    "embed_desc": "⚠️ **DO NOT TYPE OR SEND ANY MESSAGES HERE!**\n\nAny account that sends a message in this channel will be **automatically banned for 3 days**.\n\n• This channel is exclusively monitored to catch automated spam bots, webhooks, and compromised accounts.\n• Normal users: please mute or hide this channel.",
+    "embed_footer": "Automated Security Trap • 3-Day Ban on Message",
+    "setup_success": "Honeypot channel has been set to {channel}.\nA permanent warning notice has been posted.",
+    "setup_created": "Honeypot channel {channel} has been successfully created and secured.",
+    "remove_success": "Honeypot protection has been disabled on this server.",
+    "channel_deleted": "The honeypot channel was deleted.",
+    "not_active": "Honeypot protection is not active on this server.",
+    "dm_banned_title": "🍯 Honeypot Triggered • 3-Day Ban",
+    "dm_banned_desc": "You sent a message in the Honeypot trap channel on **{guild_name}**.\nAs warned, your account has been **temporarily banned for 3 days**.\n\n**Ban Expiration:** {unban_time}\n**Reason:** Automated Spam / Compromised Account Trap",
+    "log_title": "🍯 Honeypot Activated • 3-Day Ban",
+    "log_desc": "User {user} (`{user_id}`) posted in {channel} and was banned for 3 days.\n\n**Message Preview:**\n```{content}```\n**Unban Scheduled:** {unban_time}",
+    "dashboard_field": "🍯 Honeypot Trap"
   }
 }

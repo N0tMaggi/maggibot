@@ -68,6 +68,7 @@ STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
 COOKIES_FILE = "data/cookies.json"
 TAGS_CONFIG_FILE = "data/tags.json"
+TEMPBANS_FILE = "data/tempbans.json"
 
 # Categorised File List
 JSON_FILES = [
@@ -82,7 +83,8 @@ JSON_FILES = [
     STATS_FILE,
     XP_MULTIPLIER_FILE,
     COOKIES_FILE,
-    TAGS_CONFIG_FILE
+    TAGS_CONFIG_FILE,
+    TEMPBANS_FILE
 ]
 
 CONFIG_FILES = [
@@ -100,7 +102,8 @@ DATA_FILES = [
     STATS_FILE,
     XP_MULTIPLIER_FILE,
     COOKIES_FILE,
-    TAGS_CONFIG_FILE
+    TAGS_CONFIG_FILE,
+    TEMPBANS_FILE
 ]
 
 def get_json_files():
@@ -239,6 +242,15 @@ def load_tags():
 
 def save_tags(tags):
     save_data(TAGS_CONFIG_FILE, tags, mkdir=True)
+
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Tempban / Honeypot Configuration
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def load_tempbans():
+    return load_data(TEMPBANS_FILE, default=list)
+
+def save_tempbans(tempbans):
+    save_data(TEMPBANS_FILE, tempbans, mkdir=True)
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # MAC Ban System Configuration

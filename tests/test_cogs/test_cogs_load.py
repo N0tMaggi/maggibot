@@ -28,9 +28,9 @@ ALL_EXTENSIONS = get_all_cog_extensions("cogs")
 
 
 def test_cog_extension_count():
-    """Verify that all 37 cog extensions exist in the cogs directory."""
-    assert len(ALL_EXTENSIONS) == 37, (
-        f"Expected 37 cogs, but found {len(ALL_EXTENSIONS)}: {ALL_EXTENSIONS}"
+    """Verify that all cog extensions exist in the cogs directory."""
+    assert len(ALL_EXTENSIONS) == 38, (
+        f"Expected 38 cogs, but found {len(ALL_EXTENSIONS)}: {ALL_EXTENSIONS}"
     )
 
 
@@ -60,4 +60,4 @@ async def test_all_cogs_load_together_into_single_bot():
             errors.append((ext, str(e)))
 
     assert len(errors) == 0, f"Errors loading cogs together: {errors}"
-    assert loaded == 37
+    assert loaded == len(ALL_EXTENSIONS)

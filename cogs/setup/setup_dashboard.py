@@ -111,6 +111,8 @@ class DashboardView(View):
         antiraid = self.server_config.get("antiraid", False)
         antighost = self.server_config.get("antighostping", False)
         antiwebhook = self.server_config.get("antiwebhook", False)
+        hp_chan_id = self.server_config.get("honeypot_channel")
+        hp_display = f"<#{hp_chan_id}>" if hp_chan_id else "⚪ OFF"
         lockdown_str = f"🔒 {t('common.active', guild_id=gid).upper()}" if self.lockdown else f"🔓 {t('common.inactive', guild_id=gid)}"
 
         prot_status = (
@@ -119,7 +121,8 @@ class DashboardView(View):
             f"Anti-Raid: {'🟢' if antiraid else '⚪'} | "
             f"Anti-GhostPing: {'🟢' if antighost else '⚪'}\n"
             f"• Anti-Webhook: {'🟢' if antiwebhook else '⚪'} | "
-            f"Lockdown: `{lockdown_str}`"
+            f"Honeypot: {hp_display}\n"
+            f"• Lockdown: `{lockdown_str}`"
         )
         embed.add_field(name=t("setup.protection_field", guild_id=gid), value=prot_status, inline=False)
 

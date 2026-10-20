@@ -116,6 +116,7 @@ class ProtectionSettings(commands.Cog):
     )
     @commands.has_permissions(administrator=True)
     async def setup_protection(self, ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)
         guild_id = str(ctx.guild.id)
         config_data = config.loadserverconfig().get(guild_id, {})
         

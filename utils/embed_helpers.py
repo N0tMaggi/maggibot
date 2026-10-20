@@ -144,6 +144,7 @@ def create_mod_embed(
     color_type: str = 'mod_action',
     author: Optional[Union[discord.User, discord.Member]] = None,
     bot_user: Optional[Union[discord.User, discord.ClientUser]] = None,
+    footer_text: Optional[str] = None,
     **kwargs
 ) -> discord.Embed:
     """Moderation-specific embed with consistent styling"""
@@ -153,7 +154,7 @@ def create_mod_embed(
         color=color_type,
         author=author,
         bot_user=bot_user,
-        footer_text="Maggi Moderation",
+        footer_text=footer_text or "Maggi Moderation",
         **kwargs
     )
 
@@ -162,14 +163,15 @@ def create_security_embed(
     title: str,
     description: str = "",
     color: str = 'security',
+    footer_text: Optional[str] = None,
     **kwargs
 ) -> discord.Embed:
     """Security and protection embed (Shield, Blurple/Red)"""
-    icon = "🛡️ " if not any(title.startswith(p) for p in ("🛡️", "🚨", "🔒", "⚡")) else ""
+    icon = "🛡️ " if not any(title.startswith(p) for p in ("🛡️", "🚨", "🔒", "⚡", "⚠️")) else ""
     return create_embed(
         title=f"{icon}{title}",
         description=description,
         color=color,
-        footer_text="MaggiBot Security System",
+        footer_text=footer_text or "MaggiBot Security System",
         **kwargs
     )

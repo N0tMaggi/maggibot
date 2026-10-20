@@ -213,5 +213,20 @@
     "warned": "Nutzer **{user}** wurde verwarnt.",
     "cant_punish_self": "Du kannst keine Moderationsaktionen gegen dich selbst ausführen!",
     "cant_punish_higher": "Du kannst keine Mitglieder mit gleicher oder höherer Rolle moderieren!"
+  },
+  "honeypot": {
+    "embed_title": "🍯 WARNUNG: HONEYPOT-KANAL",
+    "embed_desc": "⚠️ **HIER UNTER KEINEN UMSTÄNDEN SCHREIBEN!**\n\nJeder Account, der eine Nachricht in diesen Kanal sendet, wird **automatisch für 3 Tage gebannt**.\n\n• Dieser Kanal dient ausschließlich dem Abfangen von automatisierten Spam-Bots und gehackten Accounts.\n• Normale Nutzer: bitte diesen Kanal einfach stummschalten oder ignorieren.",
+    "embed_footer": "Automatische Sicherheitsfalle • 3 Tage Bann bei Nachricht",
+    "setup_success": "Honeypot-Kanal wurde auf {channel} festgelegt.\nEin Warn-Embed wurde im Kanal platziert.",
+    "setup_created": "Honeypot-Kanal {channel} wurde erfolgreich erstellt und abgesichert.",
+    "remove_success": "Der Honeypot-Schutz wurde für diesen Server deaktiviert.",
+    "channel_deleted": "Der Honeypot-Kanal wurde gelöscht.",
+    "not_active": "Auf diesem Server ist kein Honeypot-Kanal aktiv.",
+    "dm_banned_title": "🍯 Honeypot ausgelöst • 3-Tage-Bann",
+    "dm_banned_desc": "Du hast eine Nachricht im Honeypot-Kanal auf **{guild_name}** gesendet.\nWie im Kanal angekündigt, wurdest du für **3 Tage temporär gebannt**.\n\n**Bann-Ablauf:** {unban_time}\n**Grund:** Automatisierte Spam- & Sicherheitsfalle",
+    "log_title": "🍯 Honeypot ausgelöst • 3-Tage-Bann",
+    "log_desc": "Nutzer {user} (`{user_id}`) hat in {channel} geschrieben und wurde für 3 Tage gebannt.\n\n**Nachricht:**\n```{content}```\n**Automatischer Unban:** {unban_time}",
+    "dashboard_field": "🍯 Honeypot-Falle"
   }
 }
