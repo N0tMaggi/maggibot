@@ -546,6 +546,7 @@ class SetupDashboard(commands.Cog):
     )
     @commands.has_permissions(administrator=True)
     async def setup_command(self, ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)
         view = DashboardView(self.bot, ctx.guild, ctx.author)
         embed = view.build_embed()
         await ctx.respond(embed=embed, view=view, ephemeral=True)

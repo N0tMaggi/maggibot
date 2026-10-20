@@ -17,6 +17,7 @@ DEFAULT_LOCALE = "en"
 SUPPORTED_LOCALES = ["en", "de"]
 
 _locale_cache: Dict[str, Dict[str, Any]] = {}
+_guild_locale_cache: Dict[str, str] = {}
 
 
 def load_locales():
@@ -40,24 +41,32 @@ def load_locales():
 
 
 def get_guild_locale(guild_id: Optional[Union[int, str]]) -> str:
-    """Get the configured language code for a server (default: 'en')"""
+    """Get the configured language code for a server with memory caching (default: 'en')"""
     if not guild_id:
         return DEFAULT_LOCALE
+    gid_str = str(guild_id)
+    if gid_str in _guild_locale_cache:
+        return _guild_locale_cache[gid_str]
+
     try:
-        cfg = get_guild_config(guild_id)
+        cfg = get_guild_config(gid_str)
         lang = cfg.get("locale") or cfg.get("language") or DEFAULT_LOCALE
-        return lang if lang in SUPPORTED_LOCALES else DEFAULT_LOCALE
+        lang = lang if lang in SUPPORTED_LOCALES else DEFAULT_LOCALE
+        _guild_locale_cache[gid_str] = lang
+        return lang
     except Exception as e:
         LogDebug(f"Error fetching locale for guild {guild_id}: {e}")
         return DEFAULT_LOCALE
 
 
 def set_guild_locale(guild_id: Union[int, str], lang: str) -> bool:
-    """Sets the language code for a server and saves it"""
+    """Sets the language code for a server and updates cache"""
     if lang not in SUPPORTED_LOCALES:
         return False
+    gid_str = str(guild_id)
+    _guild_locale_cache[gid_str] = lang
     try:
-        set_guild_config(guild_id, "locale", lang)
+        set_guild_config(gid_str, "locale", lang)
         return True
     except Exception as e:
         LogError(f"Error setting locale for guild {guild_id}: {e}")
