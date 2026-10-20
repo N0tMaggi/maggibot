@@ -57,7 +57,7 @@ RULES = [
                 "media.discordapp.net", "paint.net", "readthedocs.io", "skribbl.io",
                 "songtrivia2.io", "soundcloud.com", "spotify.com", "stackoverflow.com",
                 "stadtlandfluss.cool", "tagesschau.de", "telefonseelsorge.de",
-                "tenor.com", "tiktok.com", "twitch.tv", "twitter.com",
+                "tenor.com", "tiktok.com", "tt.site", "twitch.tv", "twitter.com",
                 "w3schools.com", "wheelofnames.com", "wikipedia.org",
                 "wikispeedruns.com", "youtu.be", "youtube.com"
             ]

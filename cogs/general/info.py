@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
 import psutil
@@ -6,21 +7,25 @@ import platform
 import os
 from datetime import datetime
 from handlers.debug import LogSystem, LogError, LogDebug
+from handlers.locale import t
 from utils.embed_helpers import create_info_embed
+
 
 def get_host_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
     return str(uptime).split('.')[0]  
 
+
 def get_bot_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(time.time() - psutil.Process().create_time())
     return str(uptime).split('.')[0]
+
 
 class InfoSystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.owner_id = os.getenv("OWNER_ID")
-        self.bot.version = os.getenv("BOT_VERSION")
+        self.bot.version = os.getenv("BOT_VERSION", "1.0.0")
 
     class SupportView(discord.ui.View):
         def __init__(self):
@@ -53,7 +58,12 @@ class InfoSystem(commands.Cog):
             bot_user=self.bot.user
         )
 
-    @commands.slash_command(name="info", description="📚 Get detailed bot information")
+    @commands.slash_command(
+        name="info",
+        description="📚 Get detailed bot information",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def info(self, ctx: discord.ApplicationContext):
         """Display bot information and support details"""
         await ctx.defer()
@@ -73,9 +83,14 @@ class InfoSystem(commands.Cog):
                       f"Version: {self.bot.version}```",
                 inline=False
             )
+            owner_user = None
+            if self.owner_id and str(self.owner_id).strip().isdigit():
+                owner_user = self.bot.get_user(int(self.owner_id))
+            owner_display = owner_user.name if owner_user else f"Owner ID: {self.owner_id}"
+
             main_embed.add_field(
                 name="👑 Ownership",
-                value=f"```{self.bot.get_user(int(self.owner_id)).name}```\n<@{self.owner_id}>",
+                value=f"```{owner_display}```\n<@{self.owner_id}>",
                 inline=True
             )
             main_embed.add_field(
@@ -100,19 +115,31 @@ class InfoSystem(commands.Cog):
             LogError(f"Info command failed: {str(e)}")
             raise
 
-    @commands.slash_command(name="status", description="📊 Get detailed system status metrics")
+    @commands.slash_command(
+        name="status",
+        description="📊 Get detailed system status metrics",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def status(self, ctx: discord.ApplicationContext):
         """Display detailed system status information"""
         await ctx.defer()
         LogSystem(f"Status check by {ctx.author.id}")
 
         class RefreshView(discord.ui.View):
-            def __init__(self, cog):
+            def __init__(self, cog, guild_id=None):
                 super().__init__(timeout=120)
                 self.cog = cog
+                self.guild_id = guild_id
+                self.refresh_btn = discord.ui.Button(
+                    label=t("common.refresh", guild_id=guild_id),
+                    style=discord.ButtonStyle.grey,
+                    emoji="🔄"
+                )
+                self.refresh_btn.callback = self.refresh_button
+                self.add_item(self.refresh_btn)
 
-            @discord.ui.button(label="Refresh", style=discord.ButtonStyle.grey, emoji="🔄")
-            async def refresh_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def refresh_button(self, interaction: discord.Interaction):
                 try:
                     await interaction.response.defer()
                     await self.cog.update_status_embed(interaction)
@@ -131,7 +158,7 @@ class InfoSystem(commands.Cog):
                     LogError(f"Failed to clear status view: {str(e)}")
 
         try:
-            view = RefreshView(self)
+            view = RefreshView(self, guild_id=ctx.guild.id if ctx.guild else None)
             view.message = await ctx.followup.send(
                 embed=await self.create_status_embed(),
                 view=view
@@ -145,10 +172,11 @@ class InfoSystem(commands.Cog):
         """Helper method to create status embed"""
         process = psutil.Process()
         memory_info = process.memory_full_info()
+        disk_path = os.path.splitdrive(os.path.abspath('.'))[0] + '\\' if platform.system() == 'Windows' else '/'
 
         embed = self.create_embed(
             "📈 Real-Time System Telemetry",
-            "```diff\n+ Live System Metrics\n+ Updated: " + datetime.utcnow().strftime("%H:%M:%S UTC") + "```",
+            "```diff\n+ Live System Metrics\n+ Updated: " + discord.utils.utcnow().strftime("%H:%M:%S UTC") + "```",
             "status"
         )
         
@@ -168,7 +196,7 @@ class InfoSystem(commands.Cog):
                   f"Host Uptime: {get_host_uptime()}\n"
                   f"CPU Usage: {psutil.cpu_percent()}%\n"
                   f"Memory: {psutil.virtual_memory().percent}%\n"
-                  f"Disk: {psutil.disk_usage('/').percent}%```",
+                  f"Disk: {psutil.disk_usage(disk_path).percent}%```",
             inline=True
         )
 
@@ -200,6 +228,7 @@ class InfoSystem(commands.Cog):
         except Exception as e:
             LogError(f"Update status failed: {str(e)}")
             await interaction.followup.send("❌ Could not update status", ephemeral=True)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(InfoSystem(bot))

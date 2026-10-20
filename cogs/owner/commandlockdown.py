@@ -1,57 +1,36 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-import json
-import os
-import datetime
 from handlers.env import get_owner
-from handlers.debug import LogSystem, LogError, LogModeration, LogDebug
+from handlers.debug import LogSystem, LogError, LogModeration
 from handlers.config import load_lockdown_config, save_lockdown_config
-
-
+from handlers.locale import t
+from utils.embed_helpers import create_embed, create_security_embed, create_error_embed
 
 
 class LockdownCheckFailure(commands.CheckFailure):
     pass
 
+
 class CommandLockdown(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.lockdown_data = load_lockdown_config()
-        self.authorised = get_owner()
 
-    def create_emergency_embed(self, title, description, color):
-        embed = discord.Embed(
-            title=f"🚨 {title} 🚨",
-            description=description,
-            color=color,
-            timestamp=datetime.datetime.utcnow()
-        )
-        embed.set_thumbnail(url="")
-        embed.set_footer(
-            text="Security System v1.0 • Emergency Protocol",
-            icon_url=self.bot.user.avatar.url
-        )
-        return embed
-
-    @commands.slash_command(name="lockdown", description="🔒 Emergency command lockdown system")
+    @commands.slash_command(name="lockdown", description="🔒 Emergency command lockdown toggle (Owner only)")
     async def lockdown(self, ctx: discord.ApplicationContext):
         """Toggle emergency command lockdown"""
-        await ctx.defer()
-        
+        await ctx.defer(ephemeral=True)
+
         try:
-            if ctx.user.id != self.authorised:
-                embed = self.create_emergency_embed(
-                    "ACCESS DENIED",
-                    "**Unauthorized lockdown attempt detected!**\n\n"
-                    "This incident has been logged and reported.",
-                    discord.Color.red()
+            authorised_owner = get_owner()
+            if ctx.user.id != authorised_owner:
+                embed = create_error_embed(
+                    t("lockdown.denied_title", ctx=ctx),
+                    t("lockdown.denied_desc", ctx=ctx, user=ctx.user.mention, user_id=ctx.user.id),
+                    author=ctx.user
                 )
-                embed.add_field(
-                    name="🚫 Security Alert",
-                    value=f"User: {ctx.user.mention}\nID: `{ctx.user.id}`",
-                    inline=False
-                )
-                await ctx.followup.send(embed=embed)
+                await ctx.followup.send(embed=embed, ephemeral=True)
                 LogModeration(f"Unauthorized lockdown attempt by {ctx.user.id}")
                 return
 
@@ -59,89 +38,65 @@ class CommandLockdown(commands.Cog):
             new_status = not self.lockdown_data.get("lockdown", False)
             save_lockdown_config(new_status)
 
-            status_word = "ACTIVATED" if new_status else "DEACTIVATED"
-            embed_color = discord.Color.red() if new_status else discord.Color.green()
-            
-            embed = self.create_emergency_embed(
-                f"LOCKDOWN {status_word}",
-                "**Global Command Restrictions**\n"
-                f"```diff\n{'+' if new_status else '-'} EMERGENCY LOCKDOWN PROTOCOL\n```",
-                embed_color
+            status_word = t("lockdown.activated", ctx=ctx) if new_status else t("lockdown.deactivated", ctx=ctx)
+            embed = create_security_embed(
+                t("lockdown.title", ctx=ctx, status=status_word),
+                t("lockdown.desc", ctx=ctx, status_lower=status_word.lower(), sign='+' if new_status else '-', status=status_word),
+                color="error" if new_status else "success",
+                bot_user=self.bot.user,
+                fields=[
+                    (t("common.status", ctx=ctx), f"`{t('lockdown.status_locked' if new_status else 'lockdown.status_operational', ctx=ctx)}`", True),
+                    (t("lockdown.executed_by", ctx=ctx), f"`{ctx.user.display_name}`", True),
+                    (t("lockdown.timestamp", ctx=ctx), discord.utils.format_dt(discord.utils.utcnow(), 'F'), False)
+                ]
             )
-            
-            embed.add_field(
-                name="🔐 System Status",
-                value=f"```{'🛑 LOCKED DOWN' if new_status else '✅ OPERATIONAL'}```",
-                inline=True
-            )
-            embed.add_field(
-                name="🛡️ Authorized Personnel",
-                value=f"```{ctx.user.display_name}```",
-                inline=True
-            )
-            embed.add_field(
-                name="📝 Audit Log",
-                value=f"Action performed at: {discord.utils.format_dt(datetime.datetime.utcnow(), 'F')}",
-                inline=False
-            )
-            
-            await ctx.followup.send(embed=embed)
+
+            await ctx.followup.send(embed=embed, ephemeral=True)
             LogSystem(f"Lockdown {'enabled' if new_status else 'disabled'} by {ctx.user.id}")
 
         except Exception as e:
             LogError(f"Lockdown command failed: {str(e)}")
-            raise
+            await ctx.followup.send(embed=create_error_embed(t("common.error", ctx=ctx), str(e)), ephemeral=True)
+
 
 async def global_lockdown_check(ctx: commands.Context):
     try:
         lockdown_data = load_lockdown_config()
         locked = lockdown_data.get("lockdown", False)
-        
-        if locked and ctx.user.id != get_owner():
-            embed = discord.Embed(
-                title="⛔ EMERGENCY LOCKDOWN ACTIVE",
-                description=(
-                    "**All non-essential commands have been disabled**\n\n"
-                    "The bot is currently in emergency maintenance mode. "
-                    "Please check back later or contact the bot owner for assistance."
-                ),
-                color=discord.Color.dark_red(),
-                timestamp=datetime.datetime.utcnow()
+
+        try:
+            owner_id = get_owner()
+        except Exception:
+            owner_id = None
+
+        if locked and ctx.user.id != owner_id:
+            embed = create_security_embed(
+                t("lockdown.title", ctx=ctx, status=t("lockdown.activated", ctx=ctx)),
+                t("lockdown.active_warning", ctx=ctx),
+                color="error",
+                fields=[
+                    (t("lockdown.security_level", ctx=ctx), f"`{t('lockdown.max_alert', ctx=ctx)}`", True),
+                    (t("common.time", ctx=ctx), f"`{discord.utils.format_dt(discord.utils.utcnow(), 'R')}`", True)
+                ]
             )
-            embed.set_thumbnail(url="")
-            embed.add_field(
-                name="🔒 Security Level",
-                value="```MAXIMUM ALERT```",
-                inline=True
-            )
-            embed.add_field(
-                name="🕒 Active Since",
-                value=f"```{discord.utils.format_dt(datetime.datetime.utcnow(), 'R')}```",
-                inline=True
-            )
-            embed.add_field(
-                name="📩 Contact Support",
-                value=f"```{get_owner()}```",
-                inline=False
-            )
-            embed.set_footer(
-                text=f"Security Violation Attempt by {ctx.user}",
-                icon_url=ctx.user.avatar.url
-            )
-            
+
             if hasattr(ctx, "response") and not ctx.response.is_done():
                 await ctx.response.send_message(embed=embed, ephemeral=True)
+            elif hasattr(ctx, "followup"):
+                await ctx.followup.send(embed=embed, ephemeral=True)
             else:
                 await ctx.send(embed=embed)
-            
+
             LogModeration(f"Command blocked during lockdown: {ctx.command} by {ctx.user.id}")
             raise LockdownCheckFailure("Lockdown active")
-            
+
         return True
+    except LockdownCheckFailure:
+        raise
     except Exception as e:
         LogError(f"Lockdown check failed: {str(e)}")
-        raise
+        return True
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(CommandLockdown(bot))
-    bot.add_check(global_lockdown_check)

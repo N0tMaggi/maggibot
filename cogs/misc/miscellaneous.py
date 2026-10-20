@@ -1,306 +1,107 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-import json
-import datetime
-from handlers.debug import LogDebug, LogError
-import time
-import random
-import os
 import asyncio
+from handlers.debug import LogDebug, LogError
+from handlers.locale import t
+from utils.embed_helpers import create_embed, create_info_embed, create_success_embed, create_error_embed, create_warning_embed
+
 
 class Miscellaneous(commands.Cog):
-        def __init__(self, bot):
-            self.bot = bot
+    def __init__(self, bot: discord.Bot):
+        self.bot = bot
 
-        @commands.slash_command(name="serverinfo", description="Get detailed information about the server")
-        async def serverinfo(self, ctx: discord.ApplicationContext):
-            await ctx.defer() 
-            server = ctx.guild
+    @commands.slash_command(
+        name="serverinfo",
+        description="Detailed information about this server",
+        guild_only=True
+    )
+    async def serverinfo(self, ctx: discord.ApplicationContext):
+        await ctx.defer()
+        server = ctx.guild
+        owner = server.owner
 
-            thumbnail_url = server.icon.url if server.icon else None
-            owner = server.owner
-            owner_avatar = owner.display_avatar.url if owner else None
+        features = [f.replace('_', ' ').title() for f in server.features]
+        features_str = ", ".join(features) if features else t("common.none", ctx=ctx)
+        if len(features_str) > 500:
+            features_str = features_str[:497] + "..."
 
-            verification_level = str(server.verification_level).title()
+        embed = create_embed(
+            title=t("general.serverinfo_title", ctx=ctx, server_name=server.name),
+            description=server.description or t("general.no_description", ctx=ctx),
+            color="primary",
+            thumbnail=server.icon.url if server.icon else None,
+            image=server.banner.url if server.banner else None,
+            author=ctx.author,
+            fields=[
+                (t("general.owner", ctx=ctx), owner.mention if owner else t("common.unknown", ctx=ctx), True),
+                (t("general.server_id", ctx=ctx), f"`{server.id}`", True),
+                (t("general.created_on", ctx=ctx), f"{discord.utils.format_dt(server.created_at, 'D')} ({discord.utils.format_dt(server.created_at, 'R')})", False),
+                (t("general.members", ctx=ctx), f"**{t('common.total', ctx=ctx)}:** `{server.member_count}`", True),
+                (t("general.boosts", ctx=ctx), f"{t('common.status', ctx=ctx)} `{server.premium_tier}` ({server.premium_subscription_count} Boosts)", True),
+                (t("general.verification", ctx=ctx), f"`{str(server.verification_level).title()}`", True),
+                (t("general.channels", ctx=ctx), f"💬 Text: `{len(server.text_channels)}` | 🔊 Voice: `{len(server.voice_channels)}` | 📁 Categories: `{len(server.categories)}`", False),
+                (t("general.roles", ctx=ctx), f"`{len(server.roles)}` {t('general.roles', ctx=ctx)}", True),
+                (t("general.emojis", ctx=ctx), f"`{len(server.emojis)}` {t('general.emojis', ctx=ctx)}", True),
+                (t("general.features", ctx=ctx), f"```{features_str}```", False),
+            ]
+        )
+        await ctx.respond(embed=embed)
 
-            boost_level = server.premium_tier
-            boosts = server.premium_subscription_count
+    @commands.slash_command(
+        name="userinfo",
+        description="Lookup profile and details for a user",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
+    async def userinfo(self, ctx: discord.ApplicationContext, target: discord.User = None):
+        await ctx.defer()
+        target = target or ctx.author
+        member = ctx.guild.get_member(target.id) if ctx.guild else None
 
-            features = server.features
-            features_list = [f.replace('_', ' ').title() for f in features]
-            if features_list:
-                features_str = ", ".join(features_list)
-                if len(features_str) > 1024:
-                    features_str = features_str[:1021] + "..."
-            else:
-                features_str = "None"
+        fields = [
+            (t("common.user", ctx=ctx), f"{target.name} ({target.mention})", True),
+            ("ID", f"`{target.id}`", True),
+            (t("general.bot_account", ctx=ctx), t("common.yes", ctx=ctx) if target.bot else t("common.no", ctx=ctx), True),
+            (t("general.account_created", ctx=ctx), f"{discord.utils.format_dt(target.created_at, 'F')} ({discord.utils.format_dt(target.created_at, 'R')})", False),
+        ]
 
-            text_channels = len(server.text_channels)
-            voice_channels = len(server.voice_channels)
-            categories = len(server.categories)
-            channels_str = f"💬 Text: {text_channels}\n🔊 Voice: {voice_channels}\n📁 Categories: {categories}"
+        if member:
+            if member.joined_at:
+                fields.append((t("general.joined_server", ctx=ctx), f"{discord.utils.format_dt(member.joined_at, 'F')} ({discord.utils.format_dt(member.joined_at, 'R')})", False))
+            roles = [r.mention for r in member.roles[1:]]
+            roles_str = " ".join(roles[:15]) if roles else t("general.no_special_roles", ctx=ctx)
+            if len(roles) > 15:
+                roles_str += f" *({t('general.more_roles', ctx=ctx, count=len(roles)-15)})*"
+            fields.append((f"{t('general.roles', ctx=ctx)} ({len(roles)})", roles_str, False))
+            if member.top_role:
+                fields.append((t("general.highest_role", ctx=ctx), member.top_role.mention, True))
 
-            embed = discord.Embed(
-                title=f"📊  𝚂𝙴𝚁𝚅𝙴𝚁 𝙸𝙽𝙵𝙾: {server.name}",
-                description=f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n{server.description or '*No description*'}",
-                color=0x5865F2
-            )
+        embed = create_embed(
+            title=t("general.userinfo_title", ctx=ctx, user_name=target.display_name),
+            color="primary",
+            thumbnail=target.display_avatar.url,
+            author=ctx.author,
+            fields=fields
+        )
+        await ctx.respond(embed=embed)
 
-            if thumbnail_url:
-                embed.set_thumbnail(url=thumbnail_url)
-            if server.banner:
-                embed.set_image(url=server.banner.url)
-
-            embed.add_field(name="\n👑  𝙾𝚠𝚗𝚎𝚛", 
-                            value=f"» {owner.mention if owner else 'Unknown'}\n{'-'*18}", 
-                            inline=False)
-
-            embed.add_field(name="🆔  𝚂𝚎𝚛𝚟𝚎𝚛 𝙸𝙳", 
-                            value=f"```{server.id}```",
-                            inline=True)
-
-            embed.add_field(name="📆  𝙲𝚛𝚎𝚊𝚝𝚎𝚍 𝙾𝚗", 
-                            value=f"» {discord.utils.format_dt(server.created_at, 'D')}\n» ({discord.utils.format_dt(server.created_at, 'R')})",
-                            inline=True)
-
-            embed.add_field(name="\n👥  𝙼𝚎𝚖𝚋𝚎𝚛𝚜", 
-                            value=f"▹ **Total:** {server.member_count}\n"
-                                  f"▹ **Online:** {server.approximate_presence_count if hasattr(server, 'approximate_presence_count') else 'N/A'}\n"
-                                  f"{'-'*30}",
-                            inline=False)
-
-            embed.add_field(name="🚀  𝙱𝚘𝚘𝚜𝚝𝚜", 
-                            value=f"» Level {boost_level}\n"
-                                  f"» {boosts} Boosts", 
-                            inline=True)
-
-            embed.add_field(name="🛡️  𝚅𝚎𝚛𝚒𝚏𝚒𝚌𝚊𝚝𝚒𝚘𝚗", 
-                            value=f"» {verification_level}", 
-                            inline=True)
-
-            embed.add_field(name="\n📚  𝙲𝚑𝚊𝚗𝚗𝚎𝚕𝚜", 
-                            value=f"▹ 💬 Text: {text_channels}\n"
-                                  f"▹ 🔊 Voice: {voice_channels}\n"
-                                  f"▹ 📁 Categories: {categories}\n"
-                                  f"{'-'*30}",
-                            inline=False)
-
-            embed.add_field(name="🎭  𝚁𝚘𝚕𝚎𝚜", 
-                            value=f"» {len(server.roles)}", 
-                            inline=True)
-
-            embed.add_field(name="😄  𝙴𝚖𝚘𝚓𝚒𝚜", 
-                            value=f"» {len(server.emojis)}", 
-                            inline=True)
-
-            embed.add_field(name="\n✨  𝙵𝚎𝚊𝚝𝚞𝚛𝚎𝚜", 
-                            value=f"```{features_str}```\n"
-                                  f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", 
-                            inline=False)
-
-            embed.set_footer(
-                text=f"🔮 Requested by {ctx.author}",
-                icon_url=ctx.author.display_avatar.url
-            )
-            embed.timestamp = server.created_at
-
-            await ctx.respond(embed=embed)
+    @commands.slash_command(
+        name="ping",
+        description="Check bot latency and websocket responsiveness",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
+    async def ping(self, ctx: discord.ApplicationContext):
+        latency_ms = round(self.bot.latency * 1000)
+        embed = create_embed(
+            title=t("general.ping_title", ctx=ctx),
+            description=t("general.ping_latency", ctx=ctx, latency=latency_ms),
+            color="success" if latency_ms < 150 else ("warning" if latency_ms < 300 else "error"),
+            bot_user=self.bot.user
+        )
+        await ctx.respond(embed=embed)
 
 
-
-        @commands.slash_command(name="userinfo", description="Get detailed information about a user")
-        async def userinfo(self, ctx: discord.ApplicationContext, target: discord.Member = None):
-            await ctx.defer()
-            target = target or ctx.author
-
-            created_at = discord.utils.format_dt(target.created_at, "F")
-            joined_at = discord.utils.format_dt(target.joined_at, "F") if target.joined_at else "Unknown"
-            premium_since = discord.utils.format_dt(target.premium_since, "R") if target.premium_since else "Not boosting"
-            user_guilds_count = sum(1 for guild in self.bot.guilds if target in guild.members)
-
-            activity = ""
-            if target.activities:
-                for act in target.activities:
-                    if isinstance(act, discord.CustomActivity):
-                        activity = f"🎨 Custom Status: {act.name}"
-                    elif act.type == discord.ActivityType.playing:
-                        activity = f"🎮 Playing {act.name}"
-                    elif act.type == discord.ActivityType.streaming:
-                        activity = f"📺 Streaming [{act.name}]({act.url})"
-                    elif act.type == discord.ActivityType.listening:
-                        activity = f"🎧 Listening to {act.title}" if hasattr(act, "title") else f"🎧 {act.name}"
-                    elif act.type == discord.ActivityType.watching:
-                        activity = f"📽️ Watching {act.name}"
-
-            flags = target.public_flags
-            badges = []
-            if flags.staff: badges.append("👑 Staff")
-            if flags.partner: badges.append("🤝 Partner")
-            if flags.hypesquad: badges.append("⚔️ HypeSquad")
-            if flags.bug_hunter: badges.append("🐛 Bug Hunter")
-            if flags.bug_hunter_level_2: badges.append("🐛 Bug Hunter Lv2")
-            if flags.early_supporter: badges.append("🌟 Early Supporter")
-            if flags.active_developer: badges.append("💻 Active Developer")
-            if flags.verified_bot_developer: badges.append("🤖 Bot Developer")
-
-
-            mutual_guilds = [guild.name for guild in self.bot.guilds if target in guild.members][:5]
-            mutual_guilds_str = "\n".join(mutual_guilds) + (f"\n+ {len(mutual_guilds)-5} more..." if len(mutual_guilds) > 5 else "")
-
-
-            roles = [role.mention for role in target.roles[1:]]  
-            roles_str = " ".join(roles) if roles else "No special roles"
-            
-            embed = discord.Embed(
-                title=f"📋  𝚄𝚂𝙴𝚁 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽 - {target.display_name}",
-                color=target.color if target.color.value != 0 else 0x5865F2,
-                timestamp=discord.utils.utcnow()
-            )
-
-            embed.set_author(name=f"{target}", icon_url=target.display_avatar.url)
-            embed.set_thumbnail(url=target.display_avatar.url)
-
-            if target.banner:
-                embed.set_image(url=target.banner.url)
-
-            embed.add_field(
-                name="\n🔖  𝙱𝙰𝚂𝙸𝙲 𝙸𝙽𝙵𝙾𝚁𝙼𝙰𝚃𝙸𝙾𝙽",
-                value=f"""
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-            » **Name:** {target.name}
-            » **ID:** `{target.id}`
-            » **Discriminator:** #{target.discriminator}
-            » **Bot:** {'✅' if target.bot else '❌'}
-
-            » **Account Created:**  
-            {created_at}
-            » **Server Join Date:**  
-            {joined_at}
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-                """,
-                inline=False
-            )
-
-            embed.add_field(
-                name="\n🏰  𝚂𝙴𝚁𝚅𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴",
-                value=f"""
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-            » **Top Role:** {target.top_role.mention if target.top_role else 'None'}
-            » **Boosting Since:**  
-            {premium_since}
-            » **Current Status:**  
-            {str(target.status).title()}
-            » **Active Client:**  
-            {'📱 Mobile' if target.is_on_mobile() else '💻 Desktop'}
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-                """,
-                inline=False
-            )
-
-            if activity:
-                embed.add_field(
-                    name="\n📡  𝙲𝚄𝚁𝚁𝙴𝙽𝚃 𝙰𝙲𝚃𝙸𝚅𝙸𝚃𝚈",
-                    value=f"""
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-            {activity}
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-                    """,
-                    inline=False
-                )
-
-            if badges:
-                embed.add_field(
-                    name="\n🏆  𝙱𝙰𝙳𝙶𝙴𝚂",
-                    value=f"""
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-            {'  '.join(badges)}
-            ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-                    """,
-                    inline=False
-                )
-
-            embed.add_field(
-                name=f"\n🤝  𝙼𝚄𝚃𝚄𝙰𝙻 𝚂𝙴𝚁𝚅𝙴𝚁𝚂 ({user_guilds_count})",
-                value=f"""
-            ▬▬▬▬▬▬▬▬▬▬
-            {mutual_guilds_str if mutual_guilds else 'None'}
-            ▬▬▬▬▬▬▬▬▬▬
-                """,
-                inline=True
-            )
-
-            embed.add_field(
-                name=f"\n🎭  𝚁𝙾𝙻𝙴𝚂 ({len(roles)})",
-                value=f"""
-            ▬▬▬▬▬▬▬▬▬▬
-            {roles_str}
-            ▬▬▬▬▬▬▬▬▬▬
-                """,
-                inline=True
-            )
-
-            embed.set_footer(
-                text=f"🔮  𝚁𝙴𝚀𝚄𝙴𝚂𝚃𝙴𝙳 𝙱𝚈 {ctx.author}  •  𝚄𝚂𝙴𝚁 𝙸𝙳: {target.id}",
-                icon_url=ctx.author.display_avatar.url
-            )
-
-            await ctx.respond(embed=embed)
-
-        @commands.slash_command(name="test", description='TEST COMMAND')
-        async def test(self, ctx):
-            await ctx.respond('Test')
-
-        @commands.slash_command(name="ping", description="Check the bot's latency")
-        async def ping(self, ctx):
-            loading_embed = discord.Embed(
-                title="🏓 Pong!",
-                description="Calculating latency... ⏳",
-                color=discord.Color.blue()
-            )
-            loading_message = await ctx.respond(embed=loading_embed)
-
-            latency = self.bot.latency * 1000
-            await asyncio.sleep(1)
-
-            embed = discord.Embed(
-                title="🏓 Pong!",
-                description=f"Latency: `{latency:.2f} ms`",
-                color=discord.Color.green()
-            )
-            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar.url)
-            await loading_message.edit(embed=embed)
-
-
-
-        @commands.slash_command(name="dm-clean", description="Let the bot clean your DMs.")
-        @commands.cooldown(1, 180, commands.BucketType.user)
-        async def dm_clean(self, ctx):
-            await ctx.respond("Cleaning DMs...")
-            await ctx.author.send("Please confirm that you want to clean your DMs by typing `yes` in this chat.")
-
-            try:
-                msg = await self.bot.wait_for(
-                    "message",
-                    check=lambda message: message.author == ctx.author and message.content.lower() == "yes",
-                    timeout=60
-                )
-
-                async for message in ctx.author.dm_channel.history(limit=100):
-                    if message.author == self.bot.user:
-                        await message.delete()
-
-                message = await ctx.author.send("Your DMs have been cleaned.")
-                await asyncio.sleep(5)
-                await message.delete()
-
-            except asyncio.TimeoutError:
-                embed = discord.Embed(title="🚫 Timed out!", description="You took too long to respond.", color=discord.Color.red())
-                await ctx.author.send(embed=embed)
-
-            except Exception as e:
-                LogError(f" An error occurred: {e}")
-                raise Exception ("An error occurred while cleaning DMs." + str(e))
-                
-
-def setup(bot):
+def setup(bot: discord.Bot):
     bot.add_cog(Miscellaneous(bot))

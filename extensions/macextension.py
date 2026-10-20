@@ -1,25 +1,22 @@
+# -*- coding: utf-8 -*-
 import discord
-from discord.ext import commands
-import datetime
 from handlers.env import get_mac_banner
+from utils.embed_helpers import create_embed
+
 
 def trim_field(value: str, max_length: int = 1024) -> str:
     """Trims a string to a maximum length, adding '...' if truncated."""
     return value if len(value) <= max_length else value[:max_length-3] + "..."
 
-def create_mac_embed(title, description, color=None):
+
+def create_mac_embed(title: str, description: str, color=None, **kwargs) -> discord.Embed:
     """Creates a standardized embed for the MAC system."""
-    embed_color = color or 0x2b2d31 # Default embed color
-    embed = discord.Embed(
+    banner = get_mac_banner()
+    return create_embed(
         title=title,
         description=description,
-        color=embed_color,
-        timestamp=datetime.datetime.utcnow()
+        color=color or "security",
+        image=banner if banner else None,
+        footer_text="MAC™ Global Ban System",
+        **kwargs
     )
-    embed.set_footer(text="MAC™ Global Ban System", icon_url="") # Removed the placeholder icon_url
-    
-    banner = get_mac_banner()
-    if banner:
-        embed.set_image(url=banner)
-        
-    return embed

@@ -2,21 +2,18 @@ import discord
 from discord.ext import commands
 from discord.commands import slash_command
 from handlers.debug import LogError, LogModeration
-from utils.embed_helpers import create_mod_embed
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 
 class ModCommunityBan(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-
-    def create_embed(self, title, description, color_type='mod_action', author=None):
-        """Create a moderation embed using centralized utility"""
-        return create_mod_embed(
-            title=title,
-            description=description,
-            color_type=color_type,
-            author=author,
-            bot_user=self.bot.user
-        )
 
     @slash_command(name="mod-community-ban", description="Start community ban vote (Admin only)")
     @commands.has_permissions(administrator=True)
@@ -24,11 +21,10 @@ class ModCommunityBan(commands.Cog):
         try:
             if user == ctx.author:
                 return await ctx.respond(
-                    embed=self.create_embed(
-                        "❌ Invalid Target",
+                    embed=create_error_embed(
+                        "Invalid Target",
                         "You cannot start a ban vote against yourself",
-                        'error',
-                        ctx.author
+                        author=ctx.author
                     ), ephemeral=True
                 )
 
@@ -43,13 +39,14 @@ class ModCommunityBan(commands.Cog):
                 "**Only 1 confirmation needed**"
             )
 
-            embed = self.create_embed(
+            embed = create_mod_embed(
                 "⚠️ Community Ban Vote",
                 description,
-                'mod_action',
-                ctx.author
+                color_type='mod_action',
+                author=ctx.author,
+                bot_user=self.bot.user,
+                thumbnail=user.display_avatar.url
             )
-            embed.set_thumbnail(url=user.display_avatar.url)
 
             view = self.BanVoteView(self, user, reason, ctx.author)  # [[3]][[4]]
             await ctx.respond(embed=embed, view=view)
@@ -82,27 +79,28 @@ class ModCommunityBan(commands.Cog):
                 await interaction.guild.ban(self.target, reason=f"Community ban: {self.reason}")
                 
                 spacer = "\u200b" * 10
-                new_embed = self.cog.create_embed(  # [[3]][[5]]
-                    "✅ Ban Executed",
+                new_embed = create_success_embed(
+                    "Ban Executed",
                     f"{spacer}\n**Target:** {self.target.mention}\n\n"
                     f"**Confirmed by:** {interaction.user.mention}\n\n"
                     f"**Reason:** {self.reason}",
-                    'success',
-                    interaction.user
+                    author=interaction.user,
+                    thumbnail=self.target.display_avatar.url,
+                    footer_text="Maggi Moderation"
                 )
-                new_embed.set_thumbnail(url=self.target.display_avatar.url)
                 
                 await interaction.message.edit(embed=new_embed, view=self)
                 await interaction.response.send_message(f"✅ Ban confirmed by {interaction.user.mention}!", ephemeral=False)
 
                 try:
-                    dm_embed = self.cog.create_embed(  # [[3]][[5]]
+                    dm_embed = create_mod_embed(
                         "🔨 Community Ban",
                         f"You were banned from **{interaction.guild.name}**\n\n"
                         f"**Reason:** {self.reason}\n\n"
                         "───────────────────────────────\n"
                         "This action was community-confirmed",
-                        'error'
+                        color_type='error',
+                        bot_user=self.cog.bot.user
                     )
                     await self.target.send(embed=dm_embed)
                 except discord.Forbidden:
