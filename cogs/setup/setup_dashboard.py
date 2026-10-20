@@ -31,7 +31,7 @@ class VoiceGateRulesModal(Modal):
             label=t("voicegate.input_label", guild_id=gid),
             placeholder=t("voicegate.input_placeholder", guild_id=gid),
             style=discord.InputTextStyle.long,
-            default=current_rules if current_rules else None,
+            value=current_rules if current_rules else None,
             max_length=1500,
             required=True
         )
