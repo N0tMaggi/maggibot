@@ -5,24 +5,27 @@ import asyncio
 
 from handlers.debug import LogDebug, LogError
 from handlers.config import loadvoicegateconfig
+from handlers.locale import t
 from utils.embed_helpers import create_embed
 from utils.colors import EmbedColors
 
 
 class VoiceGateAcceptView(discord.ui.View):
-    def __init__(self, member_id: int):
+    def __init__(self, member_id: int, guild_id: int):
         super().__init__(timeout=45)
         self.member_id = member_id
+        self.guild_id = guild_id
         self.accepted = False
+        self.accept_button.label = t("voicegate.accept_button", guild_id=guild_id)
 
-    @discord.ui.button(label="Regeln akzeptieren & Freischalten", style=discord.ButtonStyle.success, emoji="✅")
+    @discord.ui.button(label="Accept Rules & Unlock", style=discord.ButtonStyle.success, emoji="✅")
     async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         if interaction.user.id != self.member_id:
-            await interaction.response.send_message("Diese Interaktion ist nicht für dich bestimmt.", ephemeral=True)
+            await interaction.response.send_message(t("voicegate.wrong_user", guild_id=self.guild_id), ephemeral=True)
             return
         self.accepted = True
         button.disabled = True
-        button.label = "Akzeptiert"
+        button.label = t("voicegate.accepted", guild_id=self.guild_id)
         await interaction.response.edit_message(view=self)
         self.stop()
 
@@ -68,15 +71,15 @@ class VoiceGate(commands.Cog):
             except Exception as e:
                 LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
 
-            rules_text = config_data.get("rules_text", "Keine spezifischen Regeln angegeben.")
+            rules_text = config_data.get("rules_text") or t("general.no_description", guild_id=member.guild.id)
             embed_rules = create_embed(
-                title=f"🔊 {member.guild.name} • Voice Gate Regeln",
+                title=f"🔊 {t('voicegate.embed_title', guild_id=member.guild.id, guild_name=member.guild.name)}",
                 description=rules_text,
                 color=EmbedColors.INFO,
-                footer_text="Klicke auf den Button innerhalb von 45 Sekunden."
+                footer_text=t("voicegate.footer", guild_id=member.guild.id)
             )
 
-            view = VoiceGateAcceptView(member_id=member.id)
+            view = VoiceGateAcceptView(member_id=member.id, guild_id=member.guild.id)
             try:
                 dm_channel = await member.create_dm()
                 rules_message = await dm_channel.send(embed=embed_rules, view=view)
@@ -91,7 +94,7 @@ class VoiceGate(commands.Cog):
                 final_channel = member.guild.get_channel(final_channel_id)
                 if final_channel is None:
                     try:
-                        await member.send("Zielkanal nicht gefunden. Bitte kontaktiere einen Administrator.")
+                        await member.send(t("voicegate.no_target", guild_id=member.guild.id))
                     except Exception:
                         pass
                     return
@@ -99,13 +102,13 @@ class VoiceGate(commands.Cog):
                 try:
                     await member.move_to(final_channel)
                     await member.edit(mute=False)
-                    await member.send(f"✅ Du wurdest in **{final_channel.name}** verschoben. Viel Spaß!")
+                    await member.send(t("voicegate.moved", guild_id=member.guild.id, channel=final_channel.name))
                 except Exception as move_e:
                     LogError(f"[VOICEGATE] Error moving member {member.id}: {move_e}")
             else:
                 try:
                     await member.move_to(None)
-                    await member.send("⏳ Zeit abgelaufen. Bitte trete erneut bei und akzeptiere die Regeln.")
+                    await member.send(t("voicegate.timeout", guild_id=member.guild.id))
                 except Exception as dm_e:
                     LogError(f"[VOICEGATE] Failed timeout kick/dm for member {member.id}: {dm_e}")
         finally:

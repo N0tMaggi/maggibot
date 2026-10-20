@@ -1,22 +1,30 @@
+# -*- coding: utf-8 -*-
 from discord.ext import commands
 import discord
 import datetime
 from extensions.statsextension import create_stats_embed
 from handlers.debug import LogDebug, LogError
+from handlers.locale import t
 from handlers.config import load_stats, save_stats, MESSAGE_XP_COUNT, ATTACHMENT_XP_COUNT, VOICE_XP_COUNT, load_multiplier_config
+
 
 class Leaderboards(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name="stats", description="📊 Display user statistics")
+    @commands.slash_command(
+        name="stats",
+        description="📊 Display user statistics",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def stats(self, ctx: discord.ApplicationContext, user: discord.User = None):
         await ctx.defer()
         LogDebug(f"Stats command by {ctx.author.id}")
         try:
             user = user or ctx.author
             stats = load_stats().get(str(user.id), {})
-            embed = create_stats_embed(f"📈 {user.display_name}'s Statistics", color_type="stats")
+            embed = create_stats_embed(t("stats.stats_title", ctx=ctx, user_name=user.display_name), color_type="stats")
             embed.set_thumbnail(url=user.display_avatar.url)
 
             if stats:
@@ -25,12 +33,12 @@ class Leaderboards(commands.Cog):
                 server_stats = stats.get("servers", {})
                 
                 embed.add_field(
-                    name="🌟 Level",
+                    name=t("stats.level", ctx=ctx),
                     value=f"```yaml\nLevel: {level}```",
                     inline=False
                 )
                 embed.add_field(
-                    name="🌟 Total XP", 
+                    name=t("stats.total_xp", ctx=ctx), 
                     value=f"```yaml\n{xp:.2f} XP```", 
                     inline=False
                 )
@@ -47,27 +55,32 @@ class Leaderboards(commands.Cog):
                     )
 
                 embed.add_field(
-                    name="🌐 Server Breakdown", 
+                    name=t("stats.server_breakdown", ctx=ctx), 
                     value="\n".join(server_info) or "No data", 
                     inline=False
                 )
             else:
-                embed.description = "```diff\n- No statistics available```"
+                embed.description = t("stats.no_stats", ctx=ctx)
             
             await ctx.followup.send(embed=embed)
         except Exception as e:
             LogError(f"Stats error: {str(e)}")
             raise
 
-    @commands.slash_command(name="leaderboard", description="🏆 Global XP leaderboard")
+    @commands.slash_command(
+        name="leaderboard",
+        description="🏆 Global XP leaderboard",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def leaderboard(self, ctx: discord.ApplicationContext):
         await ctx.defer()
         LogDebug(f"Leaderboard viewed by {ctx.author.id}")
         try:
             stats = load_stats()
             embed = create_stats_embed(
-                "🌍 Global XP Leaderboard",
-                "```diff\n+ Top Performers Across All Servers\n+ Updated: " + datetime.datetime.now().strftime("%Y-%m-%d") + "```",
+                t("stats.leaderboard_title", ctx=ctx),
+                t("stats.leaderboard_desc", ctx=ctx, date=datetime.datetime.now().strftime("%Y-%m-%d")),
                 "leaderboard"
             )
 
@@ -75,7 +88,7 @@ class Leaderboards(commands.Cog):
                 leaderboard = sorted(stats.items(), key=lambda x: x[1].get("xp", 0), reverse=True)[:10]
 
                 for rank, (user_id, data) in enumerate(leaderboard, 1):
-                    member = ctx.guild.get_member(int(user_id))
+                    member = ctx.guild.get_member(int(user_id)) if ctx.guild else None
                     xp = data.get("xp", 0)
                     level = data.get("level", int(xp // 20))
                     total_messages = sum(s['messages'] for s in data['servers'].values())
@@ -91,7 +104,7 @@ class Leaderboards(commands.Cog):
                         inline=False
                     )
             else:
-                embed.description = "```diff\n- No data available```"
+                embed.description = t("stats.no_stats", ctx=ctx)
 
             await ctx.followup.send(embed=embed)
         except Exception as e:
@@ -101,7 +114,7 @@ class Leaderboards(commands.Cog):
     def get_rank_emoji(self, rank):
         return ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"][rank-1]
     
-    @commands.slash_command(name="serverleaderboard", description="🏆 Server-specific XP leaderboard")
+    @commands.slash_command(name="serverleaderboard", description="🏆 Server-specific XP leaderboard", guild_only=True)
     async def server_leaderboard(self, ctx: discord.ApplicationContext):
         """Displays XP rankings within current server"""
         await ctx.defer()
@@ -140,20 +153,18 @@ class Leaderboards(commands.Cog):
                         value=f"```yaml\nLevel: {level}\nXP: {xp:.2f}\n"
                               f"Messages: {messages}\n" 
                               f"Media: {media}\n"
-                              f"Voice: {voice}m```",
+                              f"Voice: {voice}m```", 
                         inline=False
                     )
             else:
-                embed.description = "```diff\n- No server statistics available```"
+                embed.description = t("stats.no_stats", ctx=ctx)
 
             await ctx.followup.send(embed=embed)
         except Exception as e:
             LogError(f"Server leaderboard error: {str(e)}")
             raise
 
-
-
-    @commands.slash_command(name="xp-info", description="ℹ️ Show XP earning system details")
+    @commands.slash_command(name="xp-info", description="ℹ️ Show XP earning system details", guild_only=True)
     async def xp_info(self, ctx: discord.ApplicationContext):
         """Displays XP reward system information"""
         try:

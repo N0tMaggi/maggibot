@@ -8,6 +8,7 @@ import shutil
 from io import BytesIO
 import asyncio
 
+from handlers.locale import t
 from utils.embed_helpers import create_embed, create_success_embed, create_error_embed, create_warning_embed, create_info_embed
 
 
@@ -25,31 +26,30 @@ class EmojiUpload(commands.Cog):
         try:
             file_data = rf.read(file_info)
             if len(file_data) < 100:
-                return False, "Datei zu klein"
+                return False, t("emoji.too_small", ctx=ctx)
 
             filename = file_info.filename.lower()
-            is_animated = filename.endswith('.gif')
             if not (filename.endswith('.gif') or filename.endswith('.png') or filename.endswith('.jpg') or filename.endswith('.jpeg')):
-                return False, "Ungültiges Format"
+                return False, t("emoji.invalid_format", ctx=ctx)
 
             base_name = os.path.basename(filename)
             emoji_name = os.path.splitext(base_name)[0][:30]
             emoji_name = ''.join(c for c in emoji_name if c.isalnum() or c in ('_', '-')).strip()
             if not emoji_name:
-                return False, "Ungültiger Name"
+                return False, t("emoji.invalid_name", ctx=ctx)
 
             await guild.create_custom_emoji(
                 name=emoji_name,
                 image=file_data,
-                reason=f"Batch-Upload von {ctx.author}",
+                reason=f"Batch-Upload by {ctx.author}",
             )
-            return True, "Erfolg"
+            return True, t("emoji.success", ctx=ctx)
         except Exception as e:
             return False, str(e)
 
     @commands.slash_command(
         name="asset-emoji-upload",
-        description="Emojis aus einem RAR-Archiv hochladen (Admin only)",
+        description="Batch upload emojis from a RAR archive (Admin only)",
         guild_only=True,
         default_member_permissions=discord.Permissions(manage_emojis_and_stickers=True)
     )
@@ -59,7 +59,7 @@ class EmojiUpload(commands.Cog):
 
         if not rar_file.filename.lower().endswith('.rar'):
             return await ctx.respond(
-                embed=create_error_embed("Ungültiges Dateiformat", "Bitte lade eine **.rar** Datei hoch!"),
+                embed=create_error_embed(t("common.error", ctx=ctx), t("emoji.invalid_rar", ctx=ctx)),
                 ephemeral=True
             )
 
@@ -71,8 +71,8 @@ class EmojiUpload(commands.Cog):
         if available_slots <= 0:
             return await ctx.respond(
                 embed=create_warning_embed(
-                    "Server-Limit erreicht",
-                    f"Alle Slots belegt ({max_emojis}/{max_emojis})! Bitte entferne ungenutzte Emojis."
+                    t("common.warning", ctx=ctx),
+                    t("emoji.slots_full", ctx=ctx, current=current_emojis, max=max_emojis)
                 ),
                 ephemeral=True
             )
@@ -83,7 +83,7 @@ class EmojiUpload(commands.Cog):
                 valid_files = [f for f in rf.infolist() if not f.isdir() and f.file_size > 0]
                 if not valid_files:
                     return await ctx.respond(
-                        embed=create_error_embed("Archiv leer", "Keine gültigen Bilddateien im RAR-Archiv gefunden."),
+                        embed=create_error_embed(t("common.error", ctx=ctx), "No valid image files found inside RAR archive."),
                         ephemeral=True
                     )
 
@@ -94,12 +94,8 @@ class EmojiUpload(commands.Cog):
                 errors = []
 
                 progress_embed = create_info_embed(
-                    "Emoji-Upload gestartet...",
-                    f"Verarbeite **{upload_count}** Emojis...\n{self.progress_bar(0)}",
-                    fields=[
-                        ("Server-Kapazität", f"`{current_emojis}/{max_emojis}`", True),
-                        ("Gefundene Dateien", f"`{len(valid_files)}`", True)
-                    ]
+                    t("emoji.processing", ctx=ctx),
+                    f"{self.progress_bar(0)}\n• Slots: `{current_emojis}/{max_emojis}`\n• Queued: `{upload_count}`"
                 )
                 await ctx.interaction.edit_original_response(embed=progress_embed)
 
@@ -115,8 +111,8 @@ class EmojiUpload(commands.Cog):
                         if (idx + 1) % 2 == 0 or (idx + 1) == upload_count:
                             progress = (idx + 1) / upload_count
                             embed = create_info_embed(
-                                f"Upload-Fortschritt ({idx + 1}/{upload_count})",
-                                f"{self.progress_bar(progress)}\n\n• Erfolgreich: **{success}**\n• Übersprungen: **{skipped}**"
+                                f"{t('common.status', ctx=ctx)} ({idx + 1}/{upload_count})",
+                                f"{self.progress_bar(progress)}\n\n• {t('common.success', ctx=ctx)}: **{success}**\n• Skipped: **{skipped}**"
                             )
                             await ctx.interaction.edit_original_response(embed=embed)
                         await asyncio.sleep(1)
@@ -127,25 +123,21 @@ class EmojiUpload(commands.Cog):
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
                 res_embed = create_success_embed(
-                    "Upload abgeschlossen",
-                    f"**{success}** neue Emojis wurden erfolgreich hinzugefügt!",
-                    fields=[
-                        ("Neuer Server-Status", f"`{current_emojis + success}/{max_emojis}` Emojis", True),
-                        ("Übersprungen", f"`{skipped}`", True)
-                    ]
+                    t("emoji.completed_title", ctx=ctx),
+                    t("emoji.completed_desc", ctx=ctx, success_count=success, fail_count=skipped)
                 )
                 if errors:
-                    res_embed.add_field(name="Fehlerdetails", value="\n".join(errors[:5]), inline=False)
+                    res_embed.add_field(name=t("common.details", ctx=ctx), value="\n".join(errors[:5]), inline=False)
                 await ctx.interaction.edit_original_response(embed=res_embed)
 
         except rarfile.BadRarFile:
-            await ctx.respond(embed=create_error_embed("Beschädigtes Archiv", "Die Datei konnte nicht als RAR gelesen werden."), ephemeral=True)
+            await ctx.respond(embed=create_error_embed(t("common.error", ctx=ctx), "The archive could not be read as RAR."), ephemeral=True)
         except Exception as e:
-            await ctx.respond(embed=create_error_embed("Fehler", str(e)), ephemeral=True)
+            await ctx.respond(embed=create_error_embed(t("common.error", ctx=ctx), str(e)), ephemeral=True)
 
     @commands.slash_command(
         name="emoji-stats",
-        description="Zeigt Statistiken zu den Server-Emojis",
+        description="Display emoji usage and server slot statistics",
         guild_only=True
     )
     async def emoji_stats(self, ctx: discord.ApplicationContext):
@@ -157,16 +149,16 @@ class EmojiUpload(commands.Cog):
 
         progress = total_emojis / max_emojis if max_emojis > 0 else 0
         embed = create_embed(
-            title=f"😄 Emoji-Statistiken • {guild.name}",
+            title=f"😄 {t('general.emojis', ctx=ctx)} • {guild.name}",
             color="success" if progress < 0.8 else ("warning" if progress < 1.0 else "error"),
             thumbnail=guild.icon.url if guild.icon else None,
             author=ctx.author,
             fields=[
-                ("Gesamt Emojis", f"**{total_emojis}** / `{max_emojis}`", True),
-                ("Statisch", f"`{static_emojis}`", True),
-                ("Animiert", f"`{animated_emojis}`", True),
-                ("Kapazitätsauslastung", f"{self.progress_bar(progress)} ({round(progress * 100)}%)", False),
-                ("Freie Slots", f"**{max_emojis - total_emojis}** Plätze verfügbar", True)
+                (f"{t('common.total', ctx=ctx)} {t('general.emojis', ctx=ctx)}", f"**{total_emojis}** / `{max_emojis}`", True),
+                ("Static", f"`{static_emojis}`", True),
+                ("Animated", f"`{animated_emojis}`", True),
+                (t("common.status", ctx=ctx, default="Capacity"), f"{self.progress_bar(progress)} ({round(progress * 100)}%)", False),
+                ("Free Slots", f"**{max_emojis - total_emojis}** available", True)
             ]
         )
         await ctx.respond(embed=embed)

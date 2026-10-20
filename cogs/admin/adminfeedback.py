@@ -4,6 +4,7 @@ from discord.ext import commands
 import uuid 
 from handlers.debug import LogDebug, LogError
 from handlers.config import load_admin_feedback, save_admin_feedback
+from handlers.locale import t
 from utils.embed_helpers import create_embed, create_success_embed, create_error_embed, create_info_embed, create_warning_embed
 
 
@@ -27,23 +28,23 @@ class AdminFeedback(commands.Cog):
                     if admin_user.id != ctx.author.id:
                         current_time = discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                         dm_embed = create_embed(
-                            title="📩 Neues Feedback erhalten!",
+                            title=t("feedback.dm_title", ctx=ctx),
                             description=feedback,
                             color="info",
                             author=ctx.author,
                             fields=[
-                                ("👤 Von", ctx.author.mention, True),
-                                ("🏠 Server", ctx.guild.name, True),
-                                ("📌 Channel", ctx.channel.mention, True),
-                                ("⏰ Gesendet am", current_time, False)
+                                (t("feedback.from_field", ctx=ctx), ctx.author.mention, True),
+                                (t("feedback.server_field", ctx=ctx), ctx.guild.name, True),
+                                (t("feedback.channel_field", ctx=ctx), ctx.channel.mention, True),
+                                (t("feedback.sent_at_field", ctx=ctx), current_time, False)
                             ],
-                            footer_text="MaggiBot Feedback-System"
+                            footer_text=t("feedback.footer", ctx=ctx)
                         )
                         try:
                             await admin_user.send(embed=dm_embed)
                         except discord.Forbidden:
                             await ctx.respond(
-                                embed=create_error_embed("Fehler", "Der Administrator hat Direktnachrichten (DMs) deaktiviert."),
+                                embed=create_error_embed(t("common.error", ctx=ctx), t("feedback.dm_disabled", ctx=ctx)),
                                 ephemeral=True
                             )
                             return
@@ -61,29 +62,29 @@ class AdminFeedback(commands.Cog):
                         save_admin_feedback(self.admin_feedback)
 
                         resp_embed = create_success_embed(
-                            "Feedback gesendet!",
-                            f"Dein Feedback wurde an {admin_user.mention} übermittelt.\n**Feedback ID:** `{feedback_id}`"
+                            t("feedback.sent_title", ctx=ctx),
+                            t("feedback.sent_desc", ctx=ctx, admin=admin_user.mention, feedback_id=feedback_id)
                         )
                         await ctx.respond(embed=resp_embed, ephemeral=True)
                     else:
                         await ctx.respond(
-                            embed=create_error_embed("Ungültig", "Du kannst dir selbst kein Feedback senden!"),
+                            embed=create_error_embed(t("common.error", ctx=ctx), t("feedback.self_error", ctx=ctx)),
                             ephemeral=True
                         )
                 else:
                     await ctx.respond(
-                        embed=create_error_embed("Ungültiges Team-Mitglied", "Der ausgewählte Nutzer besitzt nicht die Team-Rolle."),
+                        embed=create_error_embed(t("common.error", ctx=ctx), t("feedback.not_team_error", ctx=ctx)),
                         ephemeral=True
                     )
             else:
                 await ctx.respond(
-                    embed=create_warning_embed("Nicht eingerichtet", "Admin-Feedback wurde auf diesem Server noch nicht über `/setup` konfiguriert."),
+                    embed=create_warning_embed(t("common.warning", ctx=ctx), t("feedback.not_configured", ctx=ctx)),
                     ephemeral=True
                 )
         except Exception as e:
             LogError(f"❌ Error sending feedback: {e}")
             await ctx.respond(
-                embed=create_error_embed("Fehler", "Beim Senden des Feedbacks ist ein Fehler aufgetreten."),
+                embed=create_error_embed(t("common.error", ctx=ctx), t("errors.generic", ctx=ctx, command="feedback")),
                 ephemeral=True
             )
 
@@ -102,7 +103,7 @@ class AdminFeedback(commands.Cog):
             ]
             if not feedback_entries:
                 await ctx.respond(
-                    embed=create_info_embed("Kein Feedback gefunden", f"Keine Feedbacks von {user.mention} vorhanden."),
+                    embed=create_info_embed(t("feedback.none_found", ctx=ctx), t("feedback.none_found", ctx=ctx)),
                     ephemeral=True
                 )
                 return
@@ -111,13 +112,13 @@ class AdminFeedback(commands.Cog):
             for fid, entry in feedback_entries[:15]:
                 desc.append(
                     f"**ID:** `{fid}` | **Zeit:** `{entry.get('time', 'N/A')}`\n"
-                    f"• **An:** <@{entry.get('to')}>\n"
-                    f"• **Inhalt:** {entry.get('feedback')}\n"
+                    f"• **{t('feedback.to_field', ctx=ctx)}:** <@{entry.get('to')}>\n"
+                    f"• **{t('common.details', ctx=ctx)}:** {entry.get('feedback')}\n"
                     f"───────────────────────────────"
                 )
 
             embed = create_info_embed(
-                f"📋 Feedbacks von {user.display_name}",
+                t("feedback.view_from_title", ctx=ctx, user_name=user.display_name),
                 "\n".join(desc),
                 bot_user=self.bot.user
             )
@@ -125,7 +126,7 @@ class AdminFeedback(commands.Cog):
         except Exception as e:
             LogError(f"❌ Error viewing feedbacks: {e}")
             await ctx.respond(
-                embed=create_error_embed("Fehler", "Fehler beim Abrufen der Feedbacks."),
+                embed=create_error_embed(t("common.error", ctx=ctx), str(e)),
                 ephemeral=True
             )
 
@@ -140,18 +141,18 @@ class AdminFeedback(commands.Cog):
                 del self.admin_feedback["feedbacks"][feedback_id]
                 save_admin_feedback(self.admin_feedback)
                 await ctx.respond(
-                    embed=create_success_embed("Gelöscht", f"Feedback `{feedback_id}` wurde erfolgreich entfernt."),
+                    embed=create_success_embed(t("feedback.deleted_title", ctx=ctx), t("feedback.deleted", ctx=ctx, feedback_id=feedback_id)),
                     ephemeral=True
                 )
             else:
                 await ctx.respond(
-                    embed=create_error_embed("Nicht gefunden", f"Kein Feedback mit der ID `{feedback_id}` gefunden."),
+                    embed=create_error_embed(t("common.error", ctx=ctx), f"ID `{feedback_id}` not found."),
                     ephemeral=True
                 )
         except Exception as e:
             LogError(f"❌ Error deleting feedback: {e}")
             await ctx.respond(
-                embed=create_error_embed("Fehler", "Beim Löschen des Feedbacks ist ein Fehler aufgetreten."),
+                embed=create_error_embed(t("common.error", ctx=ctx), str(e)),
                 ephemeral=True
             )
 
@@ -170,7 +171,7 @@ class AdminFeedback(commands.Cog):
             ]
             if not feedback_entries:
                 await ctx.respond(
-                    embed=create_info_embed("Kein Feedback gefunden", f"Keine Feedbacks für {user.mention} vorhanden."),
+                    embed=create_info_embed(t("feedback.none_found", ctx=ctx), t("feedback.none_found", ctx=ctx)),
                     ephemeral=True
                 )
                 return
@@ -179,13 +180,13 @@ class AdminFeedback(commands.Cog):
             for fid, entry in feedback_entries[:15]:
                 desc.append(
                     f"**ID:** `{fid}` | **Zeit:** `{entry.get('time', 'N/A')}`\n"
-                    f"• **Von:** <@{entry.get('from')}>\n"
-                    f"• **Inhalt:** {entry.get('feedback')}\n"
+                    f"• **{t('feedback.from_field', ctx=ctx)}:** <@{entry.get('from')}>\n"
+                    f"• **{t('common.details', ctx=ctx)}:** {entry.get('feedback')}\n"
                     f"───────────────────────────────"
                 )
 
             embed = create_info_embed(
-                f"📋 Feedbacks für {user.display_name}",
+                t("feedback.view_for_title", ctx=ctx, user_name=user.display_name),
                 "\n".join(desc),
                 bot_user=self.bot.user
             )
@@ -193,7 +194,7 @@ class AdminFeedback(commands.Cog):
         except Exception as e:
             LogError(f"❌ Error viewing feedbacks: {e}")
             await ctx.respond(
-                embed=create_error_embed("Fehler", "Fehler beim Abrufen der Feedbacks."),
+                embed=create_error_embed(t("common.error", ctx=ctx), str(e)),
                 ephemeral=True
             )
 

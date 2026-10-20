@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 MaggiBot Unified Interactive Setup Dashboard (Interactions v2)
-Centralized interactive control center replacing fragmented setup commands.
-Uses Discord Buttons, ChannelSelect, RoleSelect, StringSelect, and Modals.
+Centralized interactive control center with multi-language support (English & German).
 """
 
 import discord
@@ -10,9 +9,10 @@ from discord.ext import commands
 from discord.commands import slash_command
 from discord.ui import View, Button, Select, Modal, InputText
 
-from utils.embed_helpers import create_embed
+from utils.embed_helpers import create_embed, create_success_embed
 from utils.colors import EmbedColors
 import handlers.config as config
+from handlers.locale import t, get_guild_locale, set_guild_locale
 from handlers.debug import LogDebug, LogError
 
 
@@ -21,14 +21,15 @@ from handlers.debug import LogDebug, LogError
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 class VoiceGateRulesModal(Modal):
     def __init__(self, parent_view: "DashboardView"):
-        super().__init__(title="VoiceGate Regeln festlegen")
+        gid = parent_view.guild.id
+        super().__init__(title=t("voicegate.modal_title", guild_id=gid))
         self.parent_view = parent_view
         current_rules = self.parent_view.voicegate_config.get(
-            str(parent_view.guild.id), {}
+            str(gid), {}
         ).get("rules_text", "")
         self.rules_input = InputText(
-            label="Regeltext für VoiceGate",
-            placeholder="Schreibe hier die Serverregeln für den VoiceGate...",
+            label=t("voicegate.input_label", guild_id=gid),
+            placeholder=t("voicegate.input_placeholder", guild_id=gid),
             style=discord.InputTextStyle.long,
             default=current_rules if current_rules else None,
             max_length=1500,
@@ -60,7 +61,6 @@ class DashboardView(View):
         self.author = author
         self.current_category = "overview"
 
-        # Load states
         self.server_config = {}
         self.voicegate_config = {}
         self.onlyimages = {}
@@ -83,24 +83,23 @@ class DashboardView(View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ Nur der Administrator, der dieses Dashboard geöffnet hat, kann interagieren.",
+                t("setup.unauthorized", guild_id=self.guild.id),
                 ephemeral=True
             )
             return False
         return True
 
     def build_embed(self) -> discord.Embed:
-        guild_id_str = str(self.guild.id)
+        gid = self.guild.id
+        guild_id_str = str(gid)
         vg = self.voicegate_config.get(guild_id_str, {})
         af = self.admin_feedback.get("configs", {}).get(guild_id_str, {})
+        current_lang = get_guild_locale(gid)
+        lang_display = "English 🇬🇧" if current_lang == "en" else "Deutsch 🇩🇪"
 
         embed = create_embed(
-            title=f"⚙️ {self.guild.name} • Server Control Center",
-            description=(
-                "Willkommen im interaktiven MaggiBot Konfigurations-Dashboard.\n"
-                "Verwende das Auswahlmenü und die Schaltflächen darunter, um Module "
-                "in Echtzeit zu verwalten."
-            ),
+            title=t("setup.title", guild_id=gid, guild_name=self.guild.name),
+            description=t("setup.description", guild_id=gid),
             color=EmbedColors.INFO,
             bot_user=self.bot.user,
             thumbnail=self.guild.icon.url if self.guild.icon else None
@@ -112,29 +111,29 @@ class DashboardView(View):
         antiraid = self.server_config.get("antiraid", False)
         antighost = self.server_config.get("antighostping", False)
         antiwebhook = self.server_config.get("antiwebhook", False)
-        lockdown_str = "🔒 AKTIV" if self.lockdown else "🔓 Inaktiv"
+        lockdown_str = f"🔒 {t('common.active', guild_id=gid).upper()}" if self.lockdown else f"🔓 {t('common.inactive', guild_id=gid)}"
 
         prot_status = (
-            f"• Hauptschutz: {'🟢 AN' if prot_active else '🔴 AUS'}\n"
+            f"• Main Protection: {'🟢 ON' if prot_active else '🔴 OFF'}\n"
             f"• Anti-Spam: {'🟢' if antispam else '⚪'} | "
             f"Anti-Raid: {'🟢' if antiraid else '⚪'} | "
             f"Anti-GhostPing: {'🟢' if antighost else '⚪'}\n"
             f"• Anti-Webhook: {'🟢' if antiwebhook else '⚪'} | "
-            f"Server-Lockdown: `{lockdown_str}`"
+            f"Lockdown: `{lockdown_str}`"
         )
-        embed.add_field(name="🛡️ Schutz & Sicherheit", value=prot_status, inline=False)
+        embed.add_field(name=t("setup.protection_field", guild_id=gid), value=prot_status, inline=False)
 
         # 2. Logging
         log_channel_id = self.server_config.get("logchannel")
         log_forum_id = self.server_config.get("logging_forum")
         log_desc = []
         if log_forum_id:
-            log_desc.append(f"• Log-Forum: <#{log_forum_id}>")
+            log_desc.append(f"• Log Forum: <#{log_forum_id}>")
         if log_channel_id:
-            log_desc.append(f"• Text-Logchannel: <#{log_channel_id}>")
+            log_desc.append(f"• Text Log: <#{log_channel_id}>")
         if not log_desc:
-            log_desc.append("• Keine Logging-Channels konfiguriert")
-        embed.add_field(name="📋 Audit & Logging", value="\n".join(log_desc), inline=False)
+            log_desc.append(f"• {t('common.none', guild_id=gid)}")
+        embed.add_field(name=t("setup.logging_field", guild_id=gid), value="\n".join(log_desc), inline=False)
 
         # 3. Roles & Access
         autorole_id = self.server_config.get("autoroleid")
@@ -143,26 +142,32 @@ class DashboardView(View):
         vr_give = self.server_config.get("role_to_give")
 
         roles_desc = [
-            f"• AutoRole: {f'<@&{autorole_id}>' if autorole_id else 'Nicht gesetzt'}",
-            f"• VoiceGate: {f'<#{vg_gate}> ➔ <#{vg_final}>' if (vg_gate and vg_final) else 'Nicht aktiv'}",
-            f"• Verify-Rolle: {f'<@&{vr_give}>' if vr_give else 'Nicht gesetzt'}"
+            f"• AutoRole: {f'<@&{autorole_id}>' if autorole_id else t('common.none', guild_id=gid)}",
+            f"• VoiceGate: {f'<#{vg_gate}> ➔ <#{vg_final}>' if (vg_gate and vg_final) else t('common.inactive', guild_id=gid)}",
+            f"• Verify: {f'<@&{vr_give}>' if vr_give else t('common.none', guild_id=gid)}"
         ]
-        embed.add_field(name="👥 Rollen & Zugang", value="\n".join(roles_desc), inline=False)
+        embed.add_field(name=t("setup.roles_field", guild_id=gid), value="\n".join(roles_desc), inline=False)
 
         # 4. Media & Specials
         onlyimg_count = sum(1 for cid in self.onlyimages.keys() if self.guild.get_channel(int(cid)) is not None)
         tiktok_active = self.server_config.get("tiktok_auto_embed", True)
         media_desc = [
-            f"• Only-Images Kanäle: `{onlyimg_count}` aktiv",
-            f"• TikTok Auto-Download: {'🟢 AN' if tiktok_active else '🔴 AUS'}"
+            f"• Only-Images: `{onlyimg_count}` {t('common.active', guild_id=gid)}",
+            f"• TikTok Auto-Download: {'🟢 ON' if tiktok_active else '🔴 OFF'}"
         ]
-        embed.add_field(name="🖼️ Medien & Spezial-Kanäle", value="\n".join(media_desc), inline=True)
+        embed.add_field(name=t("setup.media_field", guild_id=gid), value="\n".join(media_desc), inline=True)
 
-        # 5. Feedback
+        # 5. Language & Feedback
+        embed.add_field(
+            name=t("setup.language_field", guild_id=gid),
+            value=f"• `{lang_display}`",
+            inline=True
+        )
+
         team_role_id = af.get("team_role")
         embed.add_field(
-            name="💬 Admin-Feedback",
-            value=f"• Team-Rolle: {f'<@&{team_role_id}>' if team_role_id else 'Nicht gesetzt'}",
+            name=t("setup.feedback_field", guild_id=gid),
+            value=f"• {f'<@&{team_role_id}>' if team_role_id else t('common.none', guild_id=gid)}",
             inline=True
         )
 
@@ -170,50 +175,55 @@ class DashboardView(View):
 
     def _build_components(self):
         self.clear_items()
+        gid = self.guild.id
 
-        # Category Select (Always visible on row 0)
         category_options = [
             discord.SelectOption(
-                label="Übersicht (Dashboard)",
+                label=t("setup.categories.overview", guild_id=gid),
                 value="overview",
                 emoji="📊",
                 default=(self.current_category == "overview")
             ),
             discord.SelectOption(
-                label="Schutz & Automod",
+                label=t("setup.categories.protection", guild_id=gid),
                 value="protection",
                 emoji="🛡️",
                 default=(self.current_category == "protection")
             ),
             discord.SelectOption(
-                label="Audit & Logging",
+                label=t("setup.categories.logging", guild_id=gid),
                 value="logging",
                 emoji="📋",
                 default=(self.current_category == "logging")
             ),
             discord.SelectOption(
-                label="Rollen & VoiceGate",
+                label=t("setup.categories.roles", guild_id=gid),
                 value="roles",
                 emoji="👥",
                 default=(self.current_category == "roles")
             ),
             discord.SelectOption(
-                label="Medien & Spezial",
+                label=t("setup.categories.media", guild_id=gid),
                 value="media",
                 emoji="🖼️",
                 default=(self.current_category == "media")
             ),
+            discord.SelectOption(
+                label=t("setup.categories.language", guild_id=gid),
+                value="language",
+                emoji="🌐",
+                default=(self.current_category == "language")
+            ),
         ]
 
         cat_select = Select(
-            placeholder="Kategorie zur Konfiguration wählen...",
+            placeholder=t("setup.category_placeholder", guild_id=gid),
             options=category_options,
             row=0
         )
         cat_select.callback = self._on_category_select
         self.add_item(cat_select)
 
-        # Category-specific items
         if self.current_category == "protection":
             self._add_protection_items()
         elif self.current_category == "logging":
@@ -222,19 +232,47 @@ class DashboardView(View):
             self._add_roles_items()
         elif self.current_category == "media":
             self._add_media_items()
+        elif self.current_category == "language":
+            self._add_language_items()
         else:
             self._add_overview_items()
 
     def _add_overview_items(self):
-        refresh_btn = Button(label="Aktualisieren", emoji="🔄", style=discord.ButtonStyle.secondary, row=1)
+        gid = self.guild.id
+        refresh_btn = Button(label=t("common.refresh", guild_id=gid), emoji="🔄", style=discord.ButtonStyle.secondary, row=1)
         refresh_btn.callback = self._on_refresh
         self.add_item(refresh_btn)
 
-        close_btn = Button(label="Schließen", emoji="✖️", style=discord.ButtonStyle.danger, row=1)
+        close_btn = Button(label=t("common.close", guild_id=gid), emoji="✖️", style=discord.ButtonStyle.danger, row=1)
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
+    def _add_language_items(self):
+        gid = self.guild.id
+        cur_lang = get_guild_locale(gid)
+
+        btn_en = Button(
+            label="English 🇬🇧",
+            style=discord.ButtonStyle.success if cur_lang == "en" else discord.ButtonStyle.secondary,
+            row=1
+        )
+        btn_en.callback = lambda i: self._switch_language(i, "en")
+        self.add_item(btn_en)
+
+        btn_de = Button(
+            label="Deutsch 🇩🇪",
+            style=discord.ButtonStyle.success if cur_lang == "de" else discord.ButtonStyle.secondary,
+            row=1
+        )
+        btn_de.callback = lambda i: self._switch_language(i, "de")
+        self.add_item(btn_de)
+
+        back_btn = Button(label=t("common.back", guild_id=gid), style=discord.ButtonStyle.primary, row=2)
+        back_btn.callback = self._back_to_overview
+        self.add_item(back_btn)
+
     def _add_protection_items(self):
+        gid = self.guild.id
         prot_active = self.server_config.get("protection", False)
         antispam = self.server_config.get("antispam", False)
         antiraid = self.server_config.get("antiraid", False)
@@ -242,7 +280,7 @@ class DashboardView(View):
         antiwebhook = self.server_config.get("antiwebhook", False)
 
         btn_main = Button(
-            label=f"Hauptschutz: {'AN' if prot_active else 'AUS'}",
+            label=f"Protection: {'ON' if prot_active else 'OFF'}",
             style=discord.ButtonStyle.success if prot_active else discord.ButtonStyle.secondary,
             emoji="🛡️",
             row=1
@@ -251,7 +289,7 @@ class DashboardView(View):
         self.add_item(btn_main)
 
         btn_spam = Button(
-            label=f"Anti-Spam: {'AN' if antispam else 'AUS'}",
+            label=f"Anti-Spam: {'ON' if antispam else 'OFF'}",
             style=discord.ButtonStyle.success if antispam else discord.ButtonStyle.secondary,
             emoji="🚫",
             row=1
@@ -260,7 +298,7 @@ class DashboardView(View):
         self.add_item(btn_spam)
 
         btn_raid = Button(
-            label=f"Anti-Raid: {'AN' if antiraid else 'AUS'}",
+            label=f"Anti-Raid: {'ON' if antiraid else 'OFF'}",
             style=discord.ButtonStyle.success if antiraid else discord.ButtonStyle.secondary,
             emoji="⚔️",
             row=1
@@ -269,7 +307,7 @@ class DashboardView(View):
         self.add_item(btn_raid)
 
         btn_ghost = Button(
-            label=f"Anti-GhostPing: {'AN' if antighost else 'AUS'}",
+            label=f"Anti-GhostPing: {'ON' if antighost else 'OFF'}",
             style=discord.ButtonStyle.success if antighost else discord.ButtonStyle.secondary,
             emoji="👻",
             row=2
@@ -278,7 +316,7 @@ class DashboardView(View):
         self.add_item(btn_ghost)
 
         btn_webhook = Button(
-            label=f"Anti-Webhook: {'AN' if antiwebhook else 'AUS'}",
+            label=f"Anti-Webhook: {'ON' if antiwebhook else 'OFF'}",
             style=discord.ButtonStyle.success if antiwebhook else discord.ButtonStyle.secondary,
             emoji="🔗",
             row=2
@@ -287,7 +325,7 @@ class DashboardView(View):
         self.add_item(btn_webhook)
 
         btn_lockdown = Button(
-            label=f"Lockdown: {'AKTIV' if self.lockdown else 'INAKTIV'}",
+            label=f"{t('setup.lockdown_toggle', guild_id=gid)}: {'ON' if self.lockdown else 'OFF'}",
             style=discord.ButtonStyle.danger if self.lockdown else discord.ButtonStyle.secondary,
             emoji="🔒",
             row=2
@@ -295,13 +333,14 @@ class DashboardView(View):
         btn_lockdown.callback = self._toggle_lockdown
         self.add_item(btn_lockdown)
 
-        back_btn = Button(label="« Übersicht", style=discord.ButtonStyle.primary, row=3)
+        back_btn = Button(label=t("common.back", guild_id=gid), style=discord.ButtonStyle.primary, row=3)
         back_btn.callback = self._back_to_overview
         self.add_item(back_btn)
 
     def _add_logging_items(self):
+        gid = self.guild.id
         chan_select = discord.ui.ChannelSelect(
-            placeholder="Text- oder Forum-Channel für Logs auswählen...",
+            placeholder=t("setup.select_log_channel", guild_id=gid),
             channel_types=[discord.ChannelType.text, discord.ChannelType.forum],
             min_values=1,
             max_values=1,
@@ -310,17 +349,18 @@ class DashboardView(View):
         chan_select.callback = self._on_log_channel_select
         self.add_item(chan_select)
 
-        clear_btn = Button(label="Logchannel entfernen", emoji="🗑️", style=discord.ButtonStyle.danger, row=2)
+        clear_btn = Button(label=t("setup.clear_log_channel", guild_id=gid), emoji="🗑️", style=discord.ButtonStyle.danger, row=2)
         clear_btn.callback = self._clear_log_channel
         self.add_item(clear_btn)
 
-        back_btn = Button(label="« Übersicht", style=discord.ButtonStyle.primary, row=2)
+        back_btn = Button(label=t("common.back", guild_id=gid), style=discord.ButtonStyle.primary, row=2)
         back_btn.callback = self._back_to_overview
         self.add_item(back_btn)
 
     def _add_roles_items(self):
+        gid = self.guild.id
         role_select = discord.ui.RoleSelect(
-            placeholder="AutoRole auswählen (wird neuen Mitgliedern gegeben)...",
+            placeholder=t("setup.select_autorole", guild_id=gid),
             min_values=1,
             max_values=1,
             row=1
@@ -328,21 +368,22 @@ class DashboardView(View):
         role_select.callback = self._on_autorole_select
         self.add_item(role_select)
 
-        del_autorole_btn = Button(label="AutoRole entfernen", emoji="🗑️", style=discord.ButtonStyle.secondary, row=2)
+        del_autorole_btn = Button(label=t("setup.clear_autorole", guild_id=gid), emoji="🗑️", style=discord.ButtonStyle.secondary, row=2)
         del_autorole_btn.callback = self._clear_autorole
         self.add_item(del_autorole_btn)
 
-        rules_modal_btn = Button(label="VoiceGate Regeln bearbeiten", emoji="📝", style=discord.ButtonStyle.primary, row=2)
+        rules_modal_btn = Button(label=t("setup.voicegate_rules_btn", guild_id=gid), emoji="📝", style=discord.ButtonStyle.primary, row=2)
         rules_modal_btn.callback = self._open_voicegate_modal
         self.add_item(rules_modal_btn)
 
-        back_btn = Button(label="« Übersicht", style=discord.ButtonStyle.primary, row=2)
+        back_btn = Button(label=t("common.back", guild_id=gid), style=discord.ButtonStyle.primary, row=2)
         back_btn.callback = self._back_to_overview
         self.add_item(back_btn)
 
     def _add_media_items(self):
+        gid = self.guild.id
         chan_select = discord.ui.ChannelSelect(
-            placeholder="Only-Images Kanal hinzufügen oder entfernen...",
+            placeholder=t("setup.select_onlyimages", guild_id=gid),
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1,
@@ -353,7 +394,7 @@ class DashboardView(View):
 
         tiktok_active = self.server_config.get("tiktok_auto_embed", True)
         btn_tiktok = Button(
-            label=f"TikTok Auto-Download: {'AN' if tiktok_active else 'AUS'}",
+            label=f"{t('setup.tiktok_toggle', guild_id=gid)}: {'ON' if tiktok_active else 'OFF'}",
             style=discord.ButtonStyle.success if tiktok_active else discord.ButtonStyle.secondary,
             emoji="📥",
             row=2
@@ -361,13 +402,19 @@ class DashboardView(View):
         btn_tiktok.callback = lambda i: self._toggle_setting(i, "tiktok_auto_embed")
         self.add_item(btn_tiktok)
 
-        back_btn = Button(label="« Übersicht", style=discord.ButtonStyle.primary, row=2)
+        back_btn = Button(label=t("common.back", guild_id=gid), style=discord.ButtonStyle.primary, row=2)
         back_btn.callback = self._back_to_overview
         self.add_item(back_btn)
 
     # Callbacks
     async def _on_category_select(self, interaction: discord.Interaction):
         self.current_category = interaction.data["values"][0]
+        self._build_components()
+        embed = self.build_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _switch_language(self, interaction: discord.Interaction, lang: str):
+        set_guild_locale(self.guild.id, lang)
         self._build_components()
         embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
@@ -493,7 +540,7 @@ class SetupDashboard(commands.Cog):
 
     @slash_command(
         name="setup",
-        description="Öffnet das interaktive Server-Setup Dashboard",
+        description="Opens the interactive server setup dashboard / Server-Setup Dashboard",
         guild_only=True,
         default_member_permissions=discord.Permissions(administrator=True)
     )

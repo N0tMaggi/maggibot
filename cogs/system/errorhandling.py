@@ -10,6 +10,7 @@ from colorama import Fore, Style, init
 from cogs.owner.commandlockdown import LockdownCheckFailure
 from handlers.debug import LogError
 from handlers.env import get_owner
+from handlers.locale import t
 from utils.embed_helpers import create_embed, create_error_embed, create_warning_embed
 
 init(autoreset=True)
@@ -36,7 +37,7 @@ class ErrorHandling(commands.Cog):
             return
 
         try:
-            await self.handle_error(ctx, error, "❌ Befehlsfehler")
+            await self.handle_error(ctx, error, t("common.error", ctx=ctx))
         except Exception as e:
             await self.fatal_error("Error in on_command_error handler", e)
             traceback.print_exc()
@@ -53,16 +54,16 @@ class ErrorHandling(commands.Cog):
             return
 
         if isinstance(original_error, commands.NoPrivateMessage):
-            await self.handle_error_without_log(ctx, original_error, "🚫 Nur auf Servern nutzbar")
+            await self.handle_error_without_log(ctx, original_error, t("errors.guild_only", ctx=ctx))
         elif isinstance(error, commands.CommandOnCooldown):
-            await self.handle_error_without_log(ctx, error, "⏰ Abklingzeit aktiv")
+            await self.handle_error_without_log(ctx, error, t("errors.cooldown", ctx=ctx))
         elif isinstance(error, commands.MissingPermissions):
-            await self.handle_missing_permissions_error(ctx, error, "🚫 Fehlende Berechtigungen")
+            await self.handle_missing_permissions_error(ctx, error, t("common.warning", ctx=ctx))
         else:
-            await self.handle_error(ctx, error, "❌ Ausführungsfehler")
+            await self.handle_error(ctx, error, t("common.error", ctx=ctx))
 
     async def handle_error(self, ctx, error, error_type: str):
-        cmd_name = ctx.command.name if ctx.command else "Unbekannt"
+        cmd_name = ctx.command.name if ctx.command else "Unknown"
         LogError(f"Handling error for command: {cmd_name}")
 
         error_uid = str(uuid.uuid4())[:8]
@@ -75,15 +76,15 @@ class ErrorHandling(commands.Cog):
         channel_info = f"{ctx.channel.mention} ({ctx.channel.id})" if hasattr(ctx.channel, 'mention') else "DM"
 
         fields = [
-            ("Fehlerdetails", f"```\n{error_info[:1000]}\n```", False),
-            ("Fehler-ID", f"`{error_uid}`", True),
-            ("Nutzer", f"{user.mention} (`{user.id}`)", True),
-            ("Ort", f"{channel_info}\n{guild_info}", False)
+            (t("common.details", ctx=ctx), f"```\n{error_info[:1000]}\n```", False),
+            ("ID", f"`{error_uid}`", True),
+            (t("common.user", ctx=ctx), f"{user.mention} (`{user.id}`)", True),
+            (t("common.server", ctx=ctx), f"{channel_info}\n{guild_info}", False)
         ]
 
         embed = create_error_embed(
             error_type,
-            f"Beim Ausführen des Befehls **/{cmd_name}** ist ein Fehler aufgetreten.",
+            t("errors.generic", ctx=ctx, command=cmd_name),
             author=user,
             fields=fields
         )
@@ -103,7 +104,7 @@ class ErrorHandling(commands.Cog):
         if len(traceback_text) > 1024:
             tb_file = await self.create_traceback_file(traceback_text)
             log_embed = embed.copy()
-            log_embed.add_field(name="Traceback", value="Siehe angehängte Datei", inline=False)
+            log_embed.add_field(name="Traceback", value="See attached file", inline=False)
             await self.log_error(ctx, error, log_embed, tb_file, error_uid)
         else:
             log_embed = embed.copy()
@@ -111,7 +112,6 @@ class ErrorHandling(commands.Cog):
             await self.log_error(ctx, error, log_embed, error_uid=error_uid)
 
     async def handle_error_without_log(self, ctx, error, error_type: str):
-        cmd_name = ctx.command.name if ctx.command else "Unbekannt"
         embed = create_warning_embed(
             error_type,
             f"{error}",
@@ -132,7 +132,7 @@ class ErrorHandling(commands.Cog):
         missing_perms = ", ".join(getattr(error, "missing_permissions", ["Administrator"]))
         embed = create_error_embed(
             error_type,
-            f"Dir fehlen die erforderlichen Berechtigungen:\n```yaml\n{missing_perms}\n```",
+            t("errors.missing_permissions", ctx=ctx, permissions=missing_perms),
             author=ctx.author
         )
         try:
@@ -172,8 +172,8 @@ class ErrorHandling(commands.Cog):
     async def fatal_error(self, error_message: str, error: Exception):
         LogError(f"FATAL ERROR: {error_message} | Details: {error}")
         fatal_embed = create_error_embed(
-            "FATALE SYSTEMSTÖRUNG",
-            f"**Kritischer Ausnahmefehler aufgetreten:**\n{error_message}\n```py\n{error}\n```",
+            t("errors.fatal_title"),
+            t("errors.fatal_desc", error_message=error_message, error=error),
             footer_text="System Failure Protocol"
         )
         try:

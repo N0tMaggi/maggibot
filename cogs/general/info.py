@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
 import psutil
@@ -6,15 +7,19 @@ import platform
 import os
 from datetime import datetime
 from handlers.debug import LogSystem, LogError, LogDebug
+from handlers.locale import t
 from utils.embed_helpers import create_info_embed
+
 
 def get_host_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
     return str(uptime).split('.')[0]  
 
+
 def get_bot_uptime():
     uptime = datetime.now() - datetime.fromtimestamp(time.time() - psutil.Process().create_time())
     return str(uptime).split('.')[0]
+
 
 class InfoSystem(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -122,12 +127,19 @@ class InfoSystem(commands.Cog):
         LogSystem(f"Status check by {ctx.author.id}")
 
         class RefreshView(discord.ui.View):
-            def __init__(self, cog):
+            def __init__(self, cog, guild_id=None):
                 super().__init__(timeout=120)
                 self.cog = cog
+                self.guild_id = guild_id
+                self.refresh_btn = discord.ui.Button(
+                    label=t("common.refresh", guild_id=guild_id),
+                    style=discord.ButtonStyle.grey,
+                    emoji="🔄"
+                )
+                self.refresh_btn.callback = self.refresh_button
+                self.add_item(self.refresh_btn)
 
-            @discord.ui.button(label="Refresh", style=discord.ButtonStyle.grey, emoji="🔄")
-            async def refresh_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+            async def refresh_button(self, interaction: discord.Interaction):
                 try:
                     await interaction.response.defer()
                     await self.cog.update_status_embed(interaction)
@@ -146,7 +158,7 @@ class InfoSystem(commands.Cog):
                     LogError(f"Failed to clear status view: {str(e)}")
 
         try:
-            view = RefreshView(self)
+            view = RefreshView(self, guild_id=ctx.guild.id if ctx.guild else None)
             view.message = await ctx.followup.send(
                 embed=await self.create_status_embed(),
                 view=view
@@ -160,6 +172,7 @@ class InfoSystem(commands.Cog):
         """Helper method to create status embed"""
         process = psutil.Process()
         memory_info = process.memory_full_info()
+        disk_path = os.path.splitdrive(os.path.abspath('.'))[0] + '\\' if platform.system() == 'Windows' else '/'
 
         embed = self.create_embed(
             "📈 Real-Time System Telemetry",
@@ -183,7 +196,7 @@ class InfoSystem(commands.Cog):
                   f"Host Uptime: {get_host_uptime()}\n"
                   f"CPU Usage: {psutil.cpu_percent()}%\n"
                   f"Memory: {psutil.virtual_memory().percent}%\n"
-                  f"Disk: {psutil.disk_usage('/').percent}%```",
+                  f"Disk: {psutil.disk_usage(disk_path).percent}%```",
             inline=True
         )
 
@@ -215,6 +228,7 @@ class InfoSystem(commands.Cog):
         except Exception as e:
             LogError(f"Update status failed: {str(e)}")
             await interaction.followup.send("❌ Could not update status", ephemeral=True)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(InfoSystem(bot))

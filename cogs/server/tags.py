@@ -6,17 +6,19 @@ from discord.ui import Modal, InputText
 
 from handlers.config import load_tags, save_tags
 from handlers.debug import LogDebug, LogError
+from handlers.locale import t
 from utils.embed_helpers import create_embed, create_success_embed, create_error_embed, create_info_embed, create_warning_embed
 
 
 class TagCreateModal(Modal):
-    def __init__(self, tag_name: str, cog: "Tags"):
-        super().__init__(title=f"Tag '{tag_name}' erstellen")
+    def __init__(self, tag_name: str, cog: "Tags", guild_id: int):
+        super().__init__(title=t("tags.modal_title", guild_id=guild_id, tag_name=tag_name))
         self.tag_name = tag_name
         self.cog = cog
+        self.guild_id = guild_id
         self.content_input = InputText(
-            label="Tag-Inhalt",
-            placeholder="Schreibe den Tag-Inhalt (Variablen: {user}, {servername})...",
+            label=t("tags.modal_input_label", guild_id=guild_id),
+            placeholder=t("tags.modal_input_placeholder", guild_id=guild_id),
             style=discord.InputTextStyle.long,
             max_length=1900,
             required=True
@@ -24,18 +26,18 @@ class TagCreateModal(Modal):
         self.add_item(self.content_input)
 
     async def callback(self, interaction: discord.Interaction):
-        guild_id = str(interaction.guild.id)
-        if guild_id not in self.cog.tags:
-            self.cog.tags[guild_id] = {}
-        self.cog.tags[guild_id][self.tag_name] = self.content_input.value
+        guild_id_str = str(self.guild_id)
+        if guild_id_str not in self.cog.tags:
+            self.cog.tags[guild_id_str] = {}
+        self.cog.tags[guild_id_str][self.tag_name] = self.content_input.value
         save_tags(self.cog.tags)
 
         embed = create_success_embed(
-            "Tag hinzugefügt",
-            f"Der Tag **{self.tag_name}** wurde erfolgreich für diesen Server gespeichert."
+            t("tags.created_title", guild_id=self.guild_id),
+            t("tags.created_desc", guild_id=self.guild_id, tag_name=self.tag_name)
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        LogDebug(f"Tag {self.tag_name} created in guild {guild_id} by {interaction.user}")
+        LogDebug(f"Tag {self.tag_name} created in guild {guild_id_str} by {interaction.user}")
 
 
 class Tags(commands.Cog):
@@ -45,13 +47,14 @@ class Tags(commands.Cog):
 
     @slash_command(
         name="tag",
-        description="Ruft einen gespeicherten Server-Tag ab",
+        description="Retrieve a stored server tag",
         guild_only=True
     )
     async def tag(self, ctx: discord.ApplicationContext, tag_name: str, user: discord.Member = None):
-        guild_id = str(ctx.guild.id)
+        gid = ctx.guild.id
+        guild_id_str = str(gid)
         tag_lower = tag_name.lower().strip()
-        guild_tags = self.tags.get(guild_id, {})
+        guild_tags = self.tags.get(guild_id_str, {})
 
         matched_key = None
         for k in guild_tags:
@@ -61,8 +64,8 @@ class Tags(commands.Cog):
 
         if not matched_key:
             embed = create_error_embed(
-                "Tag nicht gefunden",
-                f"Der Tag **{tag_name}** existiert auf diesem Server nicht.\nNutze `/tag-list` für eine Übersicht."
+                t("tags.not_found_title", guild_id=gid),
+                t("tags.not_found_desc", guild_id=gid, tag_name=tag_name)
             )
             await ctx.respond(embed=embed, ephemeral=True)
             return
@@ -72,38 +75,43 @@ class Tags(commands.Cog):
         content = content.replace("{user}", target_mention).replace("{servername}", ctx.guild.name)
 
         await ctx.respond(content)
-        LogDebug(f"Tag {matched_key} sent in {guild_id} by {ctx.author}")
+        LogDebug(f"Tag {matched_key} sent in {guild_id_str} by {ctx.author}")
 
     @slash_command(
         name="tag-add",
-        description="Erstelle einen neuen Server-Tag via interaktivem Modal",
+        description="Create a new server tag via modal",
         guild_only=True,
         default_member_permissions=discord.Permissions(manage_guild=True)
     )
     @commands.has_permissions(manage_guild=True)
     async def tag_add(self, ctx: discord.ApplicationContext, tag_name: str):
-        guild_id = str(ctx.guild.id)
+        gid = ctx.guild.id
+        guild_id_str = str(gid)
         clean_name = tag_name.strip()
-        if clean_name in self.tags.get(guild_id, {}):
+        if clean_name in self.tags.get(guild_id_str, {}):
             await ctx.respond(
-                embed=create_warning_embed("Bereits vorhanden", f"Der Tag **{clean_name}** existiert bereits."),
+                embed=create_warning_embed(
+                    t("tags.already_exists_title", guild_id=gid),
+                    t("tags.already_exists_desc", guild_id=gid, tag_name=clean_name)
+                ),
                 ephemeral=True
             )
             return
 
-        modal = TagCreateModal(clean_name, self)
+        modal = TagCreateModal(clean_name, self, gid)
         await ctx.send_modal(modal)
 
     @slash_command(
         name="tag-remove",
-        description="Löscht einen Server-Tag",
+        description="Delete a server tag",
         guild_only=True,
         default_member_permissions=discord.Permissions(manage_guild=True)
     )
     @commands.has_permissions(manage_guild=True)
     async def tag_remove(self, ctx: discord.ApplicationContext, tag_name: str):
-        guild_id = str(ctx.guild.id)
-        guild_tags = self.tags.get(guild_id, {})
+        gid = ctx.guild.id
+        guild_id_str = str(gid)
+        guild_tags = self.tags.get(guild_id_str, {})
         matched_key = None
         for k in guild_tags:
             if k.lower() == tag_name.lower().strip():
@@ -112,39 +120,49 @@ class Tags(commands.Cog):
 
         if not matched_key:
             await ctx.respond(
-                embed=create_error_embed("Nicht gefunden", f"Der Tag **{tag_name}** existiert nicht."),
+                embed=create_error_embed(
+                    t("tags.not_found_title", guild_id=gid),
+                    t("tags.not_found_desc", guild_id=gid, tag_name=tag_name)
+                ),
                 ephemeral=True
             )
             return
 
-        del self.tags[guild_id][matched_key]
-        if not self.tags[guild_id]:
-            del self.tags[guild_id]
+        del self.tags[guild_id_str][matched_key]
+        if not self.tags[guild_id_str]:
+            del self.tags[guild_id_str]
         save_tags(self.tags)
 
         await ctx.respond(
-            embed=create_success_embed("Tag gelöscht", f"Der Tag **{matched_key}** wurde entfernt."),
+            embed=create_success_embed(
+                t("tags.deleted_title", guild_id=gid),
+                t("tags.deleted_desc", guild_id=gid, tag_name=matched_key)
+            ),
             ephemeral=True
         )
 
     @slash_command(
         name="tag-list",
-        description="Zeigt alle verfügbaren Tags dieses Servers",
+        description="List all available tags on this server",
         guild_only=True
     )
     async def tag_list(self, ctx: discord.ApplicationContext):
-        guild_id = str(ctx.guild.id)
-        guild_tags = self.tags.get(guild_id, {})
+        gid = ctx.guild.id
+        guild_id_str = str(gid)
+        guild_tags = self.tags.get(guild_id_str, {})
         if not guild_tags:
             await ctx.respond(
-                embed=create_info_embed("Keine Tags", "Auf diesem Server wurden noch keine Tags eingerichtet."),
+                embed=create_info_embed(
+                    t("tags.list_title", guild_id=gid, count=0),
+                    t("tags.empty_list", guild_id=gid)
+                ),
                 ephemeral=True
             )
             return
 
         tag_list_str = "\n".join([f"• `{name}`" for name in sorted(guild_tags.keys())])
         embed = create_info_embed(
-            f"🏷️ Server Tags ({len(guild_tags)})",
+            t("tags.list_title", guild_id=gid, count=len(guild_tags)),
             tag_list_str,
             bot_user=self.bot.user
         )

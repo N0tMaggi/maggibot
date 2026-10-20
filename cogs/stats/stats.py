@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 from utils.embed_helpers import create_embed
 from discord.ext import commands
 import discord
 import datetime
 from handlers.debug import LogError, LogDebug
+from handlers.locale import t
 from handlers.config import (
     load_stats,
     save_stats,
@@ -73,14 +75,14 @@ class UserStats(commands.Cog):
                 stats[user_id]["level"] = new_level
                 try:
                     embed = discord.Embed(
-                        title="🎉 Level Up!",
-                        description=f"Congratulations, **{message.author.display_name}**!\n\nYou have reached **Level {new_level}**!",
+                        title=t("stats.level_up_title", guild_id=message.guild.id),
+                        description=t("stats.level_up_desc", guild_id=message.guild.id, user_name=message.author.display_name, level=new_level),
                         color=discord.Color.gold()
                     )
-                    embed.add_field(name="Total XP", value=f"{stats[user_id]['xp']:.2f} XP", inline=False)
-                    embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
+                    embed.add_field(name=t("stats.total_xp", guild_id=message.guild.id), value=f"{stats[user_id]['xp']:.2f} XP", inline=False)
+                    embed.add_field(name=t("stats.keep_it_up", guild_id=message.guild.id), value=t("stats.keep_it_up_desc", guild_id=message.guild.id), inline=False)
                     embed.set_thumbnail(url=message.author.display_avatar.url)
-                    embed.set_footer(text="Maggibot Level System", icon_url=message.guild.icon.url if message.guild.icon else None)
+                    embed.set_footer(text=t("stats.footer", guild_id=message.guild.id), icon_url=message.guild.icon.url if message.guild.icon else None)
                     await message.author.send(embed=embed)
                 except Exception as dm_error:
                     LogError(f"[LEVEL-UP] Could not send DM to {message.author}: {dm_error}")
@@ -146,14 +148,14 @@ class UserStats(commands.Cog):
                             user_stats["level"] = new_level
                             try:
                                 embed = discord.Embed(
-                                    title="🎉 Level Up!",
-                                    description=f"Congratulations, **{member.display_name}**!\n\nYou have reached **Level {new_level}**!",
+                                    title=t("stats.level_up_title", guild_id=member.guild.id),
+                                    description=t("stats.level_up_desc", guild_id=member.guild.id, user_name=member.display_name, level=new_level),
                                     color=discord.Color.gold()
                                 )
-                                embed.add_field(name="Total XP", value=f"{user_stats['xp']:.2f} XP", inline=False)
-                                embed.add_field(name="Keep it up!", value="Stay active and climb even higher!", inline=False)
+                                embed.add_field(name=t("stats.total_xp", guild_id=member.guild.id), value=f"{user_stats['xp']:.2f} XP", inline=False)
+                                embed.add_field(name=t("stats.keep_it_up", guild_id=member.guild.id), value=t("stats.keep_it_up_desc", guild_id=member.guild.id), inline=False)
                                 embed.set_thumbnail(url=member.display_avatar.url)
-                                embed.set_footer(text="Maggibot Level System", icon_url=member.guild.icon.url if member.guild.icon else None)
+                                embed.set_footer(text=t("stats.footer", guild_id=member.guild.id), icon_url=member.guild.icon.url if member.guild.icon else None)
                                 await member.send(embed=embed)
                             except Exception as dm_error:
                                 LogError(f"[LEVEL-UP] Could not send DM to {member}: {dm_error}")

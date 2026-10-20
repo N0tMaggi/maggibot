@@ -3,7 +3,8 @@ import discord
 from discord.ext import commands
 from handlers.config import load_onlyimages, save_onlyimages
 from handlers.debug import LogError
-from utils.embed_helpers import create_embed, create_success_embed, create_warning_embed, create_error_embed
+from handlers.locale import t
+from utils.embed_helpers import create_embed, create_success_embed, create_warning_embed
 
 
 class OnlyImages(commands.Cog):
@@ -12,19 +13,20 @@ class OnlyImages(commands.Cog):
 
     @commands.slash_command(
         name="onlyimages-enable",
-        description="Nur-Bilder Modus im aktuellen Kanal aktivieren",
+        description="Enable image-only mode in the current channel",
         guild_only=True,
         default_member_permissions=discord.Permissions(manage_channels=True)
     )
     @commands.has_permissions(manage_channels=True)
     async def enableonlyimages(self, ctx: discord.ApplicationContext):
+        gid = ctx.guild.id
         channels = load_onlyimages()
         channel_id = str(ctx.channel.id)
 
         if channel_id in channels:
             embed = create_warning_embed(
-                "Bereits aktiv",
-                f"Der Nur-Bilder Modus ist in {ctx.channel.mention} bereits aktiv!"
+                t("common.warning", guild_id=gid),
+                t("onlyimages.already_enabled", guild_id=gid, channel=ctx.channel.mention)
             )
             return await ctx.respond(embed=embed, ephemeral=True)
 
@@ -32,29 +34,28 @@ class OnlyImages(commands.Cog):
         save_onlyimages(channels)
 
         embed = create_success_embed(
-            "Nur-Bilder Modus aktiviert",
-            f"**{ctx.channel.mention}** erlaubt ab sofort nur noch Nachrichten mit Anhängen oder Bildern.\n\n"
-            f"• Reine Textnachrichten werden automatisch gelöscht\n"
-            f"• Aktive Only-Images Kanäle: `{len(channels)}`",
+            t("onlyimages.activated", guild_id=gid),
+            t("onlyimages.activated_desc", guild_id=gid, channel=ctx.channel.mention, count=len(channels)),
             bot_user=self.bot.user
         )
         await ctx.respond(embed=embed)
 
     @commands.slash_command(
         name="onlyimages-disable",
-        description="Nur-Bilder Modus im aktuellen Kanal deaktivieren",
+        description="Disable image-only mode in the current channel",
         guild_only=True,
         default_member_permissions=discord.Permissions(manage_channels=True)
     )
     @commands.has_permissions(manage_channels=True)
     async def disableonlyimages(self, ctx: discord.ApplicationContext):
+        gid = ctx.guild.id
         channels = load_onlyimages()
         channel_id = str(ctx.channel.id)
 
         if channel_id not in channels:
             embed = create_warning_embed(
-                "Nicht aktiv",
-                f"Der Nur-Bilder Modus ist in {ctx.channel.mention} nicht aktiv."
+                t("common.warning", guild_id=gid),
+                t("onlyimages.not_active", guild_id=gid, channel=ctx.channel.mention)
             )
             return await ctx.respond(embed=embed, ephemeral=True)
 
@@ -62,8 +63,8 @@ class OnlyImages(commands.Cog):
         save_onlyimages(channels)
 
         embed = create_success_embed(
-            "Nur-Bilder Modus deaktiviert",
-            f"**{ctx.channel.mention}** wurde in den Normalzustand zurückversetzt.",
+            t("onlyimages.deactivated", guild_id=gid),
+            t("onlyimages.deactivated_desc", guild_id=gid, channel=ctx.channel.mention),
             bot_user=self.bot.user
         )
         await ctx.respond(embed=embed)
@@ -85,9 +86,10 @@ class OnlyImages(commands.Cog):
             except Exception as e:
                 LogError(f"Failed to delete non-image message: {str(e)}")
 
+            gid = message.guild.id if message.guild else None
             warning_embed = create_warning_embed(
-                "Anhang erforderlich",
-                f"{message.author.mention}, in diesem Kanal sind nur Nachrichten mit Bildern, Dateien oder Videos erlaubt!",
+                t("onlyimages.warn_title", guild_id=gid),
+                t("onlyimages.warn_desc", guild_id=gid, user=message.author.mention),
                 bot_user=self.bot.user
             )
 
@@ -97,5 +99,5 @@ class OnlyImages(commands.Cog):
                 LogError(f"Failed to send image-only warning: {e}")
 
 
-def setup(bot: commands.Bot):
+def setup(bot: discord.Bot):
     bot.add_cog(OnlyImages(bot))
