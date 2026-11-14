@@ -100,3 +100,4 @@ async def global_lockdown_check(ctx: commands.Context):
 
 def setup(bot: commands.Bot):
     bot.add_cog(CommandLockdown(bot))
+    bot.add_check(global_lockdown_check)
