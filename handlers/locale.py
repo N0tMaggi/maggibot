@@ -64,9 +64,9 @@ def set_guild_locale(guild_id: Union[int, str], lang: str) -> bool:
     if lang not in SUPPORTED_LOCALES:
         return False
     gid_str = str(guild_id)
-    _guild_locale_cache[gid_str] = lang
     try:
         set_guild_config(gid_str, "locale", lang)
+        _guild_locale_cache[gid_str] = lang
         return True
     except Exception as e:
         LogError(f"Error setting locale for guild {guild_id}: {e}")
