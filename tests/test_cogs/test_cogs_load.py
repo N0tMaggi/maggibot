@@ -3,8 +3,9 @@
 Tests for Cog Extension Loading:
 - Discovers all extensions in the cogs directory
 - Verifies exact extension count (37 extensions)
+- Verifies exact extension count (38 extensions)
 - Verifies every individual cog loads into a fresh discord.Bot instance with 0 errors
-- Verifies all 37 cogs load together into a single discord.Bot instance without conflicts
+- Verifies all 38 cogs load together into a single discord.Bot instance without conflicts
 """
 
 import os
