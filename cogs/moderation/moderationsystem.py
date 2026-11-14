@@ -6,7 +6,15 @@ import asyncio
 from dateutil.parser import parse as parse_duration
 
 import handlers.config as cfg
-from extensions.modextensions import create_mod_embed, send_mod_log
+from extensions.modextensions import send_mod_log
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 from handlers.debug import LogDebug, LogError, LogModeration
 
 class ModerationView(View):
@@ -63,11 +71,10 @@ class ModerationView(View):
         }.get(action_type)
 
         if not getattr(interaction.user.guild_permissions, required_perms):
-            embed = create_mod_embed(
-                "❌ Permission Denied",
+            embed = create_error_embed(
+                "Permission Denied",
                 f"You need `{required_perms.replace('_', ' ').title()}` permission",
-                'error',
-                interaction.user
+                author=interaction.user
             )
             if not interaction.response.is_done():
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -81,8 +88,8 @@ class ModerationView(View):
             timeout_embed = create_mod_embed(
                 "⏱️ Timeout Duration",
                 "Enter duration (e.g., '1h 30m')",
-                'info',
-                interaction.user
+                color_type='info',
+                author=interaction.user
             )
             if not interaction.response.is_done():
                 await interaction.response.send_message(embed=timeout_embed, ephemeral=True)
@@ -104,8 +111,8 @@ class ModerationView(View):
         reason_embed = create_mod_embed(
             "📝 Enter Reason",
             "Please type the reason for this action in the chat",
-            'info',
-            interaction.user
+            color_type='info',
+            author=interaction.user
         )
         if not interaction.response.is_done():
             await interaction.response.send_message(embed=reason_embed, ephemeral=True)
@@ -136,7 +143,7 @@ class ModerationView(View):
 
         try:
             dm_description = f"You have been {action_text} for the following reason: {reason}."
-            dm_embed = create_mod_embed("Moderation Notice", dm_description, "info", self.moderator)
+            dm_embed = create_mod_embed("Moderation Notice", dm_description, color_type="info", author=self.moderator)
             await self.user.send(embed=dm_embed)
         except Exception as e:
             LogError(f"Failed to send DM to user {self.user.id}: {e}")
@@ -144,10 +151,10 @@ class ModerationView(View):
         try:
             if action_type == "ban":
                 if self.user.guild_permissions.administrator:
-                    safety_embed = create_mod_embed(
-                        "❌ Safety Lock",
+                    safety_embed = create_error_embed(
+                        "Safety Lock",
                         "Cannot ban server administrators",
-                        'error'
+                        author=interaction.user
                     )
                     await interaction.followup.send(embed=safety_embed, ephemeral=True)
                     return
@@ -159,11 +166,10 @@ class ModerationView(View):
             elif action_type == "warn":
                 LogModeration(f"Warned {self.user.id} by {self.moderator.id}: {reason}")
 
-            success_embed = create_mod_embed(
-                f"✅ {action_type.title()} Successful",
+            success_embed = create_success_embed(
+                f"{action_type.title()} Successful",
                 f"{self.user.mention} has been {action_text}",
-                'success',
-                self.moderator
+                author=self.moderator
             )
             if not interaction.response.is_done():
                 await interaction.response.send_message(embed=success_embed, ephemeral=True)
@@ -185,11 +191,10 @@ class ModerationView(View):
 
         except Exception as e:
             LogError(f"Moderation action failed: {str(e)}")
-            error_embed = create_mod_embed(
-                "⚠️ Error",
+            error_embed = create_error_embed(
+                "Error",
                 f"Action failed: {str(e)}",
-                'error',
-                interaction.user
+                author=interaction.user
             )
             try:
                 if not interaction.response.is_done():
@@ -203,7 +208,8 @@ class ModerationView(View):
         history_embed = create_mod_embed(
             "📚 Moderation History",
             f"**User:** {self.user.mention}\nNo recent actions found",
-            'info'
+            color_type='info',
+            author=interaction.user
         )
         await interaction.response.send_message(embed=history_embed, ephemeral=True)
 
@@ -213,13 +219,6 @@ class ModerationView(View):
         await interaction.response.defer()
 
     async def generate_user_embed(self):
-        embed = discord.Embed(
-            title=f"User Information: {self.user}",
-            color=0x3498DB,
-            timestamp=datetime.datetime.utcnow()
-        )
-        embed.set_thumbnail(url=self.user.display_avatar.url)
-        
         status_emojis = {
             'online': '🟢',
             'idle': '🌙',
@@ -227,19 +226,8 @@ class ModerationView(View):
             'offline': '⚪'
         }
         status = status_emojis.get(str(self.user.status), '⚪')
-        embed.description = f"{status} **Status:** {self.user.status}"
-        
-        embed.add_field(name="User ID", value=self.user.id, inline=False)
-        embed.add_field(name="Nickname", value=self.user.nick or "None", inline=True)
-        embed.add_field(name="Bot Account", value="Yes" if self.user.bot else "No", inline=True)
-        embed.add_field(name="Pending Verification", value="Yes" if self.user.pending else "No", inline=True)
-        embed.add_field(name="Joined Server", value=f"<t:{int(self.user.joined_at.timestamp())}:R>")
-        embed.add_field(name="Account Created", value=f"<t:{int(self.user.created_at.timestamp())}:R>")
         
         roles = [role.mention for role in self.user.roles[1:]]
-        embed.add_field(name=f"Roles ({len(roles)})", 
-                        value=", ".join(roles) if roles else "None", 
-                        inline=False)
         
         perms = []
         if self.user.guild_permissions.administrator:
@@ -250,9 +238,26 @@ class ModerationView(View):
             if self.user.guild_permissions.kick_members: perms.append("Kick Members")
             if self.user.guild_permissions.moderate_members: perms.append("Timeout Members")
         
-        embed.add_field(name="Key Permissions", 
-                        value=", ".join(perms) if perms else "No special permissions",
-                        inline=False)
+        fields = [
+            ("User ID", str(self.user.id), False),
+            ("Nickname", self.user.nick or "None", True),
+            ("Bot Account", "Yes" if self.user.bot else "No", True),
+            ("Pending Verification", "Yes" if self.user.pending else "No", True),
+            ("Joined Server", f"<t:{int(self.user.joined_at.timestamp())}:R>", True),
+            ("Account Created", f"<t:{int(self.user.created_at.timestamp())}:R>", True),
+            (f"Roles ({len(roles)})", ", ".join(roles) if roles else "None", False),
+            ("Key Permissions", ", ".join(perms) if perms else "No special permissions", False),
+        ]
+
+        embed = create_embed(
+            title=f"User Information: {self.user}",
+            description=f"{status} **Status:** {self.user.status}",
+            color='info',
+            thumbnail=self.user.display_avatar.url,
+            footer_text="Maggi Moderation",
+            bot_user=self.bot.user if self.bot else None,
+            fields=fields
+        )
         return embed
 
 class UserModerationCog(commands.Cog):
@@ -272,11 +277,10 @@ class UserModerationCog(commands.Cog):
             LogModeration(f"User info requested for {user.id} by {ctx.author.id}")
         except Exception as e:
             LogError(f"User info command error: {str(e)}")
-            error_embed = create_mod_embed(
-                "⚠️ Error",
+            error_embed = create_error_embed(
+                "Error",
                 f"Failed to retrieve user information: {str(e)}",
-                'error',
-                ctx.author
+                author=ctx.author
             )
             await ctx.respond(embed=error_embed, ephemeral=True)
 

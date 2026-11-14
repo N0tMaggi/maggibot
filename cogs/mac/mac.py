@@ -124,7 +124,7 @@ class MacBan(commands.Cog):
         ban_record = {
             "id": user.id,
             "name": user.name,
-            "bandate": datetime.datetime.utcnow().isoformat(),
+            "bandate": discord.utils.utcnow().isoformat(),
             "reason": reason,
             "serverid": ctx.guild.id,
             "servername": ctx.guild.name,
@@ -282,7 +282,7 @@ class MacBan(commands.Cog):
             await ctx.followup.send(embed=embed)
             return
 
-        filename = f"mac_global_banlist_{datetime.datetime.utcnow().strftime('%Y%m%d')}.txt"
+        filename = f"mac_global_banlist_{discord.utils.utcnow().strftime('%Y%m%d')}.txt"
         with open(filename, "w", encoding="utf-8") as f:
             f.write("ID | Name | Ban Date | Reason | Banned By | Server ID | Server Name\n")
             for ban in bans.values():

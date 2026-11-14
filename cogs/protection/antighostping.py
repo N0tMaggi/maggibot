@@ -2,7 +2,14 @@ import discord
 from discord.ext import commands
 from handlers.config import loadserverconfig 
 from handlers.debug import LogDebug, LogError
-
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 
 class AntiGhostPing(commands.Cog):
     def __init__(self, bot):
@@ -22,7 +29,13 @@ class AntiGhostPing(commands.Cog):
 
         LogDebug(f"Ghost ping detected in {message.guild.name} (ID: {message.guild.id})")
 
-        embed = discord.Embed(
+        fields = [
+            ("Guild ID", f"`{message.guild.id}`", True),
+            ("Channel ID", f"`{message.channel.id}`", True),
+            ("Message ID", f"`{message.id}`", True),
+        ]
+
+        embed = create_security_embed(
             title="⚠️ Ghost Ping Alert",
             description=(
                 f"You were mentioned in a message that was quickly deleted in **{message.guild.name}**\n\n"
@@ -30,13 +43,10 @@ class AntiGhostPing(commands.Cog):
                 f"**Channel:** {message.channel.mention}\n"
                 f"**Message Content:** {message.content or '*No text content*'}"
             ),
-            color=discord.Color.brand_red()
+            color='error',
+            thumbnail=message.author.display_avatar.url,
+            fields=fields
         )
-        embed.set_thumbnail(url=message.author.display_avatar.url)
-        embed.add_field(name="Guild ID", value=f"`{message.guild.id}`", inline=True)
-        embed.add_field(name="Channel ID", value=f"`{message.channel.id}`", inline=True)
-        embed.add_field(name="Message ID", value=f"`{message.id}`", inline=True)
-        embed.timestamp = discord.utils.utcnow()
 
         for user in message.mentions:
             try:

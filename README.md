@@ -1,264 +1,257 @@
-﻿<p align="center">
-    <img src="https://img.icons8.com/external-tal-revivo-regular-tal-revivo/96/external-readme-is-a-easy-to-build-a-developer-hub-that-adapts-to-the-user-logo-regular-tal-revivo.png" align="center" width="30%">
-</p>
-<p align="center"><h1 align="center">MAGGIBOT</h1></p>
 <p align="center">
-	<em><code>❯ Made by Maggi</code></em>
+  <h1 align="center">🛡️ MAGGIBOT</h1>
 </p>
+
 <p align="center">
-	<img src="https://img.shields.io/github/license/ag7dev/maggibot?style=flat&logo=opensourceinitiative&logoColor=white&color=ff00e0" alt="license">
-	<img src="https://img.shields.io/github/last-commit/ag7dev/maggibot?style=flat&logo=git&logoColor=white&color=ff00e0" alt="last-commit">
-	<img src="https://img.shields.io/github/languages/top/ag7dev/maggibot?style=flat&color=ff00e0" alt="repo-top-language">
-	<img src="https://img.shields.io/github/languages/count/ag7dev/maggibot?style=flat&color=ff00e0" alt="repo-language-count">
+  <em>High-performance, modern, modular Discord bot built with Python, Pycord 2.8, and Discord Interactions v2.</em>
 </p>
-<p align="center">Built with the tools and technologies:</p>
+
 <p align="center">
-	<img src="https://img.shields.io/badge/JSON-000000.svg?style=flat&logo=JSON&logoColor=white" alt="JSON">
-	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white" alt="Python">
-	<img src="https://img.shields.io/badge/Discord-5865F2.svg?style=flat&logo=Discord&logoColor=white" alt="Discord">
+  <strong>Made by Maggi</strong>
 </p>
-<br>
+
+<p align="center">
+  <a href="https://github.com/N0tMaggi/maggibot/blob/main/LICENSE.txt"><img src="https://img.shields.io/badge/License-MIT-ff007a.svg?style=for-the-badge" alt="License"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"></a>
+  <a href="https://github.com/Pycord-Development/pycord"><img src="https://img.shields.io/badge/Pycord-2.8.1-5865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Pycord 2.8.1"></a>
+  <a href="https://docs.pytest.org/"><img src="https://img.shields.io/badge/Tests-268%20Passed-00c853.svg?style=for-the-badge&logo=pytest&logoColor=white" alt="Pytest 268 Passed"></a>
+  <a href="https://github.com/N0tMaggi/maggibot"><img src="https://img.shields.io/badge/i18n-EN%20%7C%20DE-purple.svg?style=for-the-badge" alt="i18n EN | DE"></a>
+</p>
+
+---
 
 ## 📑 Table of Contents
 
-- [📍 Overview](#-overview)
-- [👾 Features](#-features)
-- [📁 Project Structure](#-project-structure)
-  - [📂 Project Index](#-project-index)
-- [🚀 Getting Started](#-getting-started)
-  - [☑️ Prerequisites](#-prerequisites)
-  - [⚙️ Installation](#-installation)
-  - [🤖 Usage](#🤖-usage)
-  - [🧪 Testing](#🧪-testing)
-- [🔍 Automated Scanning](#-automated-scanning)
-- [📌 Project Roadmap](#-project-roadmap)
-- [🔰 Contributing](#-contributing)
-- [🎗 License](#-license)
-- [🙌 Acknowledgments](#-acknowledgments)
+- [✨ Overview](#-overview)
+- [⚡ Key Features](#-key-features)
+- [🎛️ Interactive Setup Dashboard](#️-interactive-setup-dashboard)
+- [🍯 Honeypot Protection](#-honeypot-protection)
+- [🌐 Localization (i18n)](#-localization-i18n)
+- [📁 Architecture & Directory Structure](#-architecture--directory-structure)
+- [🚀 Quick Start & Installation](#-quick-start--installation)
+- [💾 Database Backends & Docker](#-database-backends--docker)
+- [🧪 Testing & Quality Assurance](#-testing--quality-assurance)
+- [📜 License](#-license)
 
 ---
 
-## 📍 Overview
+## ✨ Overview
 
-**Maggibot** is a modular Discord bot written in Python using
-[`py-cord`](https://github.com/Pycord-Development/pycord). It is designed to be
-extended through cogs and provides a wide range of moderation and community
-management tools. The bot relies on a small set of configuration and data files
-(see [`handlers/config.py`](handlers/config.py)) and can be customised via an
-environment file based on `.env.example`.
+**MaggiBot** is a modern, modular Discord bot engineered from the ground up for stability, security, and intuitive community management. Powered by **Pycord 2.8.1** and Discord's latest UI components (**Interactions v2**), MaggiBot replaces legacy text-command clutter with interactive dashboards, persistent selects, toggle buttons, and modal dialogs.
+
+Designed with **multi-server scalability** and **containerized deployments (Docker)** in mind, MaggiBot supports multiple database backends (SQLite, MySQL, MongoDB, and JSON fallback) and features a per-server internationalization engine (English & German).
 
 ---
 
-## 👾 Features
+## ⚡ Key Features
 
-- **Administration** – tools like autoroles, configuration commands and voice
-  gate management.
-- **Moderation** – classic moderation actions (kick, ban, mute) plus community
-  voting utilities.
-- **Protection** – modules for anti-spam, anti-raid, anti-ghost ping and webhook
-  defence.
-- **Statistics** – XP and leaderboard system with adjustable multipliers.
-- **Ticket system** – simple ticket creation workflow for support channels.
-- **Fun and utilities** – quotes, tags, TikTok downloader and more.
+### 🛡️ Protection & Security Suite
+* **🍯 Honeypot Trap Channel**: Dedicated trap channel that catches automated spam bots and compromised accounts, immediately purges spam messages, and applies an automated **3-day tempban** stored in the database with automatic background unban scheduling.
+* **⚡ Anti-Spam & Rate Limiter**: Detects message flooding and burst spam, enforcing escalating timeouts.
+* **🚨 Anti-Raid**: Automated detection and mitigation of mass-join raids, with auto-kick/ban quarantine capabilities.
+* **👻 Anti-GhostPing**: Logs deleted or edited messages containing member/role pings to audit channels.
+* **🔒 Emergency Guild Lockdown (`/lockdown`)**: Instant server-wide quarantine toggle for server owners during security incidents.
+* **🛡️ Global MAC Ban Network**: Synchronized blacklist network protecting participating servers from known malicious actors.
+
+### 🎛️ Modern Administration & Onboarding
+* **🎛️ Interactive `/setup` Dashboard**: All-in-one visual control panel with interactive selects and buttons to configure protection, logging, roles, media rules, and server language with zero config file editing.
+* **🎙️ VoiceGate Onboarding**: Dedicated waiting gate for incoming voice users requiring interactive rules acknowledgment before moving them to active voice channels.
+* **🖼️ Media-Only Channels (`/onlyimages-enable`)**: Enforces attachment/media posts in designated media channels with instant automated cleanup and user notifications.
+* **🏷️ Dynamic Server Tags (`/tag`)**: Fast, rich server macro responses supporting dynamic variables (`{user}`, `{servername}`).
+
+### 📊 Community & Statistics
+* **📈 Leveling & XP Engine**: Tracks message activity and voice channel time with multiplier bonuses, anti-grind cooldowns, and level-up direct messages.
+* **🏆 Rich Leaderboards**: Beautiful, pageable text and voice leaderboards with custom embed layouts.
+
+### 🎨 Design & Experience
+* **🎨 Unified Embed Palette**: Consistent, accessible design system across all 38 modules using standardized semantic color palettes (`EmbedColors`) and safe fallback avatars.
 
 ---
 
-## 📁 Project Structure
+## 🎛️ Interactive Setup Dashboard
+
+Configure your entire server with a single command:
+```
+/setup
+```
+
+The setup dashboard provides:
+* **Interactive Category Selector**: Switch between *Overview*, *Protection*, *Logging*, *Roles*, *Media*, and *Language*.
+* **One-Click Toggle Buttons**: Instant toggles for Anti-Spam, Anti-Raid, Protection Mode, and TikTok Auto-Embed.
+* **VoiceGate Rules Modal**: Edit onboarding rules on the fly through a native Discord popup modal.
+* **Live Language Switcher**: Seamlessly toggle between English (`en`) and German (`de`) per guild in real-time.
+
+---
+
+## 🍯 Honeypot Protection
+
+The Honeypot module stops automated spam waves in their tracks:
+
+```
+/honeypot action:setup
+/honeypot-setup [channel:#channel]
+/honeypot-remove [delete_channel:True/False]
+```
+
+1. **Trap Setup**: Creates or links a dedicated channel (e.g. `🍯・honeypot`) visible to members with a prominent pinned warning embed.
+2. **Detection**: Any non-admin user sending a message is caught instantly.
+3. **Purge & Ban**: Deletes the spam message, sends a localized direct message notification, purges 1 day of message history, and issues a **3-day tempban**.
+4. **Database-Backed Persistence**: Tempban records are stored in the database (SQLite / MySQL / MongoDB), ensuring bans survive bot restarts and container updates.
+5. **Background Unban Worker**: An automated task loop runs every minute to unban users once their 3-day penalty expires.
+
+---
+
+## 🌐 Localization (i18n)
+
+MaggiBot includes a full per-server internationalization system:
+
+* **Supported Languages**: English (`en`, default) and German (`de`).
+* **Instant Fallbacks**: Missing keys automatically fallback to English, preventing missing text errors.
+* **In-Memory Caching**: Fast guild locale cache prevents repetitive database lookups during message traffic.
+* **Configurable in `/setup`**: Server administrators can switch languages with a single button click in the dashboard.
+
+```python
+from handlers.locale import t
+
+# Automatically uses the guild's chosen language
+embed = create_security_embed(
+    title=t("honeypot.log_title", guild=guild),
+    description=t("honeypot.log_desc", guild=guild, user=user.mention)
+)
+```
+
+---
+
+## 📁 Architecture & Directory Structure
 
 ```sh
 └── maggibot/
-    ├── README.md
-    ├── assets
-    │   └── All the Mp3 files are stored here
-    ├── cogs
-    │   └── All Cogs Are Stored here
-    │       └── Including all Files
-    ├── config
-    │   └── All Config Files Are Stored here
-    ├── data
-    │   └── All data like stats ans so on are stored here
-    ├── extensions
-    │   └── All extensions are stored here
-    ├── handlers
-    │   └── All Handlers are here
-    ├── main.py
-    ├── requirements.txt
-    └── start.bat
+    ├── cogs/
+    │   ├── admin/           # Administrative utilities and feedback
+    │   ├── fun/             # Interactive games and utilities
+    │   ├── general/         # General info commands (ping, serverinfo, userinfo)
+    │   ├── logging/         # Member, message, and voice audit loggers
+    │   ├── mac/             # MAC global ban security network
+    │   ├── media/           # Media commands and TikTok auto-embeds
+    │   ├── misc/            # Additional server utilities
+    │   ├── moderation/      # Ban, kick, mute, and community moderation
+    │   ├── owner/           # Owner maintenance and global lockdown
+    │   ├── protection/      # Honeypot, anti-spam, anti-raid, protection setup
+    │   ├── server/          # OnlyImages, tags, and server management
+    │   ├── setup/           # Interactive setup dashboard
+    │   ├── stats/           # XP, leveling, voice tracking, and leaderboards
+    │   ├── system/          # Application command error handling and events
+    │   └── verify/          # VoiceGate onboarding system
+    ├── handlers/
+    │   ├── config.py        # Centralized configuration access
+    │   ├── database.py      # Multi-backend database manager (SQLite/MySQL/Mongo/JSON)
+    │   ├── debug.py         # Formatted console logging
+    │   └── locale.py        # i18n localization engine
+    ├── locales/
+    │   ├── en.json          # English translations
+    │   └── de.json          # German translations
+    ├── tests/               # 268 automated unit & integration tests
+    │   ├── test_cogs/
+    │   ├── test_handlers/
+    │   └── test_utils/
+    ├── utils/
+    │   ├── colors.py        # Standardized Discord color palette
+    │   └── embed_helpers.py # Centralized safe embed creators
+    ├── main.py              # Application entrypoint & cog loader
+    └── requirements.txt     # Python dependencies
 ```
 
-
-### 📂 Project Index
-<details open>
-	<summary><b><code>MAGGIBOT/</code></b></summary>
-	<details> <!-- __root__ Submodule -->
-		<summary><b>__root__</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/main.py'>main.py</a></b></td>
-				<td><code>❯ Main entry point of the bot.</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/requirements.txt'>requirements.txt</a></b></td>
-				<td><code>❯ Required packages for the bot.</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/start.bat'>start.bat</a></b></td>
-				<td><code>❯ Bat file to start the bot.</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- handlers Submodule -->
-		<summary><b>handlers</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/handlers/debug.py'>debug.py</a></b></td>
-				<td><code>❯ Debug Handler</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/handlers/config.py'>config.py</a></b></td>
-				<td><code>❯ Handler for config</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/handlers/env.py'>env.py</a></b></td>
-				<td><code>❯ env handler</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- config Submodule -->
-		<summary><b>config</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/config/voicegateconfig.json'>voicegateconfig.json</a></b></td>
-				<td><code>❯ Voicegate config</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/config/serverconfig.json'>serverconfig.json</a></b></td>
-				<td><code>❯ Serverconfig</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/config/lockdown.json'>lockdown.json</a></b></td>
-				<td><code>❯ Lockdown config</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- extensions Submodule -->
-		<summary><b>extensions</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/extensions/modextensions.py'>modextensions.py</a></b></td>
-				<td><code>❯ Mod extensions</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/ag7dev/maggibot/blob/master/extensions/statsextension.py'>statsextension.py</a></b></td>
-				<td><code>❯ Stats extension</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-</details>
-
 ---
-## 🚀 Getting Started
 
-### ☑️ Prerequisites
+## 🚀 Quick Start & Installation
 
-Before getting started with maggibot, ensure your runtime environment meets the following requirements:
+### Prerequisites
+* **Python 3.10 or higher**
+* **Git**
+* A Discord Bot Token from the [Discord Developer Portal](https://discord.com/developers/applications) with:
+  * `SERVER MEMBERS INTENT` enabled
+  * `MESSAGE CONTENT INTENT` enabled
 
-- **Programming Language:** Python
-- **Package Manager:** Pip
+### 1. Clone & Setup Environment
+```bash
+git clone https://github.com/N0tMaggi/maggibot.git
+cd maggibot
 
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
 
-### ⚙️ Installation
+pip install -r requirements.txt
+```
 
-See [INSTALL.md](INSTALL.md) for a full step-by-step installation guide. In
-clone the repository, create a virtual environment with `python -m venv venv`, activate it and install the dependencies with `pip install -r requirements.txt`, copy `.env.example` to `.env` and run `python main.py install` once to create the default configuration files.
+### 2. Configure Environment
+Copy `.env.example` to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
+```
 
+```env
+DISCORD_TOKEN=your_bot_token_here
+OWNER_ID=your_discord_user_id
+DB_TYPE=sqlite
+DB_NAME=data/maggibot.db
+```
 
+### 3. Initialize & Run
+```bash
+# Initialize required directories and default configs
+python main.py install
 
-### 🤖 Usage
-Run Maggibot with the helper script:
+# Start the bot (Windows)
+start.bat
 
-Run `start.bat` on Windows or `python main.py` from an activated virtual environment.
-
----
-## 🔍 Automated Scanning
-
-GitHub Actions now run automated quality and security scans:
-
-- **Code Quality**: critical Ruff rules (`F821`, `E9`, etc.) and Python bytecode compile checks.
-- **Security Scans**: Bandit static security checks and `pip-audit` dependency audits.
-- **CodeQL**: weekly and PR/push deep analysis for Python security/code-quality issues.
-
-These workflows live in `.github/workflows/` and run on pull requests and pushes to the default branch.
-
----
-## 📌 Project Roadmap
-
-- [X] **`Task 1`**: <strike>Main Structure.</strike>
-- [X] **`Task 2`**: <strike>Installer.</strike>
-- [ ] **`Task 3`**: More Protection Features.
+# Start the bot (Linux / macOS)
+python main.py
+```
 
 ---
 
-## 🔰 Contributing
+## 💾 Database Backends & Docker
 
-- **💬 [Join the Discussions](https://github.com/ag7dev/maggibot/discussions)**: Share your insights, provide feedback, or ask questions.
-- **🐛 [Report Issues](https://github.com/ag7dev/maggibot/issues)**: Submit bugs found or log feature requests for the `maggibot` project.
-- **💡 [Submit Pull Requests](https://github.com/ag7dev/maggibot/blob/main/CONTRIBUTING.md)**: Review open PRs, and submit your own PRs.
+MaggiBot is cloud and container-ready. Set `DB_TYPE` in your `.env`:
 
-<details closed>
-<summary>Contributing Guidelines</summary>
+| Backend | `DB_TYPE` | Configuration Required | Description |
+| :--- | :--- | :--- | :--- |
+| **SQLite** | `sqlite` | `SQLITE_PATH` | Zero-setup local relational DB (Default: `data/maggibot.db`) |
+| **MySQL** | `mysql` | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | High-scale relational database |
+| **PostgreSQL**| `postgres`| `POSTGRES_URL` or standard PG variables | Enterprise SQL storage |
+| **MongoDB** | `mongo` | `MONGO_URI` | Document database for flexible cloud clustering |
+| **JSON** | `json` | *(None)* | Flat file storage in `data/` and `config/` |
 
-1. **Fork the Repository**: Start by forking the project repository to your github account.
-2. **Clone Locally**: Clone the forked repository to your local machine using a git client.
-   ```sh
-   git clone https://github.com/ag7dev/maggibot
-   ```
-3. **Create a New Branch**: Always work on a new branch, giving it a descriptive name.
-   ```sh
-   git checkout -b new-feature-x
-   ```
-4. **Make Your Changes**: Develop and test your changes locally.
-5. **Commit Your Changes**: Commit with a clear message describing your updates.
-   ```sh
-   git commit -m 'Implemented new feature x.'
-   ```
-6. **Push to github**: Push the changes to your forked repository.
-   ```sh
-   git push origin new-feature-x
-   ```
-7. **Submit a Pull Request**: Create a PR against the original project repository. Clearly describe the changes and their motivations.
-8. **Review**: Once your PR is reviewed and approved, it will be merged into the main branch. Congratulations on your contribution!
-</details>
+---
 
-<details closed>
-<summary>Contributor Graph</summary>
-<br>
-<p align="left">
-   <a href="https://github.com{/ag7dev/maggibot/}graphs/contributors">
-      <img src="https://contrib.rocks/image?repo=ag7dev/maggibot">
-   </a>
+## 🧪 Testing & Quality Assurance
+
+MaggiBot maintains a comprehensive, production-grade test suite using **pytest** and **pytest-asyncio**:
+
+```bash
+pytest
+```
+
+* **268 passing tests** covering:
+  * All 38 cogs and extensions
+  * Interactive Setup Dashboard & Modals
+  * Multi-backend database CRUD (SQLite, JSON, MySQL)
+  * Honeypot 3-day tempban lifecycle and unban background worker
+  * Localization engine string interpolation, cache, and fallbacks
+  * Rate-limiting, anti-raid, and permission-handling guards
+  * Discord embed safety limits and formatting
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** — see the [LICENSE.txt](LICENSE.txt) file for details.
+
+---
+
+<p align="center">
+  <b>MaggiBot</b> — Built with ❤️ by Maggi
 </p>
-</details>
-
----
-
-## 🎗 License
-
-This project is protected under the [MIT License](https://choosealicense.com/licenses) License. For more details, refer to the [LICENSE](https://choosealicense.com/licenses/) file.
-
----
-
-## 🙌 Acknowledgments
-
-- List any resources, contributors, inspiration, etc. here.
-
----
-

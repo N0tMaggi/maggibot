@@ -4,6 +4,14 @@ from handlers.config import loadserverconfig
 from handlers.debug import LogDebug, LogError
 from collections import defaultdict
 import asyncio
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 
 class ChannelProtectionCog(commands.Cog):
     def __init__(self, bot):
@@ -54,7 +62,7 @@ class ChannelProtectionCog(commands.Cog):
                 "🚨 Unverified Bot Detected",
                 f"Bot {bot} (`{bot.id}`) triggered a threshold of {self.ACTION_THRESHOLD}+ channel {action_type}s.\n"
                 f"Channel: {channel.name}\nAction: Banned",
-                discord.Color.dark_red()
+                'error'
             )
         except Exception as e:
             LogError(f"Failed to ban bot in {guild.name}: {str(e)}")
@@ -65,7 +73,7 @@ class ChannelProtectionCog(commands.Cog):
             "⚠️ Verified Bot Triggered Channel Protection",
             f"Verified bot {bot} (`{bot.id}`) exceeded the channel {action_type} threshold.\n"
             f"Channel: {channel.name}\nAction: Logged only (not banned)",
-            discord.Color.orange()
+            'warning'
         )
         LogDebug(f"Verified bot {bot} exceeded channel action threshold in {guild.name}")
 
@@ -79,7 +87,7 @@ class ChannelProtectionCog(commands.Cog):
             "delete": discord.AuditLogAction.channel_delete
         }[action_type]
 
-    async def log_security_event(self, guild: discord.Guild, title: str, description: str, color: discord.Color):
+    async def log_security_event(self, guild: discord.Guild, title: str, description: str, color: str = 'security'):
         config = loadserverconfig().get(str(guild.id), {})
         log_channel_id = config.get("logchannel")
 
@@ -90,15 +98,18 @@ class ChannelProtectionCog(commands.Cog):
         if not log_channel:
             return
 
-        embed = discord.Embed(
+        fields = [
+            ("Server", guild.name, True),
+            ("Server ID", str(guild.id), True),
+        ]
+
+        embed = create_security_embed(
             title=title,
             description=description,
             color=color,
-            timestamp=discord.utils.utcnow()
+            thumbnail=guild.icon.url if guild.icon else None,
+            fields=fields
         )
-        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
-        embed.add_field(name="Server", value=guild.name, inline=True)
-        embed.add_field(name="Server ID", value=guild.id, inline=True)
 
         try:
             await log_channel.send(embed=embed)

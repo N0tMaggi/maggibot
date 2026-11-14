@@ -4,12 +4,52 @@ import json
 import datetime
 from handlers.debug import LogDebug, LogError
 import handlers.config as config
-from extensions.protectionextension import create_antibot_protection_embed
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
+
+def _create_antibot_embed(member: discord.Member, inviter: discord.User | None, is_verified: bool = True, action_taken: bool = True) -> discord.Embed:
+    status = "Verified" if is_verified else "Unverified"
+    action = "Allowed" if is_verified else ("Kicked" if action_taken else "Not Kicked")
+    emoji = "✅" if is_verified else ("🛑" if action_taken else "⚠️")
+    color = 'success' if is_verified else ('error' if action_taken else 'warning')
+
+    if is_verified:
+        description = "A **verified bot** was added to the server and has been allowed."
+    elif action_taken:
+        description = "An **unverified bot** was detected and immediately kicked."
+    else:
+        description = "⚠️ Failed to kick unverified bot! Please check permissions."
+
+    fields = [
+        ("Bot Account", f"{member.mention}\n{member.name}#{member.discriminator}", False),
+        ("Bot ID", f"`{member.id}`", True),
+        ("Account Created", f"<t:{int(member.created_at.timestamp())}:R>", True),
+    ]
+    if inviter:
+        fields.append(("Invited By", f"{inviter.mention}\n({inviter.name}#{inviter.discriminator})", False))
+
+    embed = create_security_embed(
+        title=f"{emoji} {status} Bot Detection",
+        description=description,
+        color=color,
+        thumbnail=member.display_avatar.url,
+        footer_text=f"Protection System • Action: {action}",
+        footer_icon=member.guild.me.display_avatar.url if member.guild and member.guild.me else None,
+        fields=fields
+    )
+    if member.guild:
+        embed.set_author(name=member.guild.name, icon_url=member.guild.icon.url if member.guild.icon else None)
+    return embed
 
 class Antibot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -50,7 +90,7 @@ class Antibot(commands.Cog):
 
         if member.public_flags.verified_bot:
             LogDebug(f"Verified bot allowed: {member}")
-            embed = await create_antibot_protection_embed(member, inviter, is_verified=True)
+            embed = _create_antibot_embed(member, inviter, is_verified=True)
             await log_channel.send(embed=embed)
             return
 
@@ -58,23 +98,20 @@ class Antibot(commands.Cog):
             try:
                 await member.kick(reason="Unverified bot protection")
                 LogDebug(f"Successfully kicked unverified bot: {member}")
-                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=True)
+                embed = _create_antibot_embed(member, inviter, is_verified=False, action_taken=True)
             except discord.Forbidden:
                 LogError(f"Missing permissions to kick {member} in {member.guild.name}")
-                embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
-                embed.color = discord.Color.orange()
+                embed = _create_antibot_embed(member, inviter, is_verified=False, action_taken=False)
                 embed.title = "⚠️ Protection Action Failed"
             except Exception as e:
                 LogError(f"Error kicking bot: {str(e)}")
-                embed = discord.Embed(
-                    title="⚠️ Critical Protection Error",
-                    description=f"Unexpected error handling bot: {str(e)}",
-                    color=discord.Color.dark_red()
+                embed = create_error_embed(
+                    title="Critical Protection Error",
+                    description=f"Unexpected error handling bot: {str(e)}"
                 )
         else:
             LogDebug(f"Protection disabled - allowing unverified bot: {member}")
-            embed = await create_antibot_protection_embed(member, inviter, is_verified=False, action_taken=False)
-            embed.color = discord.Color.orange()
+            embed = _create_antibot_embed(member, inviter, is_verified=False, action_taken=False)
             embed.title = "⚠️ Unverified Bot Allowed"
 
         try:

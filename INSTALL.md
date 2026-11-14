@@ -1,63 +1,68 @@
 # Installation Guide
 
-This document describes how to install and run **Maggibot** locally.
+This document describes how to install, configure, and run **MaggiBot** locally or via Docker.
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - `pip` package manager
+- Discord Bot Token with Server Members and Message Content Privileged Gateway Intents enabled in the [Discord Developer Portal](https://discord.com/developers/applications)
 
 ## Steps
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/ag7dev/maggibot
+   git clone https://github.com/N0tMaggi/maggibot.git
    cd maggibot
    ```
+
 2. **Create a virtual environment and install dependencies**
    ```bash
    python -m venv venv
-   venv\Scripts\activate    # on Windows
-   source venv/bin/activate # on Linux/macOS
+   # Windows
+   .\venv\Scripts\activate
+   # Linux / macOS
+   source venv/bin/activate
+
    pip install -r requirements.txt
    ```
-3. **Create your configuration**
-   - Copy `.env.example` to `.env` and fill in the required values (bot token, owner ID, etc.).
-   - Run the setup helper once to generate default config files:
+
+3. **Configure Environment Variables**
+   - Copy `.env.example` to `.env`:
      ```bash
-     python main.py install
+     cp .env.example .env
      ```
-4. **Start the bot**
+   - Open `.env` and fill in:
+     - `DISCORD_TOKEN`: Your bot application token.
+     - `OWNER_ID`: Your Discord user ID.
+     - `DB_TYPE`: `sqlite`, `mysql`, `mongo`, or `json` (default).
+
+4. **Initialize Configs**
+   Run the setup helper once to generate default configuration directories and files:
    ```bash
-   start.bat  # Windows
-   # or
+   python main.py install
+   ```
+
+5. **Start the Bot**
+   ```bash
+   # Windows
+   start.bat
+   # Linux / macOS
    python main.py
    ```
 
-For Windows users there are also `install.bat` and `start.bat` helpers that wrap these commands.
+## Database Configuration
 
-## Database Configuration (Optional)
+MaggiBot supports multi-backend database integration for multi-platform and Docker deployment:
 
-By default, Maggibot uses a JSON file (`data/mac.json`) to store MAC ban data. You can optionally configure it to use a MySQL or SQLite database instead.
+- **JSON (`DB_TYPE=json`)**: Zero configuration file-based storage in `data/` and `config/`.
+- **SQLite (`DB_TYPE=sqlite`)**: Lightweight relational database. Configure `SQLITE_PATH=data/maggibot.db`.
+- **MySQL (`DB_TYPE=mysql`)**: Provide `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME`.
+- **MongoDB (`DB_TYPE=mongo`)**: Provide `MONGO_URI` (e.g. `mongodb://localhost:27017/maggibot`).
 
-1.  **Choose your database type:**
-    *   In your `.env` file, set `DB_TYPE` to one of the following:
-        *   `json` (default): Uses the `mac.json` file.
-        *   `sqlite`: Uses a local SQLite database file.
-        *   `mysql`: Uses a remote or local MySQL server.
+## Running Tests
 
-2.  **Configure credentials:**
-    *   **For `sqlite`:**
-        *   Set `DB_NAME` to the desired path for your database file (e.g., `data/maggibot.db`).
-    *   **For `mysql`:**
-        *   `DB_HOST`: The hostname or IP address of your MySQL server.
-        *   `DB_USER`: The username for the database.
-        *   `DB_PASSWORD`: The password for the database user.
-        *   `DB_NAME`: The name of the database to use.
-
-3.  **Migrate existing data (if any):**
-    *   If you have existing bans in `data/mac.json`, you can migrate them to your database by running the migration script:
-      ```bash
-      python migrate_mac_json_to_db.py
-      ```
-    *   This will generate a `mac_bans.sql` file. You can then import this file into your database. For SQLite, the script will automatically create and populate the database.
+Run the full automated test suite (268 unit and integration tests):
+```bash
+pytest
+```

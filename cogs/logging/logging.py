@@ -68,7 +68,7 @@ class Logging(commands.Cog):
                 title="Logging Configured",
                 description=f"Logs will be posted in {forum.mention}",
                 color=discord.Color.green(),
-                timestamp=datetime.datetime.utcnow(),
+                timestamp=discord.utils.utcnow(),
             )
             await ctx.respond(embed=embed, ephemeral=True)
         except Exception as e:

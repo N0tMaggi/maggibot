@@ -1,22 +1,44 @@
+# -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-import json
-import os
 import asyncio
-from handlers.debug import LogDebug, LogError
-from handlers.config import loadvoicegateconfig, savevoicegateconfig
 
+from handlers.debug import LogDebug, LogError
+from handlers.config import loadvoicegateconfig
+from handlers.locale import t
+from utils.embed_helpers import create_embed
+from utils.colors import EmbedColors
+
+
+class VoiceGateAcceptView(discord.ui.View):
+    def __init__(self, member_id: int, guild_id: int):
+        super().__init__(timeout=45)
+        self.member_id = member_id
+        self.guild_id = guild_id
+        self.accepted = False
+        self.accept_button.label = t("voicegate.accept_button", guild_id=guild_id)
+
+    @discord.ui.button(label="Accept Rules & Unlock", style=discord.ButtonStyle.success, emoji="✅")
+    async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user.id != self.member_id:
+            await interaction.response.send_message(t("voicegate.wrong_user", guild_id=self.guild_id), ephemeral=True)
+            return
+        self.accepted = True
+        button.disabled = True
+        button.label = t("voicegate.accepted", guild_id=self.guild_id)
+        await interaction.response.edit_message(view=self)
+        self.stop()
 
 
 class VoiceGate(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: discord.Bot):
         self.bot = bot
-        self.pending_verifications = set()  
+        self.pending_verifications = set()
         self.voicegateconfig = loadvoicegateconfig()
-
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        self.voicegateconfig = loadvoicegateconfig()
         config_data = self.voicegateconfig.get(str(member.guild.id))
         if not config_data:
             return
@@ -49,56 +71,49 @@ class VoiceGate(commands.Cog):
             except Exception as e:
                 LogError(f"[VOICEGATE] Failed to mute member {member.id}: {e}")
 
-            rules_text = config_data.get("rules_text", "No rules provided.")
-            embed_rules = discord.Embed(
-                title="Voice Gate Rules",
+            rules_text = config_data.get("rules_text") or t("general.no_description", guild_id=member.guild.id)
+            embed_rules = create_embed(
+                title=f"🔊 {t('voicegate.embed_title', guild_id=member.guild.id, guild_name=member.guild.name)}",
                 description=rules_text,
-                color=0x3498DB
+                color=EmbedColors.INFO,
+                footer_text=t("voicegate.footer", guild_id=member.guild.id)
             )
-            embed_rules.set_footer(text="React with ✅ within 30 seconds to accept the rules.")
 
+            view = VoiceGateAcceptView(member_id=member.id, guild_id=member.guild.id)
             try:
                 dm_channel = await member.create_dm()
-                rules_message = await dm_channel.send(embed=embed_rules)
-                await rules_message.add_reaction("✅")
+                rules_message = await dm_channel.send(embed=embed_rules, view=view)
             except Exception as e:
                 LogError(f"[VOICEGATE] Failed to send DM to member {member.id}: {e}")
                 return
 
-            def reaction_check(reaction, user):
-                return (
-                    user.id == member.id
-                    and str(reaction.emoji) == "✅"
-                    and reaction.message.id == rules_message.id
-                )
+            await view.wait()
 
-            try:
-                await self.bot.wait_for("reaction_add", timeout=30, check=reaction_check)
-                final_channel = member.guild.get_channel(config_data.get("final_channel_id"))
+            if view.accepted:
+                final_channel_id = config_data.get("final_channel_id")
+                final_channel = member.guild.get_channel(final_channel_id)
                 if final_channel is None:
                     try:
-                        await member.send("Final channel not found. Please contact an administrator.")
-                    except discord.Forbidden:
-                        LogDebug(f"Could not send DM to {member.id} about missing final channel")
-                    except Exception as e:
-                        LogError(f"Failed to send channel missing DM to {member.id}: {str(e)}")
+                        await member.send(t("voicegate.no_target", guild_id=member.guild.id))
+                    except Exception:
+                        pass
                     return
-                await member.move_to(final_channel)
-                await member.edit(mute=False)
+
                 try:
-                    await member.send("You have been moved to the final channel. Enjoy!")
-                except discord.Forbidden:
-                    LogDebug(f"Could not send success DM to {member.id} - DMs disabled")
-                except Exception as e:
-                    LogError(f"Failed to send success DM to {member.id}: {str(e)}")
-            except asyncio.TimeoutError:
+                    await member.move_to(final_channel)
+                    await member.edit(mute=False)
+                    await member.send(t("voicegate.moved", guild_id=member.guild.id, channel=final_channel.name))
+                except Exception as move_e:
+                    LogError(f"[VOICEGATE] Error moving member {member.id}: {move_e}")
+            else:
                 try:
                     await member.move_to(None)
-                    await member.send("You did not accept the rules in time. Please rejoin the voice channel to try again.")
+                    await member.send(t("voicegate.timeout", guild_id=member.guild.id))
                 except Exception as dm_e:
-                    LogError(f"[VOICEGATE] Failed to send DM after timeout to member {member.id}: {dm_e}")
+                    LogError(f"[VOICEGATE] Failed timeout kick/dm for member {member.id}: {dm_e}")
         finally:
             self.pending_verifications.discard(member.id)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(VoiceGate(bot))

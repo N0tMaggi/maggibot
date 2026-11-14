@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import io
 import os
 import asyncio
@@ -7,6 +8,7 @@ import textwrap
 import aiohttp
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 from colorthief import ColorThief
+from handlers.locale import t
 
 # Resolve font directory relative to the project root (two levels up from this file)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,64 +60,54 @@ class Quote(commands.Cog):
         avatar_size = 220
         padding = 40
         max_width = 1200
-        border_width = 5
+        border_width = 10
 
-        font_regular = _load_font("NotoSans-Regular.ttf", 44)
-        font_italic = _load_font("NotoSans-Italic.ttf", 34)
-        font_small = _load_font("NotoSans-Regular.ttf", 28)
+        font_text = _load_font("Caveat-Bold.ttf", 60)
+        font_italic = _load_font("NotoSans-Italic.ttf", 28)
+        font_small = _load_font("NotoSans-Regular.ttf", 22)
 
-        draw = ImageDraw.Draw(Image.new('RGB', (1, 1)))
-        text_width = min(max_width - avatar_size - padding * 2, 900)
-        # Measure real average character width to wrap accurately
-        sample = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        sample_bbox = draw.textbbox((0, 0), sample, font=font_regular)
-        avg_char_w = (sample_bbox[2] - sample_bbox[0]) / len(sample)
-        usable_width = text_width - 80  # leave comfortable margin
-        chars_per_line = max(18, int(usable_width / avg_char_w))
-        wrapped_text = textwrap.fill(text, width=chars_per_line)
-        text_bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font_regular)
+        wrapped_text = "\n".join(textwrap.wrap(f'"{text}"', width=30))
+
+        temp_img = Image.new("RGBA", (1, 1))
+        temp_draw = ImageDraw.Draw(temp_img)
+        text_bbox = temp_draw.multiline_textbbox((0, 0), wrapped_text, font=font_text)
+        text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
 
-        name_bbox = draw.textbbox((0, 0), display_name, font=font_italic)
-        user_bbox = draw.textbbox((0, 0), username, font=font_small)
-        name_height = name_bbox[3] - name_bbox[1] + user_bbox[3] - user_bbox[1] + 10
+        name_bbox = temp_draw.textbbox((0, 0), display_name, font=font_italic)
+        user_bbox = temp_draw.textbbox((0, 0), username, font=font_small)
+        footer_height = (name_bbox[3] - name_bbox[1]) + (user_bbox[3] - user_bbox[1]) + 15
 
-        total_height = max(340, text_height + name_height + padding * 2 + 70)
-        total_width = avatar_size + text_width + padding * 2
+        content_width = avatar_size + padding + max(text_width, 350) + padding
+        total_width = max(650, min(max_width, content_width))
+        total_height = max(avatar_size + (padding * 2), text_height + footer_height + (padding * 2))
 
-        bg_color = (0, 0, 0, 0) if transparent else (0, 0, 0, 255)
-        main_image = Image.new('RGBA', (total_width, total_height), bg_color)
+        main_image = Image.new("RGBA", (total_width, total_height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(main_image)
 
-        mask = Image.new('L', (avatar_size, avatar_size), 0)
-        ImageDraw.Draw(mask).ellipse((0, 0, avatar_size, avatar_size), fill=255)
-        avatar = avatar.resize((avatar_size, avatar_size)).convert("RGBA")
-        avatar.putalpha(mask)
+        if not transparent:
+            bg_gradient = Image.new("RGBA", (total_width, total_height), darkened_color)
+            main_image.paste(bg_gradient, (0, 0))
+
+        avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+        mask = Image.new("L", (avatar_size, avatar_size), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
         avatar_x = padding
         avatar_y = (total_height - avatar_size) // 2
-        border_size = avatar_size + border_width * 2
-        border_layer = Image.new('RGBA', (border_size, border_size), (0, 0, 0, 0))
-        ImageDraw.Draw(border_layer).ellipse((0, 0, border_size, border_size), fill=darkened_color)
-        main_image.paste(border_layer, (avatar_x - border_width, avatar_y - border_width), border_layer)
-        main_image.paste(avatar, (avatar_x, avatar_y), avatar)
+        main_image.paste(avatar, (avatar_x, avatar_y), mask)
 
-        text_x = avatar_size + padding * 2 + 10
+        text_x = avatar_x + avatar_size + padding
+        text_y = (total_height - (text_height + footer_height)) // 2
         text_bg_width = total_width - text_x - padding
-        gradient = Image.new('RGBA', (text_bg_width, total_height), color=0)
-        for x in range(text_bg_width):
-            opacity = int(255 * (0.5 + 0.5 * (x / text_bg_width)))
-            gradient.putpixel((x, 0), (*darkened_color, opacity))
-        main_image.paste(gradient, (text_x, 0), gradient)
 
-        text_y = (total_height - text_height - name_height - 40) // 2
         draw.multiline_text(
-            (text_x + 25, text_y),
+            (text_x, text_y),
             wrapped_text,
-            font=font_regular,
+            font=font_text,
             fill=(255, 255, 255, 255),
-            spacing=14,
-            embedded_color=True
+            align="left",
         )
 
         max_line_width = max(
@@ -137,10 +129,15 @@ class Quote(commands.Cog):
         output.seek(0)
         return output
 
-    @commands.slash_command(description="Creates a stylish quote image with a profile picture")
+    @commands.slash_command(
+        name="quote",
+        description="Creates a stylish quote image with a profile picture",
+        integration_types={discord.IntegrationType.guild_install, discord.IntegrationType.user_install},
+        contexts={discord.InteractionContextType.guild, discord.InteractionContextType.bot_dm, discord.InteractionContextType.private_channel}
+    )
     async def quote(self, ctx: discord.ApplicationContext, 
                    text: str, 
-                   user: discord.Member = None,
+                   user: discord.User = None,
                    transparent: bool = False):
         await ctx.defer()
         target_user = user or ctx.author
@@ -151,7 +148,7 @@ class Quote(commands.Cog):
                 avatar_url = str(target_user.display_avatar.with_size(512).url)
                 async with session.get(avatar_url) as response:
                     if response.status != 200:
-                        return await ctx.followup.send("❌ Couldn't download avatar!")
+                        return await ctx.followup.send(t("quote.avatar_error", ctx=ctx))
                     avatar_data = await response.read()
             display_name = f"~ {target_user.display_name}"
             username = f"@{target_user.name}"
@@ -166,9 +163,9 @@ class Quote(commands.Cog):
             await ctx.followup.send(file=discord.File(output, "quote.png"))
             output.close()
         except asyncio.TimeoutError:
-            await ctx.followup.send("❌ Avatar download timeout. Please try again.")
+            await ctx.followup.send(t("quote.timeout_error", ctx=ctx))
         except Exception as e:
-            await ctx.followup.send(f"❌ Error generating image: {str(e)}")
+            await ctx.followup.send(t("quote.gen_error", ctx=ctx, error=str(e)))
 
 def setup(bot):
     bot.add_cog(Quote(bot))

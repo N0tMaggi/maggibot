@@ -5,7 +5,14 @@ import datetime
 import asyncio
 import os
 import handlers.config as cfg
-from extensions.modextensions import create_mod_embed, send_mod_log
+from utils.embed_helpers import (
+    create_embed,
+    create_mod_embed,
+    create_security_embed,
+    create_success_embed,
+    create_error_embed,
+    create_warning_embed,
+)
 from handlers.debug import LogDebug, LogError, LogNetwork, LogSystem, LogModeration
 
 class Moderation(commands.Cog):
@@ -19,8 +26,9 @@ class Moderation(commands.Cog):
             initial_embed = create_mod_embed(
                 "🔍 Permission Scan Initialized",
                 "Scanning bot permissions...",
-                'info',
-                ctx.author
+                color_type='info',
+                author=ctx.author,
+                bot_user=self.bot.user
             )
             await ctx.respond(embed=initial_embed)
 
@@ -34,8 +42,9 @@ class Moderation(commands.Cog):
                 "📋 Permission Check Results",
                 f"**Server:** {ctx.guild.name}\n"
                 f"**Scan requested by:** {ctx.author.mention}",
-                'success' if not missing_perms else 'error',
-                ctx.author
+                color_type='success' if not missing_perms else 'error',
+                author=ctx.author,
+                bot_user=self.bot.user
             )
 
             if missing_perms:
@@ -61,7 +70,8 @@ class Moderation(commands.Cog):
                     "📊 Full Permission Report",
                     f"**Server:** {ctx.guild.name}\n"
                     f"**Administrator:** {'✅ Yes' if bot_perms.administrator else '❌ No'}",
-                    'info'
+                    color_type='info',
+                    bot_user=self.bot.user
                 )
                 enabled_perms = [perm.replace('_', ' ').title() for perm, value in bot_perms if value]
                 disabled_perms = [perm.replace('_', ' ').title() for perm, value in bot_perms if not value]
@@ -80,21 +90,21 @@ class Moderation(commands.Cog):
                 await ctx.guild.owner.send(embed=owner_embed)
                 LogModeration(f"Sent owner report to {ctx.guild.owner.id}")
             except discord.Forbidden:
-                warning_embed = create_mod_embed(
-                    "⚠️ Delivery Failed",
+                warning_embed = create_warning_embed(
+                    "Delivery Failed",
                     f"Couldn't send DM to {ctx.guild.owner.mention}",
-                    'warning',
-                    ctx.author
+                    author=ctx.author
                 )
                 await ctx.followup.send(embed=warning_embed, ephemeral=True)
                 LogError(f"Failed to DM owner {ctx.guild.owner.id}")
 
         except Exception as e:
             LogError(f"Checkperms error: {str(e)}")
-            await ctx.followup.send(embed=create_mod_embed(
-                "⚠️ Error",
+            await ctx.followup.send(embed=create_error_embed(
+                "Error",
                 f"An error occurred while checking permissions: {str(e)}",
-                'error', ctx.author), ephemeral=True)
+                author=ctx.author
+            ), ephemeral=True)
     
     @commands.slash_command(name="purge-onlymessages", description="🧹 Purge only messages in a channel without deleting images")
     @commands.cooldown(1, 10, commands.BucketType.user)
@@ -116,33 +126,39 @@ class Moderation(commands.Cog):
             )
 
             deleted_count = len(deleted)
-            color = discord.Color.green() if deleted_count > 0 else discord.Color.orange()
             description = (
                 f"🗑️ **{deleted_count}** purged!" 
                 if deleted_count > 0 
                 else "❌ No deletable messages found!"
             )
 
-            embed = discord.Embed(
+            embed = create_mod_embed(
                 title="Channel Purged" + (" ✅" if deleted_count > 0 else " ⚠️"),
                 description=description,
-                color=color
+                color_type='success' if deleted_count > 0 else 'warning',
+                author=ctx.author,
+                bot_user=self.bot.user,
+                footer_text="Maggi Bot • Deletion takes about 1 Minute",
+                footer_icon=ctx.guild.icon.url if ctx.guild.icon else None,
+                fields=[
+                    ("Checking Messages", f"`{limit}`", True),
+                    ("Pinned Ignored", "✅", True)
+                ]
             )
-            embed.add_field(name="Checking Messages", value=f"`{limit}`", inline=True)
-            embed.add_field(name="Pinned Ignored", value="✅", inline=True)
-            embed.set_footer(text="Maggi Bot • Deletion takes about 1 Minute", icon_url=ctx.guild.icon.url)
 
         except discord.HTTPException as e:
-            embed = discord.Embed(
-                title="⚠️ Error Purge",
+            embed = create_error_embed(
+                title="Error Purge",
                 description=f"API-Error: `{e}`",
-                color=discord.Color.red()
+                author=ctx.author,
+                bot_user=self.bot.user
             )
         except Exception as e:
-            embed = discord.Embed(
-                title="❌ Critical Error",
+            embed = create_error_embed(
+                title="Critical Error",
                 description=f"Unexpected error: `{str(e)}`",
-                color=discord.Color.dark_red()
+                author=ctx.author,
+                bot_user=self.bot.user
             )
 
         await ctx.followup.send(embed=embed, ephemeral=True)

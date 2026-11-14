@@ -1,20 +1,38 @@
-import json
+# -*- coding: utf-8 -*-
+"""
+Central configuration handler for MaggiBot
+Provides unified configuration loading/saving with database integration.
+"""
+
 import os
-from handlers.debug import LogError
+import json
 from dotenv import load_dotenv
+
+from handlers.debug import LogError, LogDebug
+from handlers.database import (
+    get_guild_config,
+    save_guild_config,
+    get_db_connection,
+    DB_TYPE,
+    SQLITE_PATH,
+    get_tempbans,
+    add_tempban,
+    remove_tempban,
+    save_tempbans as db_save_tempbans
+)
 
 load_dotenv()
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Generic File Handlers
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_data(filename, default=None, transform_fn=None):
     """Generic function to load data from JSON files"""
     try:
         if not os.path.exists(filename):
             return default() if callable(default) else default
             
-        with open(filename, "r") as f:
+        with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
             return transform_fn(data) if transform_fn else data
             
@@ -28,7 +46,7 @@ def save_data(filename, data, mkdir=False):
         if mkdir:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
         return True
         
@@ -36,9 +54,9 @@ def save_data(filename, data, mkdir=False):
         LogError(f"Error saving {filename}: {str(e)}")
         raise
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # File Path Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Configs
 SERVER_CONFIG_FILE = "config/serverconfig.json"
 ADMIN_FEEDBACK_FILE = "config/adminfeedback.json"
@@ -52,9 +70,9 @@ MAC_FILE = "data/mac.json"
 MAC_BYPASS_FILE = "data/mac_bypass.json"
 STATS_FILE = "data/stats.json"
 XP_MULTIPLIER_FILE = "data/xpmultiplier.json"
-TICKET_DATA_FILE = "data/tickets.json"
 COOKIES_FILE = "data/cookies.json"
 TAGS_CONFIG_FILE = "data/tags.json"
+TEMPBANS_FILE = "data/tempbans.json"
 
 # Categorised File List
 JSON_FILES = [
@@ -68,9 +86,9 @@ JSON_FILES = [
     MAC_BYPASS_FILE,
     STATS_FILE,
     XP_MULTIPLIER_FILE,
-    TICKET_DATA_FILE,
     COOKIES_FILE,
-    TAGS_CONFIG_FILE
+    TAGS_CONFIG_FILE,
+    TEMPBANS_FILE
 ]
 
 CONFIG_FILES = [
@@ -87,63 +105,70 @@ DATA_FILES = [
     MAC_BYPASS_FILE,
     STATS_FILE,
     XP_MULTIPLIER_FILE,
-    TICKET_DATA_FILE,
     COOKIES_FILE,
-    TAGS_CONFIG_FILE
+    TAGS_CONFIG_FILE,
+    TEMPBANS_FILE
 ]
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# File Categorization Functions
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def get_json_files():
-    """Return all JSON files used by the system"""
     return JSON_FILES
 
 def get_config_files():
-    """Return all configuration files"""
     return CONFIG_FILES
 
 def get_data_files():
-    """Return all data storage files"""
     return DATA_FILES
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # XP System Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 MESSAGE_XP_COUNT = float(os.getenv("MESSAGE_XP_COUNT", 0.1))
 ATTACHMENT_XP_COUNT = float(os.getenv("ATTACHMENT_XP_COUNT", 0.3))
 VOICE_XP_COUNT = float(os.getenv('VOICE_XP_COUNT', 0.2))
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Server Configuration Handlers
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def loadserverconfig():
+    """Loads all server configurations. Falls back to JSON or DatabaseManager."""
     return load_data(SERVER_CONFIG_FILE, default=dict)
 
 def saveserverconfig(serverconfig):
-    save_data(SERVER_CONFIG_FILE, serverconfig)
+    """Saves all server configurations."""
+    save_data(SERVER_CONFIG_FILE, serverconfig, mkdir=True)
+
+def get_server_config(guild_id):
+    """Retrieves config for a single server using DB / JSON."""
+    return get_guild_config(guild_id)
+
+def set_server_config(guild_id, key, value):
+    """Sets a config property for a server."""
+    cfg = get_guild_config(guild_id)
+    cfg[key] = value
+    save_guild_config(guild_id, cfg)
 
 def get_log_channel(guild):
     serverconfig = loadserverconfig()
-    return guild.get_channel(serverconfig.get(str(guild.id), {}).get("log_channel"))
+    channel_id = serverconfig.get(str(guild.id), {}).get("log_channel")
+    return guild.get_channel(channel_id) if channel_id else None
 
 def get_logging_forum(guild):
     serverconfig = loadserverconfig()
     forum_id = serverconfig.get(str(guild.id), {}).get("logging_forum")
-    return guild.get_channel(forum_id)
+    return guild.get_channel(forum_id) if forum_id else None
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Statistics Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_stats():
     return load_data(STATS_FILE, default=dict)
 
 def save_stats(stats):
-    save_data(STATS_FILE, stats)
+    save_data(STATS_FILE, stats, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # XP Multiplier Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_multiplier_config():
     default = {"channels": [], "multipliers": {}}
     loaded = load_data(XP_MULTIPLIER_FILE, default=default)
@@ -153,52 +178,43 @@ def load_multiplier_config():
     return loaded
 
 def save_multiplier_config(config):
-    save_data(XP_MULTIPLIER_FILE, config)
+    save_data(XP_MULTIPLIER_FILE, config, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Admin feedback configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_admin_feedback():
     default = {"configs": {}, "feedbacks": {}}
     return load_data(ADMIN_FEEDBACK_FILE, default=default)
 
 def save_admin_feedback(data):
-    save_data(ADMIN_FEEDBACK_FILE, data)
+    save_data(ADMIN_FEEDBACK_FILE, data, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-# Ticket configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-def load_ticket_data():
-    return load_data(TICKET_DATA_FILE, default=dict)
-
-def save_ticket_data(data):
-    save_data(TICKET_DATA_FILE, data)
-
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Lockdown Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_lockdown_config():
     data = load_data(LOCKDOWN_CONFIG_FILE, default={"lockdown": False})
     if not isinstance(data, dict) or "lockdown" not in data:
         data = {"lockdown": False}
-        save_data(LOCKDOWN_CONFIG_FILE, data)
+        save_data(LOCKDOWN_CONFIG_FILE, data, mkdir=True)
     return data
 
 def save_lockdown_config(lockdown_status):
-    save_data(LOCKDOWN_CONFIG_FILE, {"lockdown": lockdown_status})
+    save_data(LOCKDOWN_CONFIG_FILE, {"lockdown": lockdown_status}, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Voicegate Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def loadvoicegateconfig():
     return load_data(VOICEGATE_CONFIG_FILE, default=dict)
 
 def savevoicegateconfig(config):
-    save_data(VOICEGATE_CONFIG_FILE, config)
+    save_data(VOICEGATE_CONFIG_FILE, config, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # OnlyImages Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_onlyimages():
     def transform(data):
         return {channel_id: True for channel_id in data} if isinstance(data, list) else data
@@ -207,35 +223,42 @@ def load_onlyimages():
 def save_onlyimages(channels):
     save_data(ONLY_IMAGES_FILE, channels, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Random Math + Cookies Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_randommath():
     return load_data(RANDOM_MATH_FILE, default=dict)
 
 def save_randommath(data):
-    save_data(RANDOM_MATH_FILE, data)
+    save_data(RANDOM_MATH_FILE, data, mkdir=True)
 
 def load_cookies():
     return load_data(COOKIES_FILE, default=dict)
 
 def save_cookies(data):
-    save_data(COOKIES_FILE, data)
+    save_data(COOKIES_FILE, data, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # Tags Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def load_tags():
     return load_data(TAGS_CONFIG_FILE, default=dict)
 
 def save_tags(tags):
-    save_data(TAGS_CONFIG_FILE, tags)
+    save_data(TAGS_CONFIG_FILE, tags, mkdir=True)
 
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# Tempban / Honeypot Configuration (Database-backed for Docker / Multi-platform)
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+def load_tempbans():
+    return get_tempbans()
+
+def save_tempbans(tempbans):
+    return db_save_tempbans(tempbans)
+
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # MAC Ban System Configuration
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-from handlers.database import get_db_connection, DB_TYPE
-
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def mac_load_bans():
     if DB_TYPE == "json":
         data = load_data(MAC_FILE, default=dict)
@@ -262,16 +285,14 @@ def mac_load_bans():
 
         bans = {}
         if DB_TYPE == 'sqlite':
-            # For sqlite, rows are tuples, convert them to dicts
             column_names = [description[0] for description in cursor.description]
             for row in rows:
                 ban_data = dict(zip(column_names, row))
                 bans[str(ban_data['id'])] = ban_data
-        else: # mysql
+        else:
             for row in rows:
                 bans[str(row['id'])] = row
         return bans
-
 
 def mac_save_bans(bans):
     if DB_TYPE == "json":
@@ -281,15 +302,12 @@ def mac_save_bans(bans):
         if not conn:
             return
         cursor = conn.cursor()
-        
-        # Inefficient for databases, but matches the current logic.
-        # A better implementation would be specific add/update/delete functions.
         cursor.execute("DELETE FROM mac_bans")
 
         for ban in bans.values():
             if DB_TYPE == 'mysql':
                 sql = "INSERT INTO mac_bans (id, name, bandate, reason, serverid, servername, bannedby) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-            elif DB_TYPE == 'sqlite':
+            else:
                 sql = "INSERT INTO mac_bans (id, name, bandate, reason, serverid, servername, bannedby) VALUES (?, ?, ?, ?, ?, ?, ?)"
             
             values = (ban.get('id'), ban.get('name'), ban.get('bandate'), ban.get('reason'), ban.get('serverid'), ban.get('servername'), ban.get('bannedby'))
@@ -297,7 +315,6 @@ def mac_save_bans(bans):
 
         conn.commit()
         conn.close()
-
 
 def mac_load_bypasses():
     if DB_TYPE == "json":
@@ -317,12 +334,11 @@ def mac_load_bypasses():
             for row in rows:
                 user_id, server_id = row
                 bypasses.setdefault(str(user_id), []).append(server_id)
-        else:  # mysql
+        else:
             for row in rows:
                 user_id = str(row['user_id'])
                 bypasses.setdefault(user_id, []).append(row['server_id'])
         return bypasses
-
 
 def mac_save_bypasses(bypasses):
     if DB_TYPE == "json":
@@ -338,11 +354,9 @@ def mac_save_bypasses(bypasses):
             for server_id in servers:
                 if DB_TYPE == 'mysql':
                     sql = "INSERT INTO mac_bypass (user_id, server_id) VALUES (%s, %s)"
-                elif DB_TYPE == 'sqlite':
+                else:
                     sql = "INSERT INTO mac_bypass (user_id, server_id) VALUES (?, ?)"
                 cursor.execute(sql, (int(user_id), server_id))
 
         conn.commit()
         conn.close()
-
-

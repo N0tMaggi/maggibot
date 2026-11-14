@@ -25,7 +25,7 @@ def get_token():
         token = os.getenv('TOKEN')
         if not token:
             raise ValueError("TOKEN not set in environment")
-        return int(token)
+        return str(token).strip()
     except Exception as e:
         LogDebug(f"get_token error: {str(e)}")
         raise
@@ -102,7 +102,7 @@ def get_mac_banner():
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 def get_tiktok_api_key():
     try:
-        return os.getenv('Maggi_DEV_API_KEY')
+        return os.getenv('Maggi_DEV_API_KEY') or os.getenv('MAGGI_DEV_API_KEY') or os.getenv('MAggi_DEV_API_KEY')
     except Exception as e:
         LogDebug(f"get_tiktok_api_key error: {str(e)}")
         raise
